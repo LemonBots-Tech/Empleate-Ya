@@ -98,7 +98,7 @@ export const personaRegistry: Record<PersonaId, Persona> = {
     tone: "reflexivo, profundo y orientador",
     color: "rose/púrpura",
     themeClass: "from-rose-500 to-purple-600",
-    avatarPath: "/avatars/mr-ikigai.png",
+    avatarPath: "/avatars/sensei-ikigai.png",
   },
 };
 
