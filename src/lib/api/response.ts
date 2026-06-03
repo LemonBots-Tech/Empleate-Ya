@@ -1,0 +1,32 @@
+import { NextResponse } from "next/server";
+import { ZodError } from "zod";
+
+export function jsonOk<T>(data: T, status = 200) {
+  return NextResponse.json(data, { status });
+}
+
+export function jsonError(error: unknown) {
+  if (error instanceof ZodError) {
+    return NextResponse.json(
+      {
+        error: "VALIDATION_ERROR",
+        details: error.flatten(),
+      },
+      { status: 400 }
+    );
+  }
+
+  if (error instanceof Error) {
+    if (error.message === "NOT_FOUND") {
+      return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+    }
+
+    if (error.message === "INSUFFICIENT_CREDITS") {
+      return NextResponse.json({ error: "INSUFFICIENT_CREDITS" }, { status: 402 });
+    }
+
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ error: "UNKNOWN_ERROR" }, { status: 500 });
+}

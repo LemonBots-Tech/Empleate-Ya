@@ -1,0 +1,330 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  active
+  suspended
+  deleted
+}
+
+enum ConsentType {
+  privacy_notice
+  terms
+  ai_processing
+  image_processing
+  artifact_storage
+}
+
+enum CreditLedgerType {
+  purchase
+  usage
+  refund
+  adjustment
+}
+
+enum ProjectStatus {
+  active
+  archived
+  deleted
+}
+
+enum ArtifactStatus {
+  draft
+  final
+  archived
+  deleted
+}
+
+enum ModuleRunStatus {
+  planned
+  running
+  success
+  failed
+  cancelled
+}
+
+enum SessionStatus {
+  active
+  completed
+  abandoned
+}
+
+model User {
+  id            String     @id @default(cuid())
+  firstName     String     @map("first_name")
+  lastName      String     @map("last_name")
+  email         String     @unique
+  phone         String?
+  age           Int?
+  country       String?
+  state         String?
+  city          String?
+  passwordHash  String     @map("password_hash")
+  emailVerified Boolean    @default(false) @map("email_verified")
+  phoneVerified Boolean    @default(false) @map("phone_verified")
+  status        UserStatus @default(active)
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  professionalProfile ProfessionalProfile?
+  privacyConsents     PrivacyConsent[]
+  creditWallet        CreditWallet?
+  creditLedger        CreditLedger[]
+  projects            Project[]
+  files               File[]
+  artifacts           Artifact[]
+  sessions            Session[]
+  moduleRuns          ModuleRun[]
+  auditLogs           AuditLog[]
+  savedJobs           SavedJob[]
+
+  @@map("users")
+}
+
+model ProfessionalProfile {
+  id                     String   @id @default(cuid())
+  userId                 String   @unique @map("user_id")
+  targetRole             String?  @map("target_role")
+  seniority              String?
+  industry               String?
+  yearsExperience        Int?     @map("years_experience")
+  lastRole               String?  @map("last_role")
+  lastCompany            String?  @map("last_company")
+  educationLevel         String?  @map("education_level")
+  languages              String[] @default([])
+  linkedinUrl            String?  @map("linkedin_url")
+  jobSearchStatus        String?  @map("job_search_status")
+  desiredSalaryRange     String?  @map("desired_salary_range")
+  preferredWorkMode      String?  @map("preferred_work_mode")
+  geographicAvailability String?  @map("geographic_availability")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("professional_profiles")
+}
+
+model PrivacyConsent {
+  id          String      @id @default(cuid())
+  userId      String      @map("user_id")
+  consentType ConsentType @map("consent_type")
+  accepted    Boolean
+  version     String
+  ipAddress   String?     @map("ip_address")
+  acceptedAt  DateTime    @default(now()) @map("accepted_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, consentType])
+  @@map("privacy_consents")
+}
+
+model CreditWallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  balance   Int      @default(0)
+  currency  String   @default("MXN")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("credit_wallets")
+}
+
+model CreditLedger {
+  id                 String           @id @default(cuid())
+  userId             String           @map("user_id")
+  type               CreditLedgerType
+  amount             Int
+  balanceBefore      Int              @map("balance_before")
+  balanceAfter       Int              @map("balance_after")
+  description        String
+  relatedModuleRunId String?          @map("related_module_run_id")
+  createdAt          DateTime         @default(now()) @map("created_at")
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  moduleRun ModuleRun? @relation(fields: [relatedModuleRunId], references: [id])
+
+  @@index([userId, createdAt])
+  @@map("credit_ledger")
+}
+
+model ModulePricing {
+  id          String   @id @default(cuid())
+  moduleId    String   @unique @map("module_id")
+  name        String
+  baseCredits Int      @map("base_credits")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("module_pricing")
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  userId      String        @map("user_id")
+  title       String
+  description String?
+  targetRole  String?       @map("target_role")
+  status      ProjectStatus @default(active)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  files      File[]
+  artifacts  Artifact[]
+  sessions   Session[]
+  moduleRuns ModuleRun[]
+  savedJobs  SavedJob[]
+
+  @@index([userId, status])
+  @@map("projects")
+}
+
+model File {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  projectId    String?  @map("project_id")
+  originalName String   @map("original_name")
+  mimeType     String   @map("mime_type")
+  size         Int
+  storagePath  String   @map("storage_path")
+  fileType     String   @map("file_type")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id])
+
+  @@index([userId, fileType])
+  @@map("files")
+}
+
+model Artifact {
+  id              String         @id @default(cuid())
+  userId          String         @map("user_id")
+  projectId       String?        @map("project_id")
+  type            String
+  title           String
+  description     String?
+  moduleId        String         @map("module_id")
+  prompt          String
+  contentJson     Json?          @map("content_json")
+  htmlContent     String?        @map("html_content")
+  storagePathDocx String?        @map("storage_path_docx")
+  storagePathPdf  String?        @map("storage_path_pdf")
+  version         Int            @default(1)
+  status          ArtifactStatus @default(final)
+  creditsCharged  Int            @default(0) @map("credits_charged")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project  Project?          @relation(fields: [projectId], references: [id])
+  versions ArtifactVersion[]
+
+  @@index([userId, type, status])
+  @@map("artifacts")
+}
+
+model ArtifactVersion {
+  id              String   @id @default(cuid())
+  artifactId      String   @map("artifact_id")
+  version         Int
+  contentJson     Json?    @map("content_json")
+  htmlContent     String?  @map("html_content")
+  storagePathDocx String?  @map("storage_path_docx")
+  storagePathPdf  String?  @map("storage_path_pdf")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  artifact Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+
+  @@unique([artifactId, version])
+  @@map("artifact_versions")
+}
+
+model Session {
+  id        String        @id @default(cuid())
+  userId    String        @map("user_id")
+  projectId String?       @map("project_id")
+  moduleId  String        @map("module_id")
+  status    SessionStatus @default(active)
+  startedAt DateTime      @default(now()) @map("started_at")
+  endedAt   DateTime?     @map("ended_at")
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project    Project?    @relation(fields: [projectId], references: [id])
+  moduleRuns ModuleRun[]
+
+  @@index([userId, moduleId, status])
+  @@map("sessions")
+}
+
+model ModuleRun {
+  id               String          @id @default(cuid())
+  userId           String          @map("user_id")
+  projectId        String?         @map("project_id")
+  sessionId        String?         @map("session_id")
+  moduleId         String          @map("module_id")
+  inputJson        Json?           @map("input_json")
+  outputJson       Json?           @map("output_json")
+  inputTokens      Int             @default(0) @map("input_tokens")
+  outputTokens     Int             @default(0) @map("output_tokens")
+  estimatedCostUsd Decimal?        @map("estimated_cost_usd") @db.Decimal(10, 4)
+  estimatedCostMxn Decimal?        @map("estimated_cost_mxn") @db.Decimal(10, 4)
+  creditsCharged   Int             @default(0) @map("credits_charged")
+  status           ModuleRunStatus @default(planned)
+  errorMessage     String?         @map("error_message")
+  createdAt        DateTime        @default(now()) @map("created_at")
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project      Project?       @relation(fields: [projectId], references: [id])
+  session      Session?       @relation(fields: [sessionId], references: [id])
+  creditLedger CreditLedger[]
+
+  @@index([userId, moduleId, status])
+  @@map("module_runs")
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  userId       String?  @map("user_id")
+  action       String
+  entityType   String   @map("entity_type")
+  entityId     String?  @map("entity_id")
+  metadataJson Json?    @map("metadata_json")
+  ipAddress    String?  @map("ip_address")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@map("audit_logs")
+}
+
+model SavedJob {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  projectId   String?  @map("project_id")
+  title       String
+  company     String
+  location    String?
+  url         String?
+  salaryRange String?  @map("salary_range")
+  matchScore  Int?     @map("match_score")
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id])
+
+  @@index([userId, matchScore])
+  @@map("saved_jobs")
+}

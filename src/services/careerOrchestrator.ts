@@ -1,0 +1,266 @@
+import { z } from "zod";
+import { skillRegistry, type SkillId } from "@/ai/skillRegistry";
+import { createArtifact } from "@/services/artifactService";
+import { runMockAgent } from "@/services/aiService";
+import { assertSufficientCredits, chargeCredits, estimateCredits } from "@/services/creditService";
+import { getStore, newId, now, type Artifact, type ModuleRun } from "@/lib/mockdb/store";
+
+export const orchestratorInputSchema = z.object({
+  userId: z.string().min(1),
+  prompt: z.string().min(3),
+  projectId: z.string().optional(),
+  files: z.array(
+    z.object({
+      id: z.string(),
+      fileType: z.string().optional(),
+      originalName: z.string().optional(),
+    })
+  ).default([]),
+  selectedModule: z.string().optional(),
+  execute: z.boolean().default(false),
+});
+
+export type OrchestratorInput = z.infer<typeof orchestratorInputSchema>;
+
+export type OrchestratorResponse = {
+  status: "needs_input" | "insufficient_credits" | "ready" | "completed";
+  message: string;
+  detectedIntent: string;
+  requiredModules: SkillId[];
+  missingInputs: string[];
+  estimatedCredits: number;
+  executionPlan: string[];
+  artifactsCreated: Artifact[];
+};
+
+const keywordRules: Array<{ moduleId: SkillId; keywords: string[]; intent: string }> = [
+  { moduleId: "optim", keywords: ["optim", "cv", "curriculum", "currículum", "resume"], intent: "cv_optimization" },
+  { moduleId: "scorex", keywords: ["evalu", "score", "ats", "compatibilidad"], intent: "cv_scoring" },
+  { moduleId: "miss_quest", keywords: ["entrevista", "interview", "preguntas"], intent: "interview_prep" },
+  { moduleId: "mr_wow", keywords: ["pitch", "presentarme", "elevator"], intent: "pitch" },
+  { moduleId: "mr_boost_linked", keywords: ["linkedin", "perfil"], intent: "linkedin" },
+  { moduleId: "new_job_challenge", keywords: ["mercado", "tendencias", "brechas"], intent: "market_study" },
+  { moduleId: "indiana_jobs", keywords: ["empleos", "vacantes", "trabajos", "buscar empleo"], intent: "job_search" },
+  { moduleId: "recharge", keywords: ["desánimo", "frustr", "motiva", "cansado", "abandono"], intent: "resilience" },
+  { moduleId: "mr_ikigai", keywords: ["ikigai", "norte", "propósito", "direccion profesional"], intent: "professional_direction" },
+  { moduleId: "tommy_lee_picture", keywords: ["foto", "fotografía", "headshot", "imagen"], intent: "linkedin_photo" },
+];
+
+function unique<T>(items: T[]) {
+  return Array.from(new Set(items));
+}
+
+export function detectModules(prompt: string, selectedModule?: string): { modules: SkillId[]; intent: string } {
+  if (selectedModule && selectedModule in skillRegistry) {
+    return { modules: [selectedModule as SkillId], intent: `selected_${selectedModule}` };
+  }
+
+  const normalized = prompt.toLowerCase();
+  const matched = keywordRules.filter((rule) => rule.keywords.some((keyword) => normalized.includes(keyword)));
+
+  let modules = unique(matched.map((rule) => rule.moduleId));
+
+  if (normalized.includes("optim") && normalized.includes("entrevista")) {
+    modules = unique(["scorex", "optim", "scorex", "mr_wow", "miss_quest"] as SkillId[]);
+  }
+
+  if (modules.includes("optim") && !modules.includes("scorex")) {
+    modules = ["scorex", ...modules];
+  }
+
+  if (modules.length === 0) {
+    modules = ["recharge"];
+  }
+
+  return {
+    modules,
+    intent: matched.map((rule) => rule.intent).join("+") || "general_guidance",
+  };
+}
+
+function hasInput(inputName: string, input: OrchestratorInput) {
+  const prompt = input.prompt.toLowerCase();
+
+  if (inputName === "cv_file") {
+    return (
+      input.files.some((file) => file.fileType === "cv_file" || file.originalName?.toLowerCase().includes("cv")) ||
+      prompt.includes("crear cv desde cero")
+    );
+  }
+
+  if (inputName === "job_posting") {
+    return input.files.some((file) => file.fileType === "job_posting") || prompt.includes("vacante");
+  }
+
+  if (inputName === "target_role") {
+    return /gerente|manager|analista|director|desarrollador|comercial|ventas|project/i.test(input.prompt);
+  }
+
+  if (inputName === "professional_profile") return true;
+  if (inputName === "linkedin_url_or_profile") return prompt.includes("linkedin");
+  if (inputName === "photo_file") return input.files.some((file) => file.fileType === "photo_file");
+  if (inputName === "image_processing_consent") return false;
+  if (inputName === "mood_signal") return true;
+  if (inputName === "reflection_answers") return prompt.length > 20;
+
+  return true;
+}
+
+function missingInputsFor(modules: SkillId[], input: OrchestratorInput) {
+  return unique(
+    modules.flatMap((moduleId) => skillRegistry[moduleId].requiredInputs.filter((required) => !hasInput(required, input)))
+  );
+}
+
+function executionPlanFor(modules: SkillId[]) {
+  return modules.map((moduleId, index) => {
+    if (moduleId === "scorex" && index === 0) return "ScoreX evaluación inicial";
+    if (moduleId === "scorex") return "ScoreX evaluación final / comparativo";
+    if (moduleId === "optim") return "Optim optimización de CV";
+    if (moduleId === "mr_wow") return "Mr. Wow elevator pitch";
+    if (moduleId === "miss_quest") return "Miss Quest preparación de entrevista";
+
+    return skillRegistry[moduleId].name;
+  });
+}
+
+function buildMockArtifact(
+  moduleId: SkillId,
+  input: OrchestratorInput,
+  creditsCharged: number
+): Omit<Artifact, "id" | "version" | "status" | "createdAt" | "updatedAt"> {
+  const skill = skillRegistry[moduleId];
+  const type = skill.outputTypes[0];
+
+  const title = `${skill.name} · ${input.prompt.slice(0, 54)}${input.prompt.length > 54 ? "…" : ""}`;
+
+  const contentJson = {
+    moduleId,
+    prompt: input.prompt,
+    summary: `Resultado mock de ${skill.name} para Fase 1.`,
+    recommendations: [
+      "Validar datos faltantes antes de producción",
+      "Conectar aiService con OpenAI en Fase 2",
+      "Versionar y descargar el entregable desde Mi Bóveda",
+    ],
+  };
+
+  const htmlContent = `
+    <article>
+      <h1>${title}</h1>
+      <p>Resultado mock generado por ${skill.name}.</p>
+      <ul>
+        <li>Score/diagnóstico inicial disponible.</li>
+        <li>Recomendaciones accionables listas para revisar.</li>
+        <li>Arquitectura preparada para DOCX/PDF y OpenAI.</li>
+      </ul>
+    </article>
+  `;
+
+  return {
+    userId: input.userId,
+    projectId: input.projectId,
+    type,
+    title,
+    description: skill.description,
+    moduleId,
+    prompt: input.prompt,
+    contentJson,
+    htmlContent,
+    creditsCharged,
+  };
+}
+
+export async function analyzePrompt(rawInput: unknown): Promise<OrchestratorResponse> {
+  const input = orchestratorInputSchema.parse(rawInput);
+  const { modules, intent } = detectModules(input.prompt, input.selectedModule);
+  const estimatedCredits = estimateCredits(modules);
+  const missingInputs = missingInputsFor(modules, input);
+
+  const baseResponse = {
+    detectedIntent: intent,
+    requiredModules: modules,
+    missingInputs,
+    estimatedCredits,
+    executionPlan: executionPlanFor(modules),
+    artifactsCreated: [] as Artifact[],
+  };
+
+  if (missingInputs.length > 0) {
+    return {
+      ...baseResponse,
+      status: "needs_input",
+      message: `Para continuar necesito: ${missingInputs.join(", ")}.`,
+    };
+  }
+
+  try {
+    assertSufficientCredits(input.userId, estimatedCredits);
+  } catch {
+    return {
+      ...baseResponse,
+      status: "insufficient_credits",
+      message: `Necesitas ${estimatedCredits} créditos para ejecutar este plan.`,
+    };
+  }
+
+  if (!input.execute) {
+    return {
+      ...baseResponse,
+      status: "ready",
+      message: "Plan listo para ejecutar.",
+    };
+  }
+
+  const artifactsCreated: Artifact[] = [];
+  const moduleRunId = newId();
+
+  const run: ModuleRun = {
+    id: moduleRunId,
+    userId: input.userId,
+    projectId: input.projectId,
+    moduleId: "career_orchestrator",
+    inputJson: input,
+    outputJson: undefined,
+    inputTokens: 0,
+    outputTokens: 0,
+    estimatedCostUsd: 0,
+    estimatedCostMxn: 0,
+    creditsCharged: estimatedCredits,
+    status: "running",
+    createdAt: now(),
+  };
+
+  getStore().moduleRuns.push(run);
+
+  for (const moduleId of modules) {
+    const aiResult = await runMockAgent(buildMockArtifact(moduleId, input, skillRegistry[moduleId].baseCredits));
+    artifactsCreated.push(createArtifact(aiResult.output));
+    run.inputTokens += aiResult.inputTokens;
+    run.outputTokens += aiResult.outputTokens;
+  }
+
+  run.status = "success";
+  run.outputJson = {
+    artifactsCreated: artifactsCreated.map((artifact) => artifact.id),
+  };
+
+  chargeCredits(input.userId, estimatedCredits, `Ejecución de plan: ${modules.join(", ")}`, moduleRunId);
+
+  getStore().auditLogs.push({
+    id: newId(),
+    userId: input.userId,
+    action: "ai.execute",
+    entityType: "module_run",
+    entityId: moduleRunId,
+    metadataJson: { modules, estimatedCredits },
+    createdAt: now(),
+  });
+
+  return {
+    ...baseResponse,
+    status: "completed",
+    message: "Plan ejecutado y entregables guardados en Mi Bóveda.",
+    artifactsCreated,
+  };
+}
