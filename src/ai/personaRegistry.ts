@@ -94,7 +94,7 @@ export const personaRegistry: Record<PersonaId, Persona> = {
   },
   mr_ikigai: {
     id: "mr_ikigai",
-    name: "Mr. Ikigai",
+    name: "Sensei Ikigai",
     tone: "reflexivo, profundo y orientador",
     color: "rose/púrpura",
     themeClass: "from-rose-500 to-purple-600",

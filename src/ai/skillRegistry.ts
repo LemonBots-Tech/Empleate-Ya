@@ -144,7 +144,7 @@ export const skillRegistry: Record<SkillId, SkillDefinition> = {
   },
   mr_ikigai: {
     id: "mr_ikigai",
-    name: "Mr. Ikigai",
+    name: "Sensei Ikigai",
     description: "Genera un mapa de dirección profesional cruzando motivación, habilidades, mercado e ingresos.",
     personaId: "mr_ikigai",
     baseCredits: 120,
