@@ -23,6 +23,17 @@ export type CreditLedger = {
   createdAt: string;
 };
 
+export type Project = {
+  id: string;
+  userId: string;
+  title: string;
+  description?: string;
+  targetRole?: string;
+  status: "active" | "archived" | "deleted";
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type StoredFile = {
   id: string;
   userId: string;
@@ -98,6 +109,7 @@ export type AuditLog = {
 export type MockDb = {
   wallets: CreditWallet[];
   ledger: CreditLedger[];
+  projects: Project[];
   files: StoredFile[];
   artifacts: Artifact[];
   artifactVersions: ArtifactVersion[];
@@ -115,6 +127,7 @@ export function getStore(): MockDb {
     globalThis.employabilityMockDb = {
       wallets: [],
       ledger: [],
+      projects: [],
       files: [],
       artifacts: [],
       artifactVersions: [],
