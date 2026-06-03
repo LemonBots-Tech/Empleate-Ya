@@ -19,7 +19,7 @@ export default async function ModulePage({ params }: { params: Promise<{ id: str
     <EmployabilityShell>
       <section className="grid gap-8 lg:grid-cols-[340px_1fr]">
         <div className={`rounded-[2rem] bg-gradient-to-br ${persona.themeClass} p-8 text-slate-950 shadow-2xl`}>
-          <div className="h-28 w-28 rounded-3xl bg-white/40" /><div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-3xl bg-white/40">
+          <div className="h-28 w-28 rounded-3xl bg-white/40" /><div className="flex h-40 w-40 items-center justify-center overflow-hidden rounded-3xl bg-white/40 p-2">
   {skill.personaId === "mr_ikigai" ? (
     <Image
       src={persona.avatarPath}

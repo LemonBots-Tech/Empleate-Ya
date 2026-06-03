@@ -15,7 +15,7 @@ export function AgentCards() {
             href={`/modules/${skill.id}`}
             className="group rounded-3xl border border-white/10 bg-white/5 p-4 transition hover:-translate-y-1 hover:border-amber-300/60 hover:bg-white/10"
           >
-            <div className={`mb-4 h-16 w-16 rounded-2xl bg-gradient-to-br ${persona.themeClass} shadow-lg`} /><div className={`mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br ${persona.themeClass} shadow-lg`}>
+            <div className={`mb-4 h-16 w-16 rounded-2xl bg-gradient-to-br ${persona.themeClass} shadow-lg`} /><div className={`mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br ${persona.themeClass} p-1 shadow-lg`}>
   {skill.personaId === "mr_ikigai" ? (
        <Image
         src={persona.avatarPath}
