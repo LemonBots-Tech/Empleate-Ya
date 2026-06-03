@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { personaRegistry } from "@/ai/personaRegistry";
@@ -18,7 +19,17 @@ export default async function ModulePage({ params }: { params: Promise<{ id: str
     <EmployabilityShell>
       <section className="grid gap-8 lg:grid-cols-[340px_1fr]">
         <div className={`rounded-[2rem] bg-gradient-to-br ${persona.themeClass} p-8 text-slate-950 shadow-2xl`}>
-          <div className="h-28 w-28 rounded-3xl bg-white/40" />
+          <div className="h-28 w-28 rounded-3xl bg-white/40" /><div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-3xl bg-white/40">
+  {skill.personaId === "mr_ikigai" ? (
+    <Image
+      src={persona.avatarPath}
+      alt={persona.name}
+      width={112}
+      height={112}
+      className="h-full w-full object-cover"
+    />
+  ) : null}
+</div>
           <h1 className="mt-6 text-4xl font-black">{skill.name}</h1>
           <p className="mt-3 font-semibold">Tono: {persona.tone}</p>
           <p className="mt-3 rounded-full bg-white/50 px-4 py-2 text-sm font-bold">{skill.baseCredits} créditos base</p>
