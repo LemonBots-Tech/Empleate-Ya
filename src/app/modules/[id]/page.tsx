@@ -1,8 +1,14 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { methodologyStages } from "@/ai/methodologyRegistry";
 import { personaRegistry } from "@/ai/personaRegistry";
 import { skillRegistry } from "@/ai/skillRegistry";
 import { EmployabilityShell } from "@/components/employability/EmployabilityShell";
+
+function formatLabel(value: string) {
+  return value.replaceAll("_", " ");
+}
 
 export default async function ModulePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -13,45 +19,104 @@ export default async function ModulePage({ params }: { params: Promise<{ id: str
   }
 
   const persona = personaRegistry[skill.personaId];
-  const hasAvatar = skill.personaId === "mr_ikigai";
+  const stage = methodologyStages.find((item) => item.agentIds.includes(skill.id));
 
   return (
     <EmployabilityShell>
-      <section className="grid gap-8 lg:grid-cols-[340px_1fr]">
-        <div className={`rounded-[2rem] bg-gradient-to-br ${persona.themeClass} p-8 text-slate-950 shadow-2xl`}>
-          <div className="flex h-44 w-44 items-center justify-center overflow-hidden rounded-3xl bg-white/50 p-2 shadow-xl">
-            {hasAvatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src="/avatars/sensei-ikigai.png" alt={persona.name} className="block h-full w-full object-contain" />
-            ) : null}
-          </div>
-
-          <h1 className="mt-6 text-4xl font-black">{skill.name}</h1>
-          <p className="mt-3 font-semibold">Tono: {persona.tone}</p>
-          <p className="mt-3 rounded-full bg-white/50 px-4 py-2 text-sm font-bold">{skill.baseCredits} créditos base</p>
-        </div>
-
-        <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8">
-          <h2 className="text-2xl font-black">Qué hace</h2>
-          <p className="mt-3 text-slate-300">{skill.description}</p>
-
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl bg-white/10 p-4">
-              <h3 className="font-bold">Inputs requeridos</h3>
-              <p className="mt-2 text-sm text-slate-300">{skill.requiredInputs.join(", ") || "Ninguno"}</p>
-            </div>
-
-            <div className="rounded-2xl bg-white/10 p-4">
-              <h3 className="font-bold">Outputs</h3>
-              <p className="mt-2 text-sm text-slate-300">{skill.outputTypes.join(", ")}</p>
-            </div>
-          </div>
-
-          <Link href="/gateway" className="mt-8 inline-flex rounded-2xl bg-amber-300 px-5 py-3 font-bold text-slate-950">
-            Usar en Prompt Gateway
+      <div className="space-y-8">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-slate-400">
+          <Link href="/" className="font-bold text-amber-300 hover:text-amber-200">
+            Metodología
           </Link>
+          <span>/</span>
+          <span>Etapa {stage?.number}</span>
+          <span>/</span>
+          <span className="text-white">{skill.name}</span>
         </div>
-      </section>
+
+        <section className="grid gap-8 lg:grid-cols-[380px_1fr]">
+          <aside
+            className={`overflow-hidden rounded-[2rem] bg-gradient-to-br ${persona.themeClass} text-slate-950 shadow-2xl`}
+          >
+            <div className="relative aspect-square w-full overflow-hidden bg-white/85">
+              <Image
+                src={persona.avatarPath}
+                alt={`Avatar de ${persona.name}`}
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 380px"
+                className="object-contain"
+              />
+            </div>
+
+            <div className="p-7">
+              <p className="text-xs font-black uppercase tracking-[0.2em]">
+                Etapa {stage?.number}: {stage?.title}
+              </p>
+              <h1 className="mt-3 text-4xl font-black">{skill.name}</h1>
+              <p className="mt-3 font-semibold">Tono: {persona.tone}</p>
+              <p className="mt-5 inline-flex rounded-full bg-white/60 px-4 py-2 text-sm font-bold">
+                {skill.baseCredits} créditos base
+              </p>
+            </div>
+          </aside>
+
+          <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-2xl md:p-8">
+            <p className="text-sm font-bold uppercase tracking-[0.25em] text-amber-300">{stage?.subtitle}</p>
+            <h2 className="mt-3 text-3xl font-black">Qué hace {skill.name}</h2>
+            <p className="mt-4 max-w-4xl text-lg leading-8 text-slate-300">{skill.description}</p>
+
+            <div className="mt-8 grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-5">
+                <h3 className="font-bold text-white">Información necesaria</h3>
+                <ul className="mt-3 space-y-2 text-sm text-slate-300">
+                  {skill.requiredInputs.map((input) => (
+                    <li key={input}>• {formatLabel(input)}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-5">
+                <h3 className="font-bold text-white">Entregables</h3>
+                <ul className="mt-3 space-y-2 text-sm text-slate-300">
+                  {skill.outputTypes.map((output) => (
+                    <li key={output}>• {formatLabel(output)}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {skill.optionalInputs.length > 0 ? (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/50 p-5">
+                <h3 className="font-bold text-white">Información opcional para personalizar el resultado</h3>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {skill.optionalInputs.map((input) => (
+                    <span key={input} className="rounded-full bg-white/10 px-3 py-1 text-sm text-slate-300">
+                      {formatLabel(input)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href="/gateway"
+                className="inline-flex rounded-2xl bg-amber-300 px-5 py-3 font-bold text-slate-950 transition hover:bg-amber-200"
+              >
+                Usar en Prompt Gateway
+              </Link>
+
+              <Link
+                href={`/#${stage?.id ?? "discovery"}`}
+                className="inline-flex rounded-2xl border border-white/20 px-5 py-3 font-bold text-white transition hover:border-amber-300"
+              >
+                Volver a la etapa
+              </Link>
+            </div>
+          </div>
+        </section>
+      </div>
     </EmployabilityShell>
   );
 }
