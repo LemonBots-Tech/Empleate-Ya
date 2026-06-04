@@ -1,20 +1,59 @@
 import { randomUUID } from "crypto";
 import { modulePricingSeed } from "@/ai/skillRegistry";
 
-export type CreditLedgerType = "purchase" | "usage" | "refund" | "adjustment";
-
-export type CreditWallet = {
+export type User = {
   id: string;
-  userId: string;
-  balance: number;
-  currency: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  age?: number;
+  country?: string;
+  state?: string;
+  city?: string;
+  passwordHash: string;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  status: "active" | "suspended" | "deleted";
+  createdAt: string;
   updatedAt: string;
 };
 
+export type ProfessionalProfile = {
+  id: string;
+  userId: string;
+  targetRole?: string;
+  seniority?: string;
+  industry?: string;
+  yearsExperience?: number;
+  lastRole?: string;
+  lastCompany?: string;
+  educationLevel?: string;
+  languages: string[];
+  linkedinUrl?: string;
+  jobSearchStatus?: string;
+  desiredSalaryRange?: string;
+  preferredWorkMode?: string;
+  geographicAvailability?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PrivacyConsent = {
+  id: string;
+  userId: string;
+  consentType: "privacy_notice" | "terms" | "ai_processing" | "image_processing" | "artifact_storage";
+  accepted: boolean;
+  version: string;
+  ipAddress?: string;
+  acceptedAt: string;
+};
+
+export type CreditWallet = { id: string; userId: string; balance: number; currency: string; updatedAt: string };
 export type CreditLedger = {
   id: string;
   userId: string;
-  type: CreditLedgerType;
+  type: "purchase" | "usage" | "refund" | "adjustment";
   amount: number;
   balanceBefore: number;
   balanceAfter: number;
@@ -22,30 +61,8 @@ export type CreditLedger = {
   relatedModuleRunId?: string;
   createdAt: string;
 };
-
-export type Project = {
-  id: string;
-  userId: string;
-  title: string;
-  description?: string;
-  targetRole?: string;
-  status: "active" | "archived" | "deleted";
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type StoredFile = {
-  id: string;
-  userId: string;
-  projectId?: string;
-  originalName: string;
-  mimeType: string;
-  size: number;
-  storagePath: string;
-  fileType: string;
-  createdAt: string;
-};
-
+export type Project = { id: string; userId: string; title: string; description?: string; targetRole?: string; status: "active" | "archived" | "deleted"; createdAt: string; updatedAt: string };
+export type StoredFile = { id: string; userId: string; projectId?: string; originalName: string; mimeType: string; size: number; storagePath: string; fileType: string; createdAt: string };
 export type Artifact = {
   id: string;
   userId: string;
@@ -65,18 +82,7 @@ export type Artifact = {
   createdAt: string;
   updatedAt: string;
 };
-
-export type ArtifactVersion = {
-  id: string;
-  artifactId: string;
-  version: number;
-  contentJson?: unknown;
-  htmlContent?: string;
-  storagePathDocx?: string;
-  storagePathPdf?: string;
-  createdAt: string;
-};
-
+export type ArtifactVersion = { id: string; artifactId: string; version: number; contentJson?: unknown; htmlContent?: string; storagePathDocx?: string; storagePathPdf?: string; createdAt: string };
 export type ModuleRun = {
   id: string;
   userId: string;
@@ -94,19 +100,12 @@ export type ModuleRun = {
   errorMessage?: string;
   createdAt: string;
 };
-
-export type AuditLog = {
-  id: string;
-  userId?: string;
-  action: string;
-  entityType: string;
-  entityId?: string;
-  metadataJson?: unknown;
-  ipAddress?: string;
-  createdAt: string;
-};
+export type AuditLog = { id: string; userId?: string; action: string; entityType: string; entityId?: string; metadataJson?: unknown; ipAddress?: string; createdAt: string };
 
 export type MockDb = {
+  users: User[];
+  profiles: ProfessionalProfile[];
+  consents: PrivacyConsent[];
   wallets: CreditWallet[];
   ledger: CreditLedger[];
   projects: Project[];
@@ -125,6 +124,9 @@ declare global {
 export function getStore(): MockDb {
   if (!globalThis.employabilityMockDb) {
     globalThis.employabilityMockDb = {
+      users: [],
+      profiles: [],
+      consents: [],
       wallets: [],
       ledger: [],
       projects: [],
@@ -136,10 +138,13 @@ export function getStore(): MockDb {
       modulePricing: modulePricingSeed,
     };
   }
-
   return globalThis.employabilityMockDb;
 }
 
 export const newId = () => randomUUID();
-
 export const now = () => new Date().toISOString();
+
+export function toPublicUser(user: User) {
+  const { passwordHash: _passwordHash, ...publicUser } = user;
+  return publicUser;
+}
