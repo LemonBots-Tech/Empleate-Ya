@@ -27,6 +27,10 @@ export type OrchestratorResponse = {
 };
 
 const keywordRules: Array<{ moduleId: SkillId; keywords: string[]; intent: string }> = [
+  { moduleId: "clio", keywords: ["clío", "clio", "tarot", "oráculo", "oraculo", "tirada", "futuro laboral"], intent: "symbolic_career_tarot" },
+  { moduleId: "lumo", keywords: ["pilares", "prioridades", "punto de partida", "descubrirme"], intent: "life_discovery" },
+  { moduleId: "boost_me", keywords: ["plan de acción", "impúlsame", "impulsame", "objetivos"], intent: "personal_action_plan" },
+  { moduleId: "scorex_360", keywords: ["scorex 360", "internacional", "ats internacional"], intent: "international_ats_audit" },
   { moduleId: "optim", keywords: ["optim", "cv", "curriculum", "currículum", "resume"], intent: "cv_optimization" },
   { moduleId: "scorex", keywords: ["evalu", "score", "ats", "compatibilidad"], intent: "cv_scoring" },
   { moduleId: "miss_quest", keywords: ["entrevista", "interview", "preguntas"], intent: "interview_prep" },
@@ -65,6 +69,9 @@ function hasInput(inputName: string, input: OrchestratorInput) {
   if (inputName === "image_processing_consent") return false;
   if (inputName === "mood_signal") return true;
   if (inputName === "reflection_answers") return prompt.length > 20;
+  if (inputName === "oracle_question") return prompt.length > 3;
+  if (inputName === "career_stage") return true;
+  if (inputName === "goals") return prompt.length > 10;
   return true;
 }
 
@@ -87,13 +94,14 @@ function buildMockArtifact(moduleId: SkillId, input: OrchestratorInput, creditsC
   const skill = skillRegistry[moduleId];
   const type = skill.outputTypes[0];
   const title = `${skill.name} · ${input.prompt.slice(0, 54)}${input.prompt.length > 54 ? "…" : ""}`;
+  const isClio = moduleId === "clio";
   const contentJson = {
     moduleId,
     prompt: input.prompt,
-    summary: `Resultado mock de ${skill.name} para Fase 1.`,
-    recommendations: ["Validar datos faltantes antes de producción", "Conectar aiService con OpenAI en Fase 2", "Versionar y descargar el entregable desde Mi Bóveda"],
+    summary: isClio ? "Lectura simbólica de tres cartas para reflexionar y avanzar con esperanza." : `Resultado mock de ${skill.name} para Fase 1.`,
+    recommendations: isClio ? ["El Carro: reconoce tu impulso", "La Estrella: conecta con una posibilidad", "El Mundo: define tu siguiente acción", "Esta lectura es simbólica y motivacional; tu futuro se construye con tus decisiones."] : ["Validar datos faltantes antes de producción", "Conectar aiService con OpenAI en Fase 2", "Versionar y descargar el entregable desde Mi Bóveda"],
   };
-  const htmlContent = `<article><h1>${title}</h1><p>Resultado mock generado por ${skill.name}.</p><ul><li>Score/diagnóstico inicial disponible.</li><li>Recomendaciones accionables listas para revisar.</li><li>Arquitectura preparada para DOCX/PDF y OpenAI.</li></ul></article>`;
+  const htmlContent = isClio ? `<article><h1>${title}</h1><p>Lectura simbólica y motivacional.</p><section><h2>El Carro · Raíz</h2><p>Tu experiencia ya contiene impulso y dirección.</p></section><section><h2>La Estrella · Presente</h2><p>Hay espacio para recuperar esperanza y visibilidad.</p></section><section><h2>El Mundo · Próximo paso</h2><p>Elige una acción concreta y complétala esta semana.</p></section><p><strong>Esta lectura es simbólica y motivacional; tu futuro se construye con tus decisiones.</strong></p></article>` : `<article><h1>${title}</h1><p>Resultado mock generado por ${skill.name}.</p><ul><li>Score/diagnóstico inicial disponible.</li><li>Recomendaciones accionables listas para revisar.</li><li>Arquitectura preparada para DOCX/PDF y OpenAI.</li></ul></article>`;
   return { userId: input.userId, projectId: input.projectId, type, title, description: skill.description, moduleId, prompt: input.prompt, contentJson, htmlContent, creditsCharged };
 }
 
