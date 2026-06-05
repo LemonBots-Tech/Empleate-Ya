@@ -2,12 +2,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-test("careerOrchestrator contiene clasificación de intención y respuesta needs_input", () => {
+test("careerOrchestrator contiene clasificación de intención y reportes formateados", () => {
   const source = readFileSync("src/services/careerOrchestrator.ts", "utf8");
   assert.match(source, /detectModules/);
   assert.match(source, /needs_input/);
   assert.match(source, /ScoreX evaluación inicial/);
   assert.match(source, /Optim optimización de CV/);
+  assert.match(source, /buildFormattedReport/);
 });
 
 test("creditService valida saldo y registra credit_ledger", () => {

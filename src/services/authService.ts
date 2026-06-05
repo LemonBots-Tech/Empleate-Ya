@@ -1,6 +1,7 @@
 import { createHash, pbkdf2Sync, randomBytes, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
 import { z } from "zod";
+import { MOCK_USER_ID } from "@/lib/api/mockUser";
 import { getStore, newId, now, toPublicUser, type User } from "@/lib/mockdb/store";
 
 const SESSION_COOKIE = "eya_session";
@@ -73,6 +74,41 @@ export async function requireUser() {
   const user = await getCurrentUser();
   if (!user) throw new Error("UNAUTHORIZED");
   return user;
+}
+
+export function getOrCreateDemoUser() {
+  const db = getStore();
+  let user = db.users.find((item) => item.id === MOCK_USER_ID);
+  if (!user) {
+    user = {
+      id: MOCK_USER_ID,
+      firstName: "Demo",
+      lastName: "Empléate",
+      email: "demo@empleateya.local",
+      passwordHash: hashPassword("demo-password"),
+      emailVerified: true,
+      phoneVerified: false,
+      status: "active",
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    db.users.push(user);
+  }
+
+  let wallet = db.wallets.find((item) => item.userId === user.id);
+  if (!wallet) {
+    wallet = { id: newId(), userId: user.id, balance: 1000, currency: "MXN", updatedAt: now() };
+    db.wallets.push(wallet);
+  } else if (wallet.balance < 500) {
+    wallet.balance = 1000;
+    wallet.updatedAt = now();
+  }
+
+  return user;
+}
+
+export async function getCurrentUserOrDemo() {
+  return (await getCurrentUser()) ?? getOrCreateDemoUser();
 }
 
 export function registerUser(input: z.infer<typeof registerSchema>, ipAddress?: string) {
