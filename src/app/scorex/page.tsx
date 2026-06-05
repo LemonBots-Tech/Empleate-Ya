@@ -1,10 +1,10 @@
 import { EmployabilityShell } from "@/components/employability/EmployabilityShell";
-import { VaultClient } from "./VaultClient";
+import { ScorexWorkspace } from "@/components/employability/ScorexWorkspace";
 
-export default function VaultPage() {
+export default function ScorexPage() {
   return (
     <EmployabilityShell>
-      <VaultClient />
+      <ScorexWorkspace />
     </EmployabilityShell>
   );
 }

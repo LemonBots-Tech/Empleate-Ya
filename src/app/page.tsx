@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { ArrowRight, Check, Compass, Sparkles } from "lucide-react";
 import { AgentCards } from "@/components/employability/AgentCards";
+import { PromptGatewayClient } from "@/components/employability/PromptGatewayClient";
 
 const steps = [
-  ["01", "Descubre", "Aclara propósito, energía y prioridades."],
-  ["02", "Construye", "Convierte tu experiencia en una historia profesional sólida."],
-  ["03", "Conecta", "Proyecta tu valor y encuentra oportunidades con intención."],
+  ["01", "Discovery", "Lumo, BoostMe: Impúlsame, Clío Tarot, Recharge y Sensei Ikigai."],
+  ["02", "Currículum estratégico", "ScoreX, Optim y ScoreX 360 — Cíclope."],
+  ["03", "LinkedIn", "Mr. Boost Linked y Tommy Lee Picture."],
+  ["04", "Prospección", "New Job Challenge e Indiana Jobs."],
+  ["05", "Persuasión", "Mr. Wow y Miss Quest."],
 ];
 
 export default function LandingPage() {
@@ -73,6 +76,10 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-5 pb-16 md:pb-20">
+        <PromptGatewayClient compact />
       </section>
 
       <section className="border-y border-slate-100 bg-white/70">
