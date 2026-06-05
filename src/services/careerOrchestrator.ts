@@ -43,6 +43,22 @@ const keywordRules: Array<{ moduleId: SkillId; keywords: string[]; intent: strin
   { moduleId: "tommy_lee_picture", keywords: ["foto", "fotografía", "headshot", "imagen"], intent: "linkedin_photo" },
 ];
 
+const artifactLabels: Record<string, string> = {
+  scorex_inicial: "Reporte ScoreX inicial",
+  scorex_final: "Reporte ScoreX final",
+  scorex_comparativo: "Comparativo antes/después",
+  cv_optimizado: "CV optimizado",
+  cv_adaptado: "CV adaptado",
+  linkedin_optimizado: "LinkedIn optimizado",
+  elevator_pitch: "Elevator pitch",
+  reporte_entrevista: "Reporte de entrevista",
+  estudio_mercado: "Estudio de mercado laboral",
+  vacantes_guardadas: "Vacantes priorizadas",
+  plan_recharge: "Plan Recharge",
+  mapa_ikigai: "Mapa Ikigai",
+  foto_linkedin: "Foto LinkedIn",
+};
+
 function unique<T>(items: T[]) {
   return Array.from(new Set(items));
 }
@@ -90,10 +106,50 @@ function executionPlanFor(modules: SkillId[]) {
   });
 }
 
+function buildFormattedReport(params: { moduleName: string; title: string; type: string; prompt: string; creditsCharged: number }) {
+  const generatedAt = new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(new Date());
+  const artifactLabel = artifactLabels[params.type] ?? params.type.replaceAll("_", " ");
+
+  return `
+    <article class="report-document">
+      <header class="report-hero">
+        <p class="report-kicker">${params.moduleName} · ${artifactLabel}</p>
+        <h1>${params.title}</h1>
+        <p>Entregable mock generado para revisar estructura, navegación y descarga antes de conectar la generación final con IA.</p>
+        <dl>
+          <div><dt>Fecha</dt><dd>${generatedAt}</dd></div>
+          <div><dt>Créditos</dt><dd>${params.creditsCharged}</dd></div>
+          <div><dt>Estado</dt><dd>Listo para revisión</dd></div>
+        </dl>
+      </header>
+      <section>
+        <h2>Resumen ejecutivo</h2>
+        <p>El objetivo detectado fue: <strong>${params.prompt}</strong>. El reporte organiza hallazgos, prioridades y próximos pasos para que el usuario pueda actuar sin perder contexto.</p>
+      </section>
+      <section>
+        <h2>Hallazgos principales</h2>
+        <ul>
+          <li>Perfil evaluado con foco en claridad, compatibilidad y propuesta de valor.</li>
+          <li>Recomendaciones separadas por impacto inmediato, ajuste de narrativa y preparación de siguiente acción.</li>
+          <li>Entregable disponible en Mi Bóveda con descarga HTML y contenido estructurado.</li>
+        </ul>
+      </section>
+      <section>
+        <h2>Plan de acción</h2>
+        <ol>
+          <li>Completar datos faltantes o archivos reales cuando aplique.</li>
+          <li>Revisar el contenido optimizado y ajustar tono, métricas y logros.</li>
+          <li>Exportar el reporte y usarlo como base para la versión DOCX/PDF final.</li>
+        </ol>
+      </section>
+    </article>
+  `;
+}
+
 function buildMockArtifact(moduleId: SkillId, input: OrchestratorInput, creditsCharged: number): Omit<Artifact, "id" | "version" | "status" | "createdAt" | "updatedAt"> {
   const skill = skillRegistry[moduleId];
   const type = skill.outputTypes[0];
-  const title = `${skill.name} · ${input.prompt.slice(0, 54)}${input.prompt.length > 54 ? "…" : ""}`;
+  const title = `${skill.name} · ${input.prompt.slice(0, 54)}${input.prompt.length > 54 ? "..." : ""}`;
   const isClio = moduleId === "clio";
   const contentJson = {
     moduleId,
@@ -101,7 +157,9 @@ function buildMockArtifact(moduleId: SkillId, input: OrchestratorInput, creditsC
     summary: isClio ? "Lectura simbólica de tres cartas para reflexionar y avanzar con esperanza." : `Resultado mock de ${skill.name} para Fase 1.`,
     recommendations: isClio ? ["El Carro: reconoce tu impulso", "La Estrella: conecta con una posibilidad", "El Mundo: define tu siguiente acción", "Esta lectura es simbólica y motivacional; tu futuro se construye con tus decisiones."] : ["Validar datos faltantes antes de producción", "Conectar aiService con OpenAI en Fase 2", "Versionar y descargar el entregable desde Mi Bóveda"],
   };
-  const htmlContent = isClio ? `<article><h1>${title}</h1><p>Lectura simbólica y motivacional.</p><section><h2>El Carro · Raíz</h2><p>Tu experiencia ya contiene impulso y dirección.</p></section><section><h2>La Estrella · Presente</h2><p>Hay espacio para recuperar esperanza y visibilidad.</p></section><section><h2>El Mundo · Próximo paso</h2><p>Elige una acción concreta y complétala esta semana.</p></section><p><strong>Esta lectura es simbólica y motivacional; tu futuro se construye con tus decisiones.</strong></p></article>` : `<article><h1>${title}</h1><p>Resultado mock generado por ${skill.name}.</p><ul><li>Score/diagnóstico inicial disponible.</li><li>Recomendaciones accionables listas para revisar.</li><li>Arquitectura preparada para DOCX/PDF y OpenAI.</li></ul></article>`;
+  const htmlContent = isClio
+    ? `<article><h1>${title}</h1><p>Lectura simbólica y motivacional.</p><section><h2>El Carro · Raíz</h2><p>Tu experiencia ya contiene impulso y dirección.</p></section><section><h2>La Estrella · Presente</h2><p>Hay espacio para recuperar esperanza y visibilidad.</p></section><section><h2>El Mundo · Próximo paso</h2><p>Elige una acción concreta y complétala esta semana.</p></section><p><strong>Esta lectura es simbólica y motivacional; tu futuro se construye con tus decisiones.</strong></p></article>`
+    : buildFormattedReport({ moduleName: skill.name, title, type, prompt: input.prompt, creditsCharged });
   return { userId: input.userId, projectId: input.projectId, type, title, description: skill.description, moduleId, prompt: input.prompt, contentJson, htmlContent, creditsCharged };
 }
 

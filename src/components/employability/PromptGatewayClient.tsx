@@ -5,6 +5,15 @@ import { Bot, Network, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Input";
 
+type CreatedArtifact = {
+  id: string;
+  title: string;
+  type: string;
+  moduleId: string;
+  htmlContent?: string;
+  creditsCharged: number;
+};
+
 type GatewayResult = {
   status: string;
   message: string;
@@ -13,7 +22,8 @@ type GatewayResult = {
   missingInputs: string[];
   estimatedCredits: number;
   executionPlan: string[];
-  artifactsCreated?: Array<{ id: string; title: string }>;
+  artifactsCreated?: CreatedArtifact[];
+  error?: string;
 };
 
 export function PromptGatewayClient({ compact = false, selectedModule }: { compact?: boolean; selectedModule?: string }) {
@@ -29,7 +39,21 @@ export function PromptGatewayClient({ compact = false, selectedModule }: { compa
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, selectedModule, files: [{ id: "demo-cv", fileType: "cv_file", originalName: "CV-demo.pdf" }] }),
       });
-      setResult(await response.json());
+      const data = await response.json();
+      if (!response.ok || data.error) {
+        setResult({
+          status: "error",
+          message: data.error ?? "No se pudo procesar el prompt.",
+          detectedIntent: "request_error",
+          requiredModules: [],
+          missingInputs: [],
+          estimatedCredits: 0,
+          executionPlan: [],
+          error: data.error,
+        });
+        return;
+      }
+      setResult(data);
     } finally {
       setLoading(false);
     }
@@ -62,9 +86,33 @@ export function PromptGatewayClient({ compact = false, selectedModule }: { compa
           {!compact && (
             <>
               <h4 className="mt-4 font-bold text-slate-950">Plan propuesto</h4>
-              <ol className="mt-2 list-decimal space-y-1 pl-5">{result.executionPlan?.map((step) => <li key={step}>{step}</li>)}</ol>
+              {result.executionPlan?.length ? (
+                <ol className="mt-2 list-decimal space-y-1 pl-5">{result.executionPlan.map((step) => <li key={step}>{step}</li>)}</ol>
+              ) : null}
+              {result.error ? <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 font-semibold text-red-700">{result.message}</p> : null}
               {result.missingInputs?.length > 0 && <p className="mt-3 text-amber-700">Falta: {result.missingInputs.join(", ")}</p>}
-              {result.artifactsCreated?.length ? <p className="mt-3 text-emerald-700">Entregables creados: {result.artifactsCreated.length}. Revisa Mi Bóveda.</p> : null}
+              {result.artifactsCreated?.length ? (
+                <div className="mt-5 space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h4 className="font-bold text-slate-950">Reportes creados</h4>
+                    <a href="/vault" className="text-xs font-bold text-[var(--brand-primary)] underline-offset-4 hover:underline">Abrir Mi Bóveda</a>
+                  </div>
+                  {result.artifactsCreated.map((artifact) => (
+                    <article key={artifact.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--brand-primary)]">{artifact.type.replaceAll("_", " ")}</p>
+                          <h5 className="mt-1 font-black">{artifact.title}</h5>
+                        </div>
+                        <a href={`/api/artifacts/${artifact.id}/download`} className="rounded-full bg-slate-950 px-3 py-2 text-xs font-extrabold text-white">Descargar HTML</a>
+                      </div>
+                      {artifact.htmlContent ? (
+                        <div className="artifact-report max-h-80 overflow-auto p-4" dangerouslySetInnerHTML={{ __html: artifact.htmlContent }} />
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
+              ) : null}
             </>
           )}
         </div>
