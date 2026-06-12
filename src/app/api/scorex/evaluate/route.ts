@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
+import { canUseDevAdminLogin, getCurrentUser, getOrCreateDemoUser } from "@/services/authService";
+import { assertAvatarAccess, chargeCredits, getModulePrice, recordAvatarTrial } from "@/services/creditService";
 
 type ScorexPhase = "initial" | "final" | "comparative" | "vacancy";
+type ReportLanguage = "es" | "en";
+type VacancyCvTarget = "original" | "optimized";
 type OpenAiContent = { type: "input_text"; text: string } | { type: "input_file"; filename: string; file_data: string };
 type CategoryScore = { area: string; score: number; ideal: number; deviation: number; strengths: string[]; improvements: string[] };
 type ScorexReport = {
@@ -16,6 +20,7 @@ type ScorexReport = {
   finalComments: string;
   nextSteps: string[];
   successProbability: string;
+  vacancyComparison: { originalProbability: number; optimizedProbability: number };
   keywords: string[];
   findings: string[];
   recommendations: string[];
@@ -28,6 +33,66 @@ const phaseLabels: Record<ScorexPhase, string> = {
   vacancy: "Evaluación vs vacante",
 };
 
+const englishPhaseLabels: Record<ScorexPhase, string> = {
+  initial: "Initial ScoreX",
+  final: "Final ScoreX",
+  comparative: "Comparative ScoreX",
+  vacancy: "Job fit evaluation",
+};
+
+const reportCopy = {
+  es: {
+    area: "Área",
+    alerts: "ALERTAS NO PENALIZABLES",
+    candidateName: "Nombre del candidato:",
+    comments: "COMENTARIOS FINALES",
+    comparativeRadar: "GRÁFICA RADIAL COMPARATIVA",
+    document: "Documento evaluado:",
+    finalCommentsFallback: "Sin comentarios finales generados. Revisa los hallazgos, la tabla de calificaciones y los próximos pasos sugeridos antes de tomar decisiones.",
+    finalScore: "ScoreX Final",
+    globalScore: "Calificación global",
+    ideal: "Calificación ideal",
+    initialScore: "ScoreX Inicial",
+    keywords: "Palabras clave detectadas",
+    mainTitle: "REPORTE DE EVALUACIÓN DE ATS",
+    nextSteps: "PRÓXIMOS PASOS SUGERIDOS",
+    optimization: "Optimización previa:",
+    profile: "Perfil:",
+    score: "Puntaje",
+    strengths: "Puntos fuertes",
+    successProbability: "Probabilidad de éxito",
+    table: "TABLA DE CALIFICACIONES",
+    deviation: "Desviación",
+    comparativeDeviation: "Desviación Final - Inicial",
+    improvements: "Recomendaciones de mejora",
+  },
+  en: {
+    area: "Area",
+    alerts: "NON-PENALIZING ALERTS",
+    candidateName: "Candidate name:",
+    comments: "FINAL COMMENTS",
+    comparativeRadar: "COMPARATIVE RADAR CHART",
+    document: "Evaluated document:",
+    finalCommentsFallback: "No final comments were generated. Review the findings, score table, and suggested next steps before making decisions.",
+    finalScore: "Final ScoreX",
+    globalScore: "Overall score",
+    ideal: "Ideal score",
+    initialScore: "Initial ScoreX",
+    keywords: "Detected keywords",
+    mainTitle: "ATS EVALUATION REPORT",
+    nextSteps: "SUGGESTED NEXT STEPS",
+    optimization: "Prior optimization:",
+    profile: "Profile:",
+    score: "Score",
+    strengths: "Strengths",
+    successProbability: "Success probability",
+    table: "SCORE TABLE",
+    deviation: "Deviation",
+    comparativeDeviation: "Final - Initial Deviation",
+    improvements: "Improvement recommendations",
+  },
+} satisfies Record<ReportLanguage, Record<string, string>>;
+
 export async function POST(request: Request) {
   try {
     const apiKey = process.env.OPENAI_API_KEY;
@@ -37,17 +102,23 @@ export async function POST(request: Request) {
 
     const formData = await request.formData();
     const phase = String(formData.get("phase") ?? "initial") as ScorexPhase;
+    const language = normalizeLanguage(String(formData.get("language") ?? "es"));
+    const vacancyCvTarget = normalizeVacancyCvTarget(String(formData.get("vacancyCvTarget") ?? "optimized"));
     const evaluationName = String(formData.get("evaluationName") ?? "Evaluación ScoreX");
     const vacancyText = String(formData.get("vacancyText") ?? "");
     const previousInitial = String(formData.get("previousInitial") ?? "");
     const previousFinal = String(formData.get("previousFinal") ?? "");
     const cvFile = formData.get("cvFile");
     const vacancyFile = formData.get("vacancyFile");
+    const user = (await getCurrentUser()) ?? (canUseDevAdminLogin() ? getOrCreateDemoUser() : undefined);
+    if (!user) return NextResponse.json({ error: "Necesitas iniciar sesion para usar ScoreX." }, { status: 401 });
+
+    const access = assertAvatarAccess(user.id, ["scorex"], getModulePrice("scorex"));
 
     const content: OpenAiContent[] = [
       {
         type: "input_text",
-        text: buildPrompt({ phase, evaluationName, vacancyText, previousInitial, previousFinal }),
+        text: buildPrompt({ phase, language, vacancyCvTarget, evaluationName, vacancyText, previousInitial, previousFinal }),
       },
     ];
 
@@ -71,7 +142,7 @@ export async function POST(request: Request) {
             schema: {
               type: "object",
               additionalProperties: false,
-              required: ["candidateName", "profileLevel", "optimizationStatus", "evaluatedDocument", "score", "title", "executiveSummary", "categories", "alerts", "finalComments", "nextSteps", "successProbability", "keywords", "findings", "recommendations"],
+              required: ["candidateName", "profileLevel", "optimizationStatus", "evaluatedDocument", "score", "title", "executiveSummary", "categories", "alerts", "finalComments", "nextSteps", "successProbability", "vacancyComparison", "keywords", "findings", "recommendations"],
               properties: {
                 candidateName: { type: "string" },
                 profileLevel: { type: "string" },
@@ -81,6 +152,15 @@ export async function POST(request: Request) {
                 title: { type: "string" },
                 executiveSummary: { type: "string" },
                 successProbability: { type: "string" },
+                vacancyComparison: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["originalProbability", "optimizedProbability"],
+                  properties: {
+                    originalProbability: { type: "number" },
+                    optimizedProbability: { type: "number" },
+                  },
+                },
                 categories: {
                   type: "array",
                   minItems: 5,
@@ -121,13 +201,22 @@ export async function POST(request: Request) {
     const report = JSON.parse(text) as ScorexReport;
     const previousInitialReport = parseReport(previousInitial);
     const previousFinalReport = parseReport(previousFinal);
+    if (access.mode === "trial") recordAvatarTrial(user.id, ["scorex"]);
+    chargeCredits(user.id, access.creditsToCharge, `ScoreX ${phase}`);
+
     return NextResponse.json({
       ...report,
       phase,
-      phaseLabel: phaseLabels[phase],
-      html: renderScorexHtml(report, phase, previousInitialReport, previousFinalReport),
+      phaseLabel: phaseLabel(phase, language),
+      language,
+      accessMode: access.mode,
+      creditsCharged: access.creditsToCharge,
+      html: renderScorexHtml(report, phase, language, previousInitialReport, previousFinalReport),
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "AVATAR_TRIAL_USED") return NextResponse.json({ error: "Ya usaste tu prueba gratuita de ScoreX. Compra creditos para usar este avatar cuantas veces lo necesites." }, { status: 402 });
+    if (error instanceof Error && error.message === "STAR_AVATAR_REQUIRES_PURCHASE") return NextResponse.json({ error: "Este avatar requiere compra previa de creditos." }, { status: 402 });
+    if (error instanceof Error && error.message === "INSUFFICIENT_CREDITS") return NextResponse.json({ error: "No tienes creditos suficientes para usar ScoreX." }, { status: 402 });
     return NextResponse.json({ error: error instanceof Error ? error.message : "Error inesperado en ScoreX." }, { status: 500 });
   }
 }
@@ -144,16 +233,37 @@ async function fileToInput(file: File, label: string): Promise<OpenAiContent> {
   };
 }
 
-function buildPrompt(input: { phase: ScorexPhase; evaluationName: string; vacancyText: string; previousInitial: string; previousFinal: string }) {
+function normalizeLanguage(value: string): ReportLanguage {
+  return value === "en" ? "en" : "es";
+}
+
+function normalizeVacancyCvTarget(value: string): VacancyCvTarget {
+  return value === "original" ? "original" : "optimized";
+}
+
+function phaseLabel(phase: ScorexPhase, language: ReportLanguage) {
+  return language === "en" ? englishPhaseLabels[phase] : phaseLabels[phase];
+}
+
+function buildPrompt(input: { phase: ScorexPhase; language: ReportLanguage; vacancyCvTarget: VacancyCvTarget; evaluationName: string; vacancyText: string; previousInitial: string; previousFinal: string }) {
+  const outputLanguage = input.language === "en" ? "English" : "Spanish";
+  const outputRule = input.language === "en"
+    ? "Write the entire report in English. Translate all section names, category names, strengths, recommendations, final comments, keywords, and success probability to natural business English."
+    : "Redacta todo el reporte en español. Usa español natural de negocios para secciones, áreas, fortalezas, recomendaciones, comentarios finales, palabras clave y probabilidad de éxito.";
   return `Eres ScoreX, agente evaluador de CV. No reescribes CVs ni cartas. Entregas diagnóstico, puntajes, palabras clave y recomendaciones accionables.
 
-Etapa: ${phaseLabels[input.phase]}
+Idioma de salida: ${outputLanguage}
+Regla de idioma: ${outputRule}
+
+Etapa: ${phaseLabel(input.phase, input.language)}
 Nombre de evaluación: ${input.evaluationName}
+CV seleccionado para evaluación contra vacante: ${input.vacancyCvTarget === "optimized" ? "CV optimizado usado en ScoreX final" : "CV original usado en ScoreX inicial"}
 
 Si la etapa es inicial, evalúa el CV original antes de Optim.
 Si la etapa es final, evalúa el CV optimizado después de Optim.
 Si la etapa es comparativa, compara la evaluación inicial con la final. Basa el detalle, recomendaciones y comentarios en la información del ScoreX final, pero explica las mejoras contra el ScoreX inicial. No pidas otro CV para esta etapa.
-Si la etapa es contra vacante, evalúa compatibilidad del CV con la vacante, posibilidades de éxito, palabras clave faltantes y recomendaciones según perfil y objetivo.
+Si la etapa es contra vacante, evalúa compatibilidad del CV seleccionado con la vacante, posibilidades de éxito, palabras clave faltantes y recomendaciones según perfil y objetivo. Además compara la probabilidad estimada del CV original contra la del CV optimizado usando los reportes previos inicial/final y la vacante. Devuelve vacancyComparison.originalProbability y vacancyComparison.optimizedProbability como números de 0 a 100. El score principal debe corresponder al CV seleccionado.
+Si la etapa no es contra vacante, devuelve vacancyComparison.originalProbability y vacancyComparison.optimizedProbability en 0.
 
 El reporte debe seguir este formato:
 1. Encabezado: REPORTE DE EVALUACIÓN DE ATS, nombre del candidato, perfil, optimización previa, documento evaluado y calificación global.
@@ -179,7 +289,7 @@ ${input.previousFinal || "No disponible"}
 Vacante pegada por el usuario:
 ${input.vacancyText || "No disponible"}
 
-Devuelve el reporte en español, con score de 0 a 100.`;
+Devuelve el reporte en ${outputLanguage}, con score de 0 a 100.`;
 }
 
 function parseReport(value: string): ScorexReport | undefined {
@@ -191,22 +301,23 @@ function parseReport(value: string): ScorexReport | undefined {
   }
 }
 
-function renderScorexHtml(report: ScorexReport, phase: ScorexPhase, previousInitialReport?: ScorexReport, previousFinalReport?: ScorexReport) {
+function renderScorexHtml(report: ScorexReport, phase: ScorexPhase, language: ReportLanguage, previousInitialReport?: ScorexReport, previousFinalReport?: ScorexReport) {
+  const copy = reportCopy[language];
   const list = (items: string[]) => items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
   const finalCategories = previousFinalReport?.categories?.length === 5 ? previousFinalReport.categories : report.categories;
   const initialCategories = previousInitialReport?.categories?.length === 5 ? previousInitialReport.categories : undefined;
-  const finalComments = report.finalComments.trim() || "Sin comentarios finales generados. Revisa los hallazgos, la tabla de calificaciones y los próximos pasos sugeridos antes de tomar decisiones.";
+  const finalComments = report.finalComments.trim() || copy.finalCommentsFallback;
   const rows = phase === "comparative" && initialCategories
     ? comparativeRows(initialCategories, finalCategories)
     : report.categories.map((category) => `<tr><td>${escapeHtml(category.area)}</td><td>${Math.round(category.score)}/100</td><td>${Math.round(category.ideal)}/100</td><td>${Math.round(category.deviation)}</td></tr>`).join("");
-  const sections = report.categories.map((category, index) => `<section class="scorex-section"><h2>${roman(index + 1)}. ${escapeHtml(category.area)}</h2><h3>Puntos fuertes</h3><ul>${list(category.strengths)}</ul><h3>Recomendaciones de mejora</h3><ul>${list(category.improvements)}</ul></section>`).join("");
+  const sections = report.categories.map((category, index) => `<section class="scorex-section"><h2>${roman(index + 1)}. ${escapeHtml(category.area)}</h2><h3>${copy.strengths}</h3><ul>${list(category.strengths)}</ul><h3>${copy.improvements}</h3><ul>${list(category.improvements)}</ul></section>`).join("");
   const tableHead = phase === "comparative" && initialCategories
-    ? "<tr><th>\u00c1rea</th><th>ScoreX Inicial</th><th>ScoreX Final</th><th>Desviaci\u00f3n Final - Inicial</th></tr>"
-    : "<tr><th>\u00c1rea</th><th>Puntaje</th><th>Calificaci\u00f3n ideal</th><th>Desviaci\u00f3n</th></tr>";
+    ? `<tr><th>${copy.area}</th><th>${copy.initialScore}</th><th>${copy.finalScore}</th><th>${copy.comparativeDeviation}</th></tr>`
+    : `<tr><th>${copy.area}</th><th>${copy.score}</th><th>${copy.ideal}</th><th>${copy.deviation}</th></tr>`;
   const radar = phase === "comparative" && initialCategories
     ? comparativeRadarSvg(initialCategories, finalCategories)
     : blueRadarSvg(report.categories);
-  return `<article class="scorex-report"><p class="ey-kicker">${phaseLabels[phase]}</p><h1>REPORTE DE EVALUACI\u00d3N DE ATS</h1><div class="scorex-meta"><p><strong>Nombre del candidato:</strong> ${escapeHtml(report.candidateName)}</p><p><strong>Perfil:</strong> ${escapeHtml(report.profileLevel)}</p><p><strong>Optimizaci\u00f3n previa:</strong> ${escapeHtml(report.optimizationStatus)}</p><p><strong>Documento evaluado:</strong> ${escapeHtml(report.evaluatedDocument)}</p></div><div class="scorex-global"><span>Calificaci\u00f3n global</span><strong>${Math.round(report.score)}/100</strong></div><p class="scorex-summary">${escapeHtml(report.executiveSummary)}</p>${sections}<h2>TABLA DE CALIFICACIONES</h2><table class="scorex-table"><thead>${tableHead}</thead><tbody>${rows}</tbody></table><h2>GR\u00c1FICA RADIAL COMPARATIVA</h2>${radar}<h2>ALERTAS NO PENALIZABLES</h2><ul>${list(report.alerts)}</ul><h2>COMENTARIOS FINALES</h2><p>${escapeHtml(finalComments)}</p><h2>PR\u00d3XIMOS PASOS SUGERIDOS</h2><ul>${list(report.nextSteps)}</ul><h2>Palabras clave detectadas</h2><ul>${list(report.keywords)}</ul><h2>Probabilidad de \u00e9xito</h2><p>${escapeHtml(report.successProbability)}</p></article>`;
+  return `<article class="scorex-report"><p class="ey-kicker">${phaseLabel(phase, language)}</p><h1>${copy.mainTitle}</h1><div class="scorex-meta"><p><strong>${copy.candidateName}</strong> ${escapeHtml(report.candidateName)}</p><p><strong>${copy.profile}</strong> ${escapeHtml(report.profileLevel)}</p><p><strong>${copy.optimization}</strong> ${escapeHtml(report.optimizationStatus)}</p><p><strong>${copy.document}</strong> ${escapeHtml(report.evaluatedDocument)}</p></div><div class="scorex-global"><span>${copy.globalScore}</span><strong>${Math.round(report.score)}/100</strong></div><p class="scorex-summary">${escapeHtml(report.executiveSummary)}</p>${sections}<h2>${copy.table}</h2><table class="scorex-table"><thead>${tableHead}</thead><tbody>${rows}</tbody></table><h2>${copy.comparativeRadar}</h2>${radar}<h2>${copy.alerts}</h2><ul>${list(report.alerts)}</ul><h2>${copy.comments}</h2><p>${escapeHtml(finalComments)}</p><h2>${copy.nextSteps}</h2><ul>${list(report.nextSteps)}</ul><h2>${copy.keywords}</h2><ul>${list(report.keywords)}</ul><h2>${copy.successProbability}</h2><p>${escapeHtml(report.successProbability)}</p></article>`;
 }
 
 function comparativeRows(initialCategories: CategoryScore[], finalCategories: CategoryScore[]) {
@@ -255,11 +366,11 @@ function radarPolygon(categories: CategoryScore[], size: number, center: number,
 
 function radarLabel(area: string) {
   const normalized = normalizeArea(area);
-  if (normalized.includes("ats") || normalized.includes("optimizacion")) return ["Optimizaci\u00f3n", "ATS"];
-  if (normalized.includes("formato")) return ["Formato y", "presentaci\u00f3n"];
-  if (normalized.includes("logros")) return ["Logros y", "contribuciones"];
-  if (normalized.includes("claridad")) return ["Claridad y", "legibilidad"];
-  if (normalized.includes("brevedad")) return ["Brevedad y", "precisi\u00f3n"];
+  if (normalized.includes("ats") || normalized.includes("optimizacion") || normalized.includes("optimization")) return normalized.includes("optimization") ? ["ATS", "optimization"] : ["Optimizaci\u00f3n", "ATS"];
+  if (normalized.includes("formato") || normalized.includes("format")) return normalized.includes("format") ? ["Format and", "presentation"] : ["Formato y", "presentaci\u00f3n"];
+  if (normalized.includes("logros") || normalized.includes("achievements") || normalized.includes("contributions")) return normalized.includes("achievements") || normalized.includes("contributions") ? ["Achievements", "and impact"] : ["Logros y", "contribuciones"];
+  if (normalized.includes("claridad") || normalized.includes("clarity") || normalized.includes("readability")) return normalized.includes("clarity") || normalized.includes("readability") ? ["Clarity and", "readability"] : ["Claridad y", "legibilidad"];
+  if (normalized.includes("brevedad") || normalized.includes("brevity") || normalized.includes("precision")) return normalized.includes("brevity") || normalized.includes("precision") ? ["Brevity and", "precision"] : ["Brevedad y", "precisi\u00f3n"];
   const words = area.split(/\s+/);
   return [words.slice(0, 2).join(" "), words.slice(2, 4).join(" ")].filter(Boolean);
 }

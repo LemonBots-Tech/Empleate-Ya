@@ -8,12 +8,29 @@ datasource db {
 }
 
 enum UserStatus { active suspended deleted }
-enum ConsentType { privacy_notice terms ai_processing image_processing artifact_storage }
+enum ConsentType { privacy_notice terms ai_processing image_processing artifact_storage share_progress_with_company share_artifacts_with_company share_progress_with_entrepreneur share_artifacts_with_entrepreneur share_with_coach job_matching_pool testimonial_use }
 enum CreditLedgerType { purchase usage refund adjustment }
 enum ProjectStatus { active archived deleted }
 enum ArtifactStatus { draft final archived deleted }
 enum ModuleRunStatus { planned running success failed cancelled }
 enum SessionStatus { active completed abandoned }
+enum OrganizationType { empleate_ya company entrepreneur }
+enum MembershipRole { super_admin support_admin coach company_admin company_recruiter company_participant entrepreneur_owner entrepreneur_collaborator entrepreneur_client online_user coaching_client }
+enum MembershipStatus { invited active suspended removed }
+enum SubscriptionType { online_credits coaching_1o1 company_outplacement entrepreneur_franchise }
+enum SubscriptionStatus { trialing active past_due cancelled expired }
+enum BillingCadence { one_time monthly annual }
+enum CampaignStatus { draft pending_approval active completed cancelled }
+enum CampaignParticipantRole { ex_employee entrepreneur_client candidate participant }
+enum CampaignParticipantStatus { invited active completed removed }
+enum AvatarAccessMode { free_trial paid_credits license_included manual_grant }
+enum CoachingSessionMode { online in_person }
+enum CoachingSessionStatus { scheduled completed cancelled no_show }
+enum CourseEnrollmentStatus { not_started in_progress completed certified }
+enum DeletionRequestStatus { requested under_review approved rejected completed cancelled }
+enum CatalogItemStatus { active inactive archived }
+enum CostAbsorptionMode { absorbed charged included_in_license }
+enum CreditPolicyStatus { draft active archived }
 
 model User {
   id              String   @id @default(cuid())
@@ -36,15 +53,246 @@ model User {
   privacyConsents     PrivacyConsent[]
   creditWallet        CreditWallet?
   creditLedger        CreditLedger[]
+  memberships         Membership[]
+  subscriptions       Subscription[]
   projects            Project[]
   files               File[]
   artifacts           Artifact[]
   sessions            Session[]
   moduleRuns          ModuleRun[]
+  avatarAccessGrants  AvatarAccessGrant[]
   auditLogs           AuditLog[]
   savedJobs           SavedJob[]
+  coachSessionsAsClient CoachingSession[] @relation("CoachingClient")
+  coachSessionsAsCoach  CoachingSession[] @relation("CoachingCoach")
+  coachNotesAuthored    CoachingNote[]    @relation("CoachNoteAuthor")
+  npsResponses          NpsSurvey[]
+  courseEnrollments     CourseEnrollment[]
+  campaignParticipants  CampaignParticipant[]
+  deletionRequests      DeletionRequest[] @relation("DeletionRequester")
+  deletionReviews       DeletionRequest[] @relation("DeletionReviewer")
+  catalogItemsCreated   CatalogItem[]      @relation("CatalogItemCreator")
+  catalogItemsUpdated   CatalogItem[]      @relation("CatalogItemUpdater")
 
   @@map("users")
+}
+
+model Organization {
+  id                    String           @id @default(cuid())
+  type                  OrganizationType
+  name                  String
+  legalName             String?          @map("legal_name")
+  taxId                 String?          @map("tax_id")
+  brandDisplayName      String?          @map("brand_display_name")
+  ownerUserId           String?          @map("owner_user_id")
+  status                String           @default("active")
+  minimumContractMonths Int?             @map("minimum_contract_months")
+  settingsJson          Json?            @map("settings_json")
+  createdAt             DateTime         @default(now()) @map("created_at")
+  updatedAt             DateTime         @updatedAt @map("updated_at")
+  memberships           Membership[]
+  subscriptions         Subscription[]
+  campaigns             Campaign[]
+  campaignParticipants  CampaignParticipant[]
+  artifacts             Artifact[]
+  coachingSessions      CoachingSession[]
+  courseEnrollments     CourseEnrollment[]
+  avatarAccessGrants    AvatarAccessGrant[]
+
+  @@index([type, status])
+  @@map("organizations")
+}
+
+model Membership {
+  id             String           @id @default(cuid())
+  userId         String           @map("user_id")
+  organizationId String           @map("organization_id")
+  role           MembershipRole
+  status         MembershipStatus @default(invited)
+  invitedById    String?          @map("invited_by_id")
+  startsAt       DateTime?        @map("starts_at")
+  endsAt         DateTime?        @map("ends_at")
+  metadataJson   Json?            @map("metadata_json")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  campaignParticipants CampaignParticipant[]
+
+  @@unique([userId, organizationId, role])
+  @@index([organizationId, role, status])
+  @@map("memberships")
+}
+
+model Catalog {
+  id          String        @id @default(cuid())
+  code        String        @unique
+  name        String
+  description String?
+  locked      Boolean       @default(false)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  items       CatalogItem[]
+
+  @@map("catalogs")
+}
+
+model CatalogItem {
+  id              String            @id @default(cuid())
+  catalogId       String            @map("catalog_id")
+  code            String
+  labelEs         String            @map("label_es")
+  labelEn         String?           @map("label_en")
+  descriptionEs   String?           @map("description_es")
+  descriptionEn   String?           @map("description_en")
+  sortOrder       Int               @default(0) @map("sort_order")
+  status          CatalogItemStatus @default(active)
+  metadataJson    Json?             @map("metadata_json")
+  createdById     String?           @map("created_by_id")
+  updatedById     String?           @map("updated_by_id")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  catalog         Catalog           @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  createdBy       User?             @relation("CatalogItemCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy       User?             @relation("CatalogItemUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@unique([catalogId, code])
+  @@index([catalogId, status, sortOrder])
+  @@map("catalog_items")
+}
+
+model CreditPolicy {
+  id                String             @id @default(cuid())
+  name              String
+  status            CreditPolicyStatus @default(draft)
+  usdToMxnRate      Decimal            @map("usd_to_mxn_rate") @db.Decimal(10, 4)
+  creditValueMxn    Decimal            @map("credit_value_mxn") @db.Decimal(10, 4)
+  grossMarginPct    Decimal            @map("gross_margin_pct") @db.Decimal(6, 4)
+  minMarkupPct      Decimal?           @map("min_markup_pct") @db.Decimal(6, 4)
+  maxMarkupPct      Decimal?           @map("max_markup_pct") @db.Decimal(6, 4)
+  sourceNote        String?            @map("source_note")
+  effectiveFrom     DateTime           @default(now()) @map("effective_from")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  modelCosts        AiModelCost[]
+  screenBudgets     ScreenTokenBudget[]
+
+  @@index([status, effectiveFrom])
+  @@map("credit_policies")
+}
+
+model AiModelCost {
+  id                 String       @id @default(cuid())
+  creditPolicyId     String       @map("credit_policy_id")
+  provider           String       @default("openai")
+  model              String
+  inputUsdPer1m      Decimal      @map("input_usd_per_1m") @db.Decimal(12, 6)
+  outputUsdPer1m     Decimal      @map("output_usd_per_1m") @db.Decimal(12, 6)
+  cachedInputUsdPer1m Decimal?    @map("cached_input_usd_per_1m") @db.Decimal(12, 6)
+  useCase            String?
+  isDefault          Boolean      @default(false) @map("is_default")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+  creditPolicy       CreditPolicy @relation(fields: [creditPolicyId], references: [id], onDelete: Cascade)
+
+  @@unique([creditPolicyId, provider, model])
+  @@index([provider, model])
+  @@map("ai_model_costs")
+}
+
+model ScreenTokenBudget {
+  id                  String             @id @default(cuid())
+  creditPolicyId      String             @map("credit_policy_id")
+  screenKey           String             @map("screen_key")
+  label               String
+  moduleId            String?            @map("module_id")
+  absorptionMode      CostAbsorptionMode @default(charged) @map("absorption_mode")
+  estimatedInputTokens Int               @map("estimated_input_tokens")
+  estimatedOutputTokens Int              @map("estimated_output_tokens")
+  maxInputTokens      Int?               @map("max_input_tokens")
+  maxOutputTokens     Int?               @map("max_output_tokens")
+  minCredits          Int                @default(0) @map("min_credits")
+  recommendedCredits  Int                @default(0) @map("recommended_credits")
+  notes               String?
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+  creditPolicy        CreditPolicy       @relation(fields: [creditPolicyId], references: [id], onDelete: Cascade)
+
+  @@unique([creditPolicyId, screenKey])
+  @@index([moduleId, absorptionMode])
+  @@map("screen_token_budgets")
+}
+
+model Subscription {
+  id                  String             @id @default(cuid())
+  organizationId      String?            @map("organization_id")
+  userId              String?            @map("user_id")
+  type                SubscriptionType
+  status              SubscriptionStatus @default(active)
+  billingCadence      BillingCadence     @map("billing_cadence")
+  stripeCustomerId    String?            @map("stripe_customer_id")
+  stripeSubscriptionId String?           @map("stripe_subscription_id")
+  seatsIncluded       Int?               @map("seats_included")
+  creditsIncluded     Int?               @map("credits_included")
+  minimumTermMonths   Int?               @map("minimum_term_months")
+  currentPeriodStart  DateTime?          @map("current_period_start")
+  currentPeriodEnd    DateTime?          @map("current_period_end")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+  organization        Organization?      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, type, status])
+  @@index([userId, type, status])
+  @@map("subscriptions")
+}
+
+model Campaign {
+  id             String         @id @default(cuid())
+  organizationId String         @map("organization_id")
+  name           String
+  description    String?
+  status         CampaignStatus @default(draft)
+  approvedById   String?        @map("approved_by_id")
+  startsAt       DateTime?      @map("starts_at")
+  endsAt         DateTime?      @map("ends_at")
+  feeAmountMxn   Decimal?       @map("fee_amount_mxn") @db.Decimal(12, 2)
+  settingsJson   Json?          @map("settings_json")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  participants   CampaignParticipant[]
+  coachingSessions CoachingSession[]
+  artifacts      Artifact[]
+  avatarAccessGrants AvatarAccessGrant[]
+
+  @@index([organizationId, status])
+  @@map("campaigns")
+}
+
+model CampaignParticipant {
+  id             String                    @id @default(cuid())
+  campaignId     String                    @map("campaign_id")
+  organizationId String                    @map("organization_id")
+  userId         String                    @map("user_id")
+  membershipId   String?                   @map("membership_id")
+  role           CampaignParticipantRole   @default(participant)
+  status         CampaignParticipantStatus @default(invited)
+  assignedById   String?                   @map("assigned_by_id")
+  startsAt       DateTime?                 @map("starts_at")
+  completedAt    DateTime?                 @map("completed_at")
+  metadataJson   Json?                     @map("metadata_json")
+  createdAt      DateTime                  @default(now()) @map("created_at")
+  updatedAt      DateTime                  @updatedAt @map("updated_at")
+  campaign       Campaign                  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  organization   Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  membership     Membership?               @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+
+  @@unique([campaignId, userId])
+  @@index([organizationId, status])
+  @@index([userId, status])
+  @@map("campaign_participants")
 }
 
 model ProfessionalProfile {
@@ -104,6 +352,8 @@ model CreditLedger {
   balanceAfter       Int              @map("balance_after")
   description        String
   relatedModuleRunId String?          @map("related_module_run_id")
+  expiresAt          DateTime?        @map("expires_at")
+  stripePaymentId    String?          @map("stripe_payment_id")
   createdAt          DateTime         @default(now()) @map("created_at")
   user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   moduleRun          ModuleRun?       @relation(fields: [relatedModuleRunId], references: [id])
@@ -165,6 +415,8 @@ model Artifact {
   id              String   @id @default(cuid())
   userId          String   @map("user_id")
   projectId       String?  @map("project_id")
+  organizationId  String?  @map("organization_id")
+  campaignId      String?  @map("campaign_id")
   type            String
   title           String
   description     String?
@@ -181,10 +433,150 @@ model Artifact {
   updatedAt       DateTime @updatedAt @map("updated_at")
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   project         Project? @relation(fields: [projectId], references: [id])
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+  campaign        Campaign? @relation(fields: [campaignId], references: [id])
   versions        ArtifactVersion[]
 
   @@index([userId, type, status])
+  @@index([organizationId, campaignId])
   @@map("artifacts")
+}
+
+model CoachingSession {
+  id             String                @id @default(cuid())
+  clientUserId   String                @map("client_user_id")
+  coachUserId    String?               @map("coach_user_id")
+  organizationId String?               @map("organization_id")
+  campaignId     String?               @map("campaign_id")
+  mode           CoachingSessionMode   @default(online)
+  status         CoachingSessionStatus @default(scheduled)
+  scheduledAt    DateTime              @map("scheduled_at")
+  durationMinutes Int                  @default(60) @map("duration_minutes")
+  meetingUrl     String?               @map("meeting_url")
+  location       String?
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
+  client         User                  @relation("CoachingClient", fields: [clientUserId], references: [id], onDelete: Cascade)
+  coach          User?                 @relation("CoachingCoach", fields: [coachUserId], references: [id], onDelete: SetNull)
+  organization   Organization?         @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  campaign       Campaign?             @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  notes          CoachingNote[]
+  npsSurveys     NpsSurvey[]
+
+  @@index([clientUserId, scheduledAt])
+  @@index([coachUserId, scheduledAt])
+  @@index([organizationId, campaignId])
+  @@map("coaching_sessions")
+}
+
+model CoachingNote {
+  id                String          @id @default(cuid())
+  coachingSessionId String          @map("coaching_session_id")
+  authorUserId      String          @map("author_user_id")
+  visibility        String          @default("internal")
+  note              String
+  metadataJson      Json?           @map("metadata_json")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  session           CoachingSession @relation(fields: [coachingSessionId], references: [id], onDelete: Cascade)
+  author            User            @relation("CoachNoteAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+
+  @@index([coachingSessionId, createdAt])
+  @@map("coaching_notes")
+}
+
+model NpsSurvey {
+  id                String           @id @default(cuid())
+  userId            String           @map("user_id")
+  coachingSessionId String?          @map("coaching_session_id")
+  score             Int
+  category          String
+  comments          String?
+  testimonialConsent Boolean         @default(false) @map("testimonial_consent")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coachingSession   CoachingSession? @relation(fields: [coachingSessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, category, createdAt])
+  @@map("nps_surveys")
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String?
+  audience    String
+  isRequired  Boolean  @default(false) @map("is_required")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  lessons     CourseLesson[]
+  enrollments CourseEnrollment[]
+
+  @@map("courses")
+}
+
+model CourseLesson {
+  id        String   @id @default(cuid())
+  courseId  String   @map("course_id")
+  title     String
+  sortOrder Int      @map("sort_order")
+  contentUrl String? @map("content_url")
+  durationMinutes Int? @map("duration_minutes")
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress  CourseProgress[]
+
+  @@unique([courseId, sortOrder])
+  @@map("course_lessons")
+}
+
+model CourseEnrollment {
+  id             String                 @id @default(cuid())
+  courseId       String                 @map("course_id")
+  userId         String                 @map("user_id")
+  organizationId String?                @map("organization_id")
+  status         CourseEnrollmentStatus @default(not_started)
+  enrolledAt     DateTime               @default(now()) @map("enrolled_at")
+  completedAt    DateTime?              @map("completed_at")
+  certificateUrl String?                @map("certificate_url")
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization?          @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  course         Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress       CourseProgress[]
+
+  @@unique([courseId, userId, organizationId])
+  @@index([userId, status])
+  @@map("course_enrollments")
+}
+
+model CourseProgress {
+  id           String           @id @default(cuid())
+  enrollmentId String           @map("enrollment_id")
+  lessonId     String           @map("lesson_id")
+  completed    Boolean          @default(false)
+  completedAt  DateTime?        @map("completed_at")
+  score        Int?
+  enrollment   CourseEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lesson       CourseLesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, lessonId])
+  @@map("course_progress")
+}
+
+model DeletionRequest {
+  id              String                @id @default(cuid())
+  requesterUserId String                @map("requester_user_id")
+  reviewerUserId  String?               @map("reviewer_user_id")
+  status          DeletionRequestStatus @default(requested)
+  reason          String?
+  supportTicketId String?               @map("support_ticket_id")
+  requestedAt     DateTime              @default(now()) @map("requested_at")
+  reviewedAt      DateTime?             @map("reviewed_at")
+  completedAt     DateTime?             @map("completed_at")
+  requester       User                  @relation("DeletionRequester", fields: [requesterUserId], references: [id], onDelete: Cascade)
+  reviewer        User?                 @relation("DeletionReviewer", fields: [reviewerUserId], references: [id], onDelete: SetNull)
+
+  @@index([requesterUserId, status])
+  @@map("deletion_requests")
 }
 
 model ArtifactVersion {
@@ -241,6 +633,30 @@ model ModuleRun {
 
   @@index([userId, moduleId, status])
   @@map("module_runs")
+}
+
+model AvatarAccessGrant {
+  id                      String           @id @default(cuid())
+  userId                  String           @map("user_id")
+  organizationId          String?          @map("organization_id")
+  campaignId              String?          @map("campaign_id")
+  moduleId                String           @map("module_id")
+  accessMode              AvatarAccessMode @default(free_trial) @map("access_mode")
+  freeTrialUsedAt         DateTime?        @map("free_trial_used_at")
+  firstPurchaseUnlockedAt DateTime?        @map("first_purchase_unlocked_at")
+  usageLimit              Int?             @map("usage_limit")
+  usageCount              Int              @default(0) @map("usage_count")
+  status                  MembershipStatus @default(active)
+  createdAt               DateTime         @default(now()) @map("created_at")
+  updatedAt               DateTime         @updatedAt @map("updated_at")
+  user                    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization            Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  campaign                Campaign?        @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, moduleId, organizationId, campaignId])
+  @@index([userId, accessMode, status])
+  @@index([organizationId, campaignId, moduleId])
+  @@map("avatar_access_grants")
 }
 
 model AuditLog {

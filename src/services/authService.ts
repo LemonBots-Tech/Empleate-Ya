@@ -6,6 +6,7 @@ import { getStore, newId, now, toPublicUser, type User } from "@/lib/mockdb/stor
 
 const SESSION_COOKIE = "eya_session";
 const CONSENT_VERSION = "2026-06-02";
+const DEFAULT_SUPER_ADMIN_EMAILS = ["leo.galvez.medina@gmail.com", "lgalvez@nielsen-technology.com"];
 
 export const registerSchema = z.object({
   firstName: z.string().min(1),
@@ -73,6 +74,26 @@ export async function getCurrentUser(): Promise<User | undefined> {
 export async function requireUser() {
   const user = await getCurrentUser();
   if (!user) throw new Error("UNAUTHORIZED");
+  return user;
+}
+
+export function isSuperAdmin(user: User) {
+  const configuredEmails = [...DEFAULT_SUPER_ADMIN_EMAILS, ...(process.env.SUPER_ADMIN_EMAILS ?? "").split(",")]
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+
+  const demoAdminEnabled = process.env.NODE_ENV !== "production" && user.email === "demo@empleateya.local";
+  return demoAdminEnabled || configuredEmails.includes(user.email.toLowerCase());
+}
+
+export function canUseDevAdminLogin() {
+  return process.env.NODE_ENV !== "production" || process.env.VERCEL_ENV === "preview" || process.env.ENABLE_DEV_ADMIN_LOGIN === "true";
+}
+
+export async function requireSuperAdmin() {
+  const user = (await getCurrentUser()) ?? (canUseDevAdminLogin() ? getOrCreateDemoUser() : undefined);
+  if (!user) throw new Error("UNAUTHORIZED");
+  if (!isSuperAdmin(user)) throw new Error("FORBIDDEN");
   return user;
 }
 

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { skillRegistry, type SkillId } from "@/ai/skillRegistry";
-import { estimateCredits, assertSufficientCredits, chargeCredits } from "@/services/creditService";
+import { estimateCredits, assertAvatarAccess, chargeCredits, recordAvatarTrial } from "@/services/creditService";
 import { createArtifact } from "@/services/artifactService";
 import { runMockAgent } from "@/services/aiService";
 import { getStore, newId, now, type Artifact, type ModuleRun } from "@/lib/mockdb/store";
@@ -22,31 +22,30 @@ export type OrchestratorResponse = {
   requiredModules: SkillId[];
   missingInputs: string[];
   estimatedCredits: number;
+  creditsCharged: number;
+  accessMode?: "trial" | "paid";
+  trialModules?: SkillId[];
   executionPlan: string[];
   artifactsCreated: Artifact[];
 };
 
 const keywordRules: Array<{ moduleId: SkillId; keywords: string[]; intent: string }> = [
-  { moduleId: "clio", keywords: ["clío", "clio", "tarot", "oráculo", "oraculo", "tirada", "futuro laboral"], intent: "symbolic_career_tarot" },
-  { moduleId: "lumo", keywords: ["pilares", "prioridades", "punto de partida", "descubrirme"], intent: "life_discovery" },
-  { moduleId: "boost_me", keywords: ["plan de acción", "impúlsame", "impulsame", "objetivos"], intent: "personal_action_plan" },
-  { moduleId: "scorex_360", keywords: ["scorex 360", "internacional", "ats internacional"], intent: "international_ats_audit" },
-  { moduleId: "optim", keywords: ["optim", "cv", "curriculum", "currículum", "resume"], intent: "cv_optimization" },
+  { moduleId: "optim", keywords: ["optim", "cv", "curriculum", "resume"], intent: "cv_optimization" },
   { moduleId: "scorex", keywords: ["evalu", "score", "ats", "compatibilidad"], intent: "cv_scoring" },
   { moduleId: "miss_quest", keywords: ["entrevista", "interview", "preguntas"], intent: "interview_prep" },
   { moduleId: "mr_wow", keywords: ["pitch", "presentarme", "elevator"], intent: "pitch" },
   { moduleId: "mr_boost_linked", keywords: ["linkedin", "perfil"], intent: "linkedin" },
   { moduleId: "new_job_challenge", keywords: ["mercado", "tendencias", "brechas"], intent: "market_study" },
   { moduleId: "indiana_jobs", keywords: ["empleos", "vacantes", "trabajos", "buscar empleo"], intent: "job_search" },
-  { moduleId: "recharge", keywords: ["desánimo", "frustr", "motiva", "cansado", "abandono"], intent: "resilience" },
-  { moduleId: "mr_ikigai", keywords: ["ikigai", "norte", "propósito", "direccion profesional"], intent: "professional_direction" },
-  { moduleId: "tommy_lee_picture", keywords: ["foto", "fotografía", "headshot", "imagen"], intent: "linkedin_photo" },
+  { moduleId: "recharge", keywords: ["desanimo", "frustr", "motiva", "cansado", "abandono"], intent: "resilience" },
+  { moduleId: "mr_ikigai", keywords: ["ikigai", "norte", "proposito", "direccion profesional"], intent: "professional_direction" },
+  { moduleId: "tommy_lee_picture", keywords: ["foto", "fotografia", "headshot", "imagen"], intent: "linkedin_photo" },
 ];
 
 const artifactLabels: Record<string, string> = {
   scorex_inicial: "Reporte ScoreX inicial",
   scorex_final: "Reporte ScoreX final",
-  scorex_comparativo: "Comparativo antes/después",
+  scorex_comparativo: "Comparativo antes/despues",
   cv_optimizado: "CV optimizado",
   cv_adaptado: "CV adaptado",
   linkedin_optimizado: "LinkedIn optimizado",
@@ -85,9 +84,6 @@ function hasInput(inputName: string, input: OrchestratorInput) {
   if (inputName === "image_processing_consent") return false;
   if (inputName === "mood_signal") return true;
   if (inputName === "reflection_answers") return prompt.length > 20;
-  if (inputName === "oracle_question") return prompt.length > 3;
-  if (inputName === "career_stage") return true;
-  if (inputName === "goals") return prompt.length > 10;
   return true;
 }
 
@@ -97,11 +93,11 @@ function missingInputsFor(modules: SkillId[], input: OrchestratorInput) {
 
 function executionPlanFor(modules: SkillId[]) {
   return modules.map((moduleId, index) => {
-    if (moduleId === "scorex" && index === 0) return "ScoreX evaluación inicial";
-    if (moduleId === "scorex") return "ScoreX evaluación final / comparativo";
-    if (moduleId === "optim") return "Optim optimización de CV";
+    if (moduleId === "scorex" && index === 0) return "ScoreX evaluacion inicial";
+    if (moduleId === "scorex") return "ScoreX evaluacion final / comparativo";
+    if (moduleId === "optim") return "Optim optimizacion de CV";
     if (moduleId === "mr_wow") return "Mr. Wow elevator pitch";
-    if (moduleId === "miss_quest") return "Miss Quest preparación de entrevista";
+    if (moduleId === "miss_quest") return "Miss Quest preparacion de entrevista";
     return skillRegistry[moduleId].name;
   });
 }
@@ -113,33 +109,33 @@ function buildFormattedReport(params: { moduleName: string; title: string; type:
   return `
     <article class="report-document">
       <header class="report-hero">
-        <p class="report-kicker">${params.moduleName} · ${artifactLabel}</p>
+        <p class="report-kicker">${params.moduleName} - ${artifactLabel}</p>
         <h1>${params.title}</h1>
-        <p>Entregable mock generado para revisar estructura, navegación y descarga antes de conectar la generación final con IA.</p>
+        <p>Entregable mock generado para revisar estructura, navegacion y descarga antes de conectar la generacion final con IA.</p>
         <dl>
           <div><dt>Fecha</dt><dd>${generatedAt}</dd></div>
-          <div><dt>Créditos</dt><dd>${params.creditsCharged}</dd></div>
-          <div><dt>Estado</dt><dd>Listo para revisión</dd></div>
+          <div><dt>Creditos</dt><dd>${params.creditsCharged}</dd></div>
+          <div><dt>Estado</dt><dd>Listo para revision</dd></div>
         </dl>
       </header>
       <section>
         <h2>Resumen ejecutivo</h2>
-        <p>El objetivo detectado fue: <strong>${params.prompt}</strong>. El reporte organiza hallazgos, prioridades y próximos pasos para que el usuario pueda actuar sin perder contexto.</p>
+        <p>El objetivo detectado fue: <strong>${params.prompt}</strong>. El reporte organiza hallazgos, prioridades y proximos pasos para que el usuario pueda actuar sin perder contexto.</p>
       </section>
       <section>
         <h2>Hallazgos principales</h2>
         <ul>
           <li>Perfil evaluado con foco en claridad, compatibilidad y propuesta de valor.</li>
-          <li>Recomendaciones separadas por impacto inmediato, ajuste de narrativa y preparación de siguiente acción.</li>
-          <li>Entregable disponible en Mi Bóveda con descarga HTML y contenido estructurado.</li>
+          <li>Recomendaciones separadas por impacto inmediato, ajuste de narrativa y preparacion de siguiente accion.</li>
+          <li>Entregable disponible en Mi Boveda con descarga HTML y contenido estructurado.</li>
         </ul>
       </section>
       <section>
-        <h2>Plan de acción</h2>
+        <h2>Plan de accion</h2>
         <ol>
           <li>Completar datos faltantes o archivos reales cuando aplique.</li>
-          <li>Revisar el contenido optimizado y ajustar tono, métricas y logros.</li>
-          <li>Exportar el reporte y usarlo como base para la versión DOCX/PDF final.</li>
+          <li>Revisar el contenido optimizado y ajustar tono, metricas y logros.</li>
+          <li>Exportar el reporte y usarlo como base para la version DOCX/PDF final.</li>
         </ol>
       </section>
     </article>
@@ -149,17 +145,14 @@ function buildFormattedReport(params: { moduleName: string; title: string; type:
 function buildMockArtifact(moduleId: SkillId, input: OrchestratorInput, creditsCharged: number): Omit<Artifact, "id" | "version" | "status" | "createdAt" | "updatedAt"> {
   const skill = skillRegistry[moduleId];
   const type = skill.outputTypes[0];
-  const title = `${skill.name} · ${input.prompt.slice(0, 54)}${input.prompt.length > 54 ? "..." : ""}`;
-  const isClio = moduleId === "clio";
+  const title = `${skill.name} - ${input.prompt.slice(0, 54)}${input.prompt.length > 54 ? "..." : ""}`;
   const contentJson = {
     moduleId,
     prompt: input.prompt,
-    summary: isClio ? "Lectura simbólica de tres cartas para reflexionar y avanzar con esperanza." : `Resultado mock de ${skill.name} para Fase 1.`,
-    recommendations: isClio ? ["El Carro: reconoce tu impulso", "La Estrella: conecta con una posibilidad", "El Mundo: define tu siguiente acción", "Esta lectura es simbólica y motivacional; tu futuro se construye con tus decisiones."] : ["Validar datos faltantes antes de producción", "Conectar aiService con OpenAI en Fase 2", "Versionar y descargar el entregable desde Mi Bóveda"],
+    summary: `Resultado mock de ${skill.name} para Fase 1.`,
+    recommendations: ["Validar datos faltantes antes de produccion", "Conectar aiService con OpenAI en Fase 2", "Versionar y descargar el entregable desde Mi Boveda"],
   };
-  const htmlContent = isClio
-    ? `<article><h1>${title}</h1><p>Lectura simbólica y motivacional.</p><section><h2>El Carro · Raíz</h2><p>Tu experiencia ya contiene impulso y dirección.</p></section><section><h2>La Estrella · Presente</h2><p>Hay espacio para recuperar esperanza y visibilidad.</p></section><section><h2>El Mundo · Próximo paso</h2><p>Elige una acción concreta y complétala esta semana.</p></section><p><strong>Esta lectura es simbólica y motivacional; tu futuro se construye con tus decisiones.</strong></p></article>`
-    : buildFormattedReport({ moduleName: skill.name, title, type, prompt: input.prompt, creditsCharged });
+  const htmlContent = buildFormattedReport({ moduleName: skill.name, title, type, prompt: input.prompt, creditsCharged });
   return { userId: input.userId, projectId: input.projectId, type, title, description: skill.description, moduleId, prompt: input.prompt, contentJson, htmlContent, creditsCharged };
 }
 
@@ -168,30 +161,60 @@ export async function analyzePrompt(rawInput: unknown): Promise<OrchestratorResp
   const { modules, intent } = detectModules(input.prompt, input.selectedModule);
   const estimatedCredits = estimateCredits(modules);
   const missingInputs = missingInputsFor(modules, input);
-  const baseResponse = { detectedIntent: intent, requiredModules: modules, missingInputs, estimatedCredits, executionPlan: executionPlanFor(modules), artifactsCreated: [] as Artifact[] };
+  const baseResponse = { detectedIntent: intent, requiredModules: modules, missingInputs, estimatedCredits, creditsCharged: estimatedCredits, executionPlan: executionPlanFor(modules), artifactsCreated: [] as Artifact[] };
+
   if (missingInputs.length > 0) {
     return { ...baseResponse, status: "needs_input", message: `Para continuar necesito: ${missingInputs.join(", ")}.` };
   }
+
+  let access: ReturnType<typeof assertAvatarAccess>;
   try {
-    assertSufficientCredits(input.userId, estimatedCredits);
-  } catch {
-    return { ...baseResponse, status: "insufficient_credits", message: `Necesitas ${estimatedCredits} créditos para ejecutar este plan.` };
+    access = assertAvatarAccess(input.userId, modules, estimatedCredits);
+  } catch (error) {
+    if (error instanceof Error && error.message === "AVATAR_TRIAL_USED") {
+      const blockedModules = ((error.cause as { blockedModules?: string[] } | undefined)?.blockedModules ?? [])
+        .map((moduleId) => skillRegistry[moduleId as SkillId]?.name ?? moduleId);
+      return { ...baseResponse, status: "insufficient_credits", message: `Ya usaste tu prueba gratuita de ${blockedModules.join(", ")}. Compra creditos para usar este avatar cuantas veces lo necesites.` };
+    }
+    if (error instanceof Error && error.message === "STAR_AVATAR_REQUIRES_PURCHASE") {
+      const blockedModules = ((error.cause as { blockedModules?: string[] } | undefined)?.blockedModules ?? [])
+        .map((moduleId) => skillRegistry[moduleId as SkillId]?.name ?? moduleId);
+      return { ...baseResponse, status: "insufficient_credits", message: `${blockedModules.join(", ")} es un avatar estrella. Compra creditos para desbloquearlo.` };
+    }
+    return { ...baseResponse, status: "insufficient_credits", message: `Necesitas ${estimatedCredits} creditos para ejecutar este plan, o una prueba gratuita disponible por avatar.` };
   }
-  if (!input.execute) return { ...baseResponse, status: "ready", message: "Plan listo para ejecutar." };
+
+  const accessResponse = { ...baseResponse, creditsCharged: access.creditsToCharge, accessMode: access.mode, trialModules: access.trialModules as SkillId[] };
+  if (!input.execute) {
+    return {
+      ...accessResponse,
+      status: "ready",
+      message: access.mode === "trial" ? "Plan listo para ejecutar con acceso de prueba. Tambien descontara los creditos del avatar y solo puede usarse una vez antes de comprar." : "Plan listo para ejecutar con creditos.",
+    };
+  }
 
   const artifactsCreated: Artifact[] = [];
   const moduleRunId = newId();
-  const run: ModuleRun = { id: moduleRunId, userId: input.userId, projectId: input.projectId, moduleId: "career_orchestrator", inputJson: input, outputJson: undefined, inputTokens: 0, outputTokens: 0, estimatedCostUsd: 0, estimatedCostMxn: 0, creditsCharged: estimatedCredits, status: "running", createdAt: now() };
+  const run: ModuleRun = { id: moduleRunId, userId: input.userId, projectId: input.projectId, moduleId: "career_orchestrator", inputJson: input, outputJson: undefined, inputTokens: 0, outputTokens: 0, estimatedCostUsd: 0, estimatedCostMxn: 0, creditsCharged: access.creditsToCharge, status: "running", createdAt: now() };
   getStore().moduleRuns.push(run);
+
   for (const moduleId of modules) {
     const aiResult = await runMockAgent(buildMockArtifact(moduleId, input, skillRegistry[moduleId].baseCredits));
     artifactsCreated.push(createArtifact(aiResult.output));
     run.inputTokens += aiResult.inputTokens;
     run.outputTokens += aiResult.outputTokens;
   }
+
   run.status = "success";
   run.outputJson = { artifactsCreated: artifactsCreated.map((artifact) => artifact.id) };
-  chargeCredits(input.userId, estimatedCredits, `Ejecución de plan: ${modules.join(", ")}`, moduleRunId);
-  getStore().auditLogs.push({ id: newId(), userId: input.userId, action: "ai.execute", entityType: "module_run", entityId: moduleRunId, metadataJson: { modules, estimatedCredits }, createdAt: now() });
-  return { ...baseResponse, status: "completed", message: "Plan ejecutado y entregables guardados en Mi Bóveda.", artifactsCreated };
+  if (access.mode === "trial") recordAvatarTrial(input.userId, modules, moduleRunId);
+  chargeCredits(input.userId, access.creditsToCharge, `Ejecucion de plan: ${modules.join(", ")}`, moduleRunId);
+
+  getStore().auditLogs.push({ id: newId(), userId: input.userId, action: "ai.execute", entityType: "module_run", entityId: moduleRunId, metadataJson: { modules, estimatedCredits, creditsCharged: access.creditsToCharge, accessMode: access.mode }, createdAt: now() });
+  return {
+    ...accessResponse,
+    status: "completed",
+    message: access.mode === "trial" ? "Plan ejecutado con acceso de prueba, creditos descontados y entregables guardados en Mi Boveda." : "Plan ejecutado y entregables guardados en Mi Boveda.",
+    artifactsCreated,
+  };
 }

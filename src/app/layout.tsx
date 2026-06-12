@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import "flag-icons/css/flag-icons.min.css";
 import "./globals.css";
+import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
 
 export const metadata: Metadata = {
   title: { default: "Empléate YA", template: "%s | Empléate YA" },
@@ -23,7 +25,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es-MX" suppressHydrationWarning>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning><LanguageProvider>{children}</LanguageProvider></body>
     </html>
   );
 }
