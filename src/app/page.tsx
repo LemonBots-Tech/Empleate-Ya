@@ -28,6 +28,39 @@ const landingCopy = {
     testimonialsEyebrow: "Historias reales",
     testimonialsTitle: "Acompanamiento humano con herramientas inteligentes.",
     testimonialsNote: "Los testimonios publicados deberan contar con autorizacion validada, folio y vigencia antes de mostrarse en produccion.",
+    methodologyEyebrow: "Metodologia Empleate YA",
+    methodologyTitle: "Cuatro etapas para avanzar con orden.",
+    methodologyDescription: "La plataforma no solo entrega documentos: acompana el proceso completo para entenderte, construir tu propuesta, buscar oportunidades y comunicarte mejor.",
+    methodology: [
+      {
+        avatar: "/avatars/lumo.png",
+        name: "Lumo",
+        stage: "Discovery",
+        title: "Entender tu punto de partida",
+        description: "Identifica prioridades, energia, motivadores y direccion profesional antes de moverte. Esta etapa evita buscar empleo desde la urgencia y ayuda a elegir mejor el siguiente paso.",
+      },
+      {
+        avatar: "/avatars/optim.png",
+        name: "Optim",
+        stage: "CV estrategico",
+        title: "Construir una propuesta profesional clara",
+        description: "Convierte experiencia, funciones y logros en un CV estructurado, compatible con ATS y facil de leer para reclutadores humanos.",
+      },
+      {
+        avatar: "/avatars/indiana-jobs.png",
+        name: "Indiana Jobs",
+        stage: "Prospeccion",
+        title: "Buscar oportunidades con intencion",
+        description: "Ayuda a analizar vacantes, priorizar oportunidades y decidir donde conviene invertir tiempo, energia y postulaciones.",
+      },
+      {
+        avatar: "/avatars/miss-quest.png",
+        name: "Miss Quest",
+        stage: "Persuasion",
+        title: "Prepararte para conversar y convencer",
+        description: "Entrena entrevistas, respuestas por competencias y mensajes de valor para que puedas defender tu historia con seguridad y coherencia.",
+      },
+    ],
     faqEyebrow: "Preguntas frecuentes",
     faqTitle: "Lo esencial antes de comenzar.",
     faqDescription: "Resuelve rapidamente las dudas mas comunes sobre Empleate YA, creditos, privacidad, coaching y servicios para empresas.",
@@ -66,6 +99,39 @@ const landingCopy = {
     testimonialsEyebrow: "Real stories",
     testimonialsTitle: "Human guidance supported by intelligent tools.",
     testimonialsNote: "Published testimonials must have validated authorization, folio, and validity before production display.",
+    methodologyEyebrow: "Empleate YA methodology",
+    methodologyTitle: "Four stages to move forward with structure.",
+    methodologyDescription: "The platform does more than generate documents: it supports the full process so you can understand yourself, build your value proposition, find opportunities, and communicate better.",
+    methodology: [
+      {
+        avatar: "/avatars/lumo.png",
+        name: "Lumo",
+        stage: "Discovery",
+        title: "Understand your starting point",
+        description: "Identify priorities, energy, motivators, and professional direction before taking action. This stage helps you avoid searching from urgency and choose the next step more wisely.",
+      },
+      {
+        avatar: "/avatars/optim.png",
+        name: "Optim",
+        stage: "Strategic resume",
+        title: "Build a clear professional proposition",
+        description: "Turn experience, responsibilities, and achievements into a structured resume that is ATS-friendly and easy for human recruiters to read.",
+      },
+      {
+        avatar: "/avatars/indiana-jobs.png",
+        name: "Indiana Jobs",
+        stage: "Prospecting",
+        title: "Search for opportunities with intention",
+        description: "Helps analyze job postings, prioritize opportunities, and decide where it is worth investing time, energy, and applications.",
+      },
+      {
+        avatar: "/avatars/miss-quest.png",
+        name: "Miss Quest",
+        stage: "Persuasion",
+        title: "Prepare to speak and persuade",
+        description: "Practice interviews, competency-based answers, and value messages so you can defend your story with confidence and coherence.",
+      },
+    ],
     faqEyebrow: "Frequently asked questions",
     faqTitle: "The essentials before you start.",
     faqDescription: "Quick answers about Empleate YA, credits, privacy, coaching, and company services.",
@@ -198,6 +264,35 @@ export default function LandingPage() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-slate-100 bg-white/70">
+        <div className="mx-auto max-w-7xl px-5 py-16 md:py-20">
+          <div className="mb-10 max-w-3xl">
+            <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-[var(--brand-primary)]">{t.methodologyEyebrow}</p>
+            <h2 className="mt-3 text-4xl font-black tracking-[-0.04em] text-slate-950 md:text-5xl">{t.methodologyTitle}</h2>
+            <p className="mt-4 text-lg leading-8 text-slate-600">{t.methodologyDescription}</p>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-4">
+            {t.methodology.map((item, index) => (
+              <article key={item.stage} className="flex h-full flex-col rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <span className="rounded-full bg-[var(--brand-primary-soft)] px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-[var(--brand-primary)]">
+                      {String(index + 1).padStart(2, "0")} · {item.stage}
+                    </span>
+                    <h3 className="mt-4 text-2xl font-black tracking-tight text-slate-950">{item.title}</h3>
+                  </div>
+                  <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-3xl bg-[#f8f5ff] ring-1 ring-slate-100">
+                    <Image src={item.avatar} alt={item.name} fill sizes="80px" className="object-contain p-2" />
+                  </div>
+                </div>
+                <p className="mt-4 text-sm font-black uppercase tracking-[0.14em] text-slate-500">{item.name}</p>
+                <p className="mt-3 text-sm leading-6 text-slate-600">{item.description}</p>
+              </article>
+            ))}
           </div>
         </div>
       </section>
