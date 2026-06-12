@@ -1,12 +1,12 @@
 import { EmployabilityShell } from "@/components/employability/EmployabilityShell";
-import { AdminConsoleClient } from "@/components/employability/AdminConsoleClient";
+import { AdminPlaceholderClient } from "@/components/employability/AdminPlaceholderClient";
 import { AdminSuperShell } from "@/components/employability/AdminSuperShell";
 
-export default function AdminPage() {
+export default function AdminTestimonialsPage() {
   return (
     <EmployabilityShell>
       <AdminSuperShell>
-        <AdminConsoleClient />
+        <AdminPlaceholderClient moduleKey="testimonials" />
       </AdminSuperShell>
     </EmployabilityShell>
   );

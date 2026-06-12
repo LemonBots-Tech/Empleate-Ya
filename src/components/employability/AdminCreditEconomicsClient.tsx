@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Calculator, CircleDollarSign, Gauge, MessageSquareText, RefreshCw, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
-import { AdminControlNav } from "./AdminControlNav";
 
 type AiModelCost = {
   provider: string;
@@ -215,8 +214,6 @@ export function AdminCreditEconomicsClient() {
         </div>
         <Button type="button" onClick={refreshExchangeRate} className="bg-slate-950 text-white"><RefreshCw size={16} /> {t.refreshRate}</Button>
       </header>
-
-      <AdminControlNav />
 
       {exchangeMessage ? <p className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{exchangeMessage}</p> : null}
 

@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { Building2, ClipboardList, FolderKanban, Search, ShieldCheck, UsersRound } from "lucide-react";
 import { Input, Label, Select } from "@/components/ui/Input";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
-import { AdminControlNav } from "./AdminControlNav";
 
 const copy = {
   es: {
@@ -143,8 +142,6 @@ export function AdminConsoleClient() {
           <p className="mt-4 max-w-4xl text-lg leading-8 text-slate-600">{t.description}</p>
         </div>
       </header>
-
-      <AdminControlNav />
 
       <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid gap-3 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">

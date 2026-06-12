@@ -5,7 +5,6 @@ import { Archive, Pencil, Plus, RotateCcw, Save } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Select, Textarea } from "@/components/ui/Input";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
-import { AdminControlNav } from "./AdminControlNav";
 
 type CatalogItem = {
   id: string;
@@ -251,8 +250,6 @@ export function AdminCatalogsClient() {
           </Select>
         </div>
       </header>
-
-      <AdminControlNav />
 
       {message ? <p className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{message}</p> : null}
       {error ? <p className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{error}</p> : null}
