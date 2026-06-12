@@ -2,41 +2,48 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check, Compass, MessageCircle, Sparkles } from "lucide-react";
-import { AgentCards } from "@/components/employability/AgentCards";
+import { ArrowRight, Check, Compass, HelpCircle, MessageCircle, Sparkles } from "lucide-react";
 import { PromptGatewayClient } from "@/components/employability/PromptGatewayClient";
 import { appLanguageOptions, useLanguage } from "@/lib/i18n/LanguageProvider";
 
 const landingCopy = {
   es: {
-    login: "Iniciar sesión",
+    login: "Iniciar sesion",
     register: "Crear cuenta",
     badge: "Tu carrera, con claridad",
-    title: "Encuentra el trabajo que también se sienta bien para ti.",
-    description: "Una metodología humana acompañada por inteligencia artificial para descubrir tu dirección, fortalecer tu perfil y avanzar con confianza.",
+    title: "Encuentra el trabajo que tambien se sienta bien para ti.",
+    description: "Una metodologia humana acompanada por inteligencia artificial para descubrir tu direccion, fortalecer tu perfil y avanzar con confianza.",
     primary: "Comenzar mi recorrido",
     secondary: "Explorar plataforma",
     benefits: ["Ruta personalizada", "Entregables guardados", "Avanza a tu ritmo"],
     routeEyebrow: "Tu ruta profesional",
-    routeTitle: "Pequeños pasos, gran dirección.",
+    routeTitle: "Pequenos pasos, gran direccion.",
     steps: [
-      ["01", "Discovery", "Lumo, BoostMe: Impúlsame, Clío Tarot, Recharge y Sensei Ikigai."],
-      ["02", "Currículum estratégico", "ScoreX, Optim y ScoreX 360 — Cíclope."],
+      ["01", "Discovery", "Lumo, BoostMe: Impulsame, Clio Tarot, Recharge y Sensei Ikigai."],
+      ["02", "Curriculum estrategico", "ScoreX, Optim y ScoreX 360 - Ciclope."],
       ["03", "LinkedIn", "Mr. Boost Linked y Tommy Lee Picture."],
-      ["04", "Prospección", "New Job Challenge e Indiana Jobs."],
-      ["05", "Persuasión", "Mr. Wow y Miss Quest."],
+      ["04", "Prospeccion", "New Job Challenge e Indiana Jobs."],
+      ["05", "Persuasion", "Mr. Wow y Miss Quest."],
     ],
-    teamEyebrow: "Tu equipo personal",
-    teamTitle: "Agentes expertos, una sola experiencia.",
-    teamDescription: "Elige por dónde comenzar. Cada agente tiene una misión clara y te acompaña con resultados accionables.",
     testimonialsEyebrow: "Historias reales",
-    testimonialsTitle: "Acompañamiento humano con herramientas inteligentes.",
-    testimonialsNote: "Los testimonios publicados deberán contar con autorización validada, folio y vigencia antes de mostrarse en producción.",
-    footer: "© 2026 Empléate YA. Diseñado para avanzar con confianza.",
+    testimonialsTitle: "Acompanamiento humano con herramientas inteligentes.",
+    testimonialsNote: "Los testimonios publicados deberan contar con autorizacion validada, folio y vigencia antes de mostrarse en produccion.",
+    faqEyebrow: "Preguntas frecuentes",
+    faqTitle: "Lo esencial antes de comenzar.",
+    faqDescription: "Resuelve rapidamente las dudas mas comunes sobre Empleate YA, creditos, privacidad, coaching y servicios para empresas.",
+    faqs: [
+      ["Que es Empleate YA?", "Es una plataforma de empleabilidad con metodologia humana e inteligencia artificial para diagnosticar, optimizar y acompanar tu busqueda de empleo."],
+      ["Como funcionan los creditos?", "Cada avatar consume creditos segun el uso de IA, documentos generados y complejidad del entregable. En tu estado de cuenta podras ver fecha, avatar, consumo y saldo."],
+      ["Puedo usar la plataforma si soy empresa o emprendedor?", "Si. Empresas y emprendedores tendran licencias, usuarios asignados, campanas, seguimiento de avance y reportes autorizados."],
+      ["Mi informacion esta protegida?", "El usuario conserva la propiedad de su informacion. El acceso se controla por roles, permisos, bitacora y politicas de privacidad."],
+      ["Que pasa si necesito ayuda personalizada?", "Puedes contratar coaching 1o1, cursos o servicios de outplacement segun tu caso. Tambien puedes escribirnos por WhatsApp desde esta pantalla."],
+    ],
+    footer: "2026 Empleate YA. Disenado para avanzar con confianza.",
     privacy: "Privacidad",
-    settings: "Configuración",
+    settings: "Configuracion",
     whatsapp: "WhatsApp",
-    whatsappMessage: "Hola, quiero información sobre Empléate YA.",
+    whatsappMessage: "Hola, quiero informacion sobre Empleate YA.",
+    heroAlt: "Mujer profesional acompanada por bots de Empleate YA",
   },
   en: {
     login: "Sign in",
@@ -50,31 +57,55 @@ const landingCopy = {
     routeEyebrow: "Your professional path",
     routeTitle: "Small steps, strong direction.",
     steps: [
-      ["01", "Discovery", "Lumo, BoostMe: Impúlsame, Clío Tarot, Recharge, and Sensei Ikigai."],
-      ["02", "Strategic resume", "ScoreX, Optim, and ScoreX 360 — Cíclope."],
+      ["01", "Discovery", "Lumo, BoostMe: Impulsame, Clio Tarot, Recharge, and Sensei Ikigai."],
+      ["02", "Strategic resume", "ScoreX, Optim, and ScoreX 360 - Ciclope."],
       ["03", "LinkedIn", "Mr. Boost Linked and Tommy Lee Picture."],
       ["04", "Prospecting", "New Job Challenge and Indiana Jobs."],
       ["05", "Persuasion", "Mr. Wow and Miss Quest."],
     ],
-    teamEyebrow: "Your personal team",
-    teamTitle: "Expert agents, one experience.",
-    teamDescription: "Choose where to begin. Each agent has a clear mission and supports you with actionable results.",
     testimonialsEyebrow: "Real stories",
     testimonialsTitle: "Human guidance supported by intelligent tools.",
     testimonialsNote: "Published testimonials must have validated authorization, folio, and validity before production display.",
-    footer: "© 2026 Empléate YA. Designed to move forward with confidence.",
+    faqEyebrow: "Frequently asked questions",
+    faqTitle: "The essentials before you start.",
+    faqDescription: "Quick answers about Empleate YA, credits, privacy, coaching, and company services.",
+    faqs: [
+      ["What is Empleate YA?", "It is an employability platform that combines a human methodology with artificial intelligence to diagnose, improve, and support your job search."],
+      ["How do credits work?", "Each avatar consumes credits based on AI usage, generated documents, and deliverable complexity. Your statement will show date, avatar, credits used, and remaining balance."],
+      ["Can companies or entrepreneurs use the platform?", "Yes. Companies and entrepreneurs will have licenses, assigned users, campaigns, progress tracking, and authorized reports."],
+      ["Is my information protected?", "Users own their information. Access is controlled through roles, permissions, audit logs, and privacy policies."],
+      ["What if I need personalized help?", "You can hire 1:1 coaching, courses, or outplacement services depending on your case. You can also contact us by WhatsApp from this page."],
+    ],
+    footer: "2026 Empleate YA. Designed to move forward with confidence.",
     privacy: "Privacy",
     settings: "Settings",
     whatsapp: "WhatsApp",
-    whatsappMessage: "Hello, I would like information about Empléate YA.",
+    whatsappMessage: "Hello, I would like information about Empleate YA.",
+    heroAlt: "Professional woman supported by Empleate YA bots",
   },
 } as const;
 
 const testimonials = [
-  { image: "/testimonials/testimonial-1.png", name: "Candidata area salud", quote: "Me ayudo a ordenar mi historia profesional y presentar mejor mis logros." },
-  { image: "/testimonials/testimonial-2.png", name: "Lider comercial", quote: "ScoreX me mostro puntos ciegos de mi CV antes de enviarlo a una vacante clave." },
-  { image: "/testimonials/testimonial-3.png", name: "Director en transicion", quote: "La metodologia hizo mas claro mi siguiente paso y mi mensaje de valor." },
-  { image: "/testimonials/testimonial-4.png", name: "Profesional senior", quote: "Los agentes me dieron estructura para avanzar sin perder confianza." },
+  {
+    image: "/testimonials/testimonial-1.png",
+    es: { name: "Candidata area salud", quote: "Me ayudo a ordenar mi historia profesional y presentar mejor mis logros." },
+    en: { name: "Healthcare candidate", quote: "It helped me organize my professional story and present my achievements more clearly." },
+  },
+  {
+    image: "/testimonials/testimonial-2.png",
+    es: { name: "Lider comercial", quote: "ScoreX me mostro puntos ciegos de mi CV antes de enviarlo a una vacante clave." },
+    en: { name: "Commercial leader", quote: "ScoreX showed me blind spots in my resume before sending it to a key opening." },
+  },
+  {
+    image: "/testimonials/testimonial-3.png",
+    es: { name: "Director en transicion", quote: "La metodologia hizo mas claro mi siguiente paso y mi mensaje de valor." },
+    en: { name: "Executive in transition", quote: "The methodology made my next step and value message much clearer." },
+  },
+  {
+    image: "/testimonials/testimonial-4.png",
+    es: { name: "Profesional senior", quote: "Los agentes me dieron estructura para avanzar sin perder confianza." },
+    en: { name: "Senior professional", quote: "The agents gave me structure to keep moving forward without losing confidence." },
+  },
 ] as const;
 
 export default function LandingPage() {
@@ -86,7 +117,7 @@ export default function LandingPage() {
     <main className="min-h-screen bg-[var(--brand-canvas)] text-[var(--brand-ink)]">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
         <Link href="/" className="text-xl font-black tracking-tight text-[var(--brand-ink)]">
-          Empléate <span className="text-[var(--brand-primary)]">YA</span>
+          Empleate <span className="text-[var(--brand-primary)]">YA</span>
         </Link>
         <div className="flex items-center gap-2">
           <div className="grid grid-cols-2 rounded-full border border-slate-200 bg-white/80 p-1 text-xs shadow-sm">
@@ -141,7 +172,7 @@ export default function LandingPage() {
           <div className="relative z-0 order-first mx-auto flex min-h-[420px] w-full max-w-[600px] items-end justify-center lg:order-none lg:-mx-12 lg:min-h-[760px] lg:max-w-none">
             <Image
               src="/images/home-hero-bots-cutout.png"
-              alt="Mujer profesional acompañada por bots de Empléate YA"
+              alt={t.heroAlt}
               width={1080}
               height={1440}
               priority
@@ -181,28 +212,45 @@ export default function LandingPage() {
           <p className="mt-4 text-sm font-semibold leading-6 text-slate-500">{t.testimonialsNote}</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {testimonials.map((item) => (
-            <article key={item.image} className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
-              <div className="relative h-64 bg-slate-50">
-                <Image src={item.image} alt={item.name} fill sizes="(min-width: 1280px) 25vw, (min-width: 768px) 50vw, 100vw" className="object-contain object-bottom" />
-              </div>
-              <div className="p-5">
-                <h3 className="font-black text-slate-950">{item.name}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">&quot;{item.quote}&quot;</p>
-              </div>
-            </article>
-          ))}
+          {testimonials.map((item) => {
+            const testimonial = item[language];
+            return (
+              <article key={item.image} className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
+                <div className="relative h-64 bg-slate-50">
+                  <Image src={item.image} alt={testimonial.name} fill sizes="(min-width: 1280px) 25vw, (min-width: 768px) 50vw, 100vw" className="object-contain object-bottom" />
+                </div>
+                <div className="p-5">
+                  <h3 className="font-black text-slate-950">{testimonial.name}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">&quot;{testimonial.quote}&quot;</p>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
 
       <section className="border-y border-slate-100 bg-white/70">
         <div className="mx-auto max-w-7xl px-5 py-16 md:py-20">
           <div className="mb-10 max-w-2xl">
-            <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-[var(--brand-primary)]">{t.teamEyebrow}</p>
-            <h2 className="mt-3 text-4xl font-black tracking-[-0.04em] text-slate-950 md:text-5xl">{t.teamTitle}</h2>
-            <p className="mt-4 text-lg leading-8 text-slate-600">{t.teamDescription}</p>
+            <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-[var(--brand-primary)]">{t.faqEyebrow}</p>
+            <h2 className="mt-3 text-4xl font-black tracking-[-0.04em] text-slate-950 md:text-5xl">{t.faqTitle}</h2>
+            <p className="mt-4 text-lg leading-8 text-slate-600">{t.faqDescription}</p>
           </div>
-          <AgentCards />
+          <div className="grid gap-4 md:grid-cols-2">
+            {t.faqs.map(([question, answer]) => (
+              <article key={question} className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--brand-primary-soft)] text-[var(--brand-primary)]">
+                    <HelpCircle size={19} />
+                  </span>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-950">{question}</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{answer}</p>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
