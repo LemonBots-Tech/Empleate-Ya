@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check, Compass, HelpCircle, MessageCircle, Sparkles } from "lucide-react";
-import { PromptGatewayClient } from "@/components/employability/PromptGatewayClient";
+import { useState } from "react";
+import { ArrowRight, Check, ChevronDown, Compass, HelpCircle, MessageCircle, Sparkles } from "lucide-react";
 import { appLanguageOptions, useLanguage } from "@/lib/i18n/LanguageProvider";
 
 const landingCopy = {
@@ -110,6 +110,7 @@ const testimonials = [
 
 export default function LandingPage() {
   const { language, setLanguage } = useLanguage();
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
   const t = landingCopy[language];
   const whatsappHref = `https://wa.me/525545881648?text=${encodeURIComponent(t.whatsappMessage)}`;
 
@@ -201,11 +202,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="relative z-20 mx-auto -mt-4 max-w-5xl px-5 pb-16 md:-mt-24 md:pb-20">
-        <PromptGatewayClient compact homeChat />
-      </section>
-
-      <section className="mx-auto max-w-7xl px-5 pb-16 md:pb-20">
+      <section className="mx-auto max-w-7xl px-5 py-16 md:py-20">
         <div className="mb-8 max-w-3xl">
           <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-[var(--brand-primary)]">{t.testimonialsEyebrow}</p>
           <h2 className="mt-3 text-4xl font-black tracking-[-0.04em] text-slate-950 md:text-5xl">{t.testimonialsTitle}</h2>
@@ -236,18 +233,28 @@ export default function LandingPage() {
             <h2 className="mt-3 text-4xl font-black tracking-[-0.04em] text-slate-950 md:text-5xl">{t.faqTitle}</h2>
             <p className="mt-4 text-lg leading-8 text-slate-600">{t.faqDescription}</p>
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            {t.faqs.map(([question, answer]) => (
-              <article key={question} className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--brand-primary-soft)] text-[var(--brand-primary)]">
-                    <HelpCircle size={19} />
+          <div className="space-y-3">
+            {t.faqs.map(([question, answer], index) => (
+              <article key={question} className="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setOpenFaq(openFaq === index ? null : index)}
+                  className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-[var(--brand-primary-soft)]"
+                  aria-expanded={openFaq === index}
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[var(--brand-primary-soft)] text-[var(--brand-primary)]">
+                      <HelpCircle size={18} />
+                    </span>
+                    <span className="text-base font-black text-slate-950 md:text-lg">{question}</span>
                   </span>
-                  <div>
-                    <h3 className="text-lg font-black text-slate-950">{question}</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{answer}</p>
+                  <ChevronDown className={`shrink-0 text-[var(--brand-primary)] transition ${openFaq === index ? "rotate-180" : ""}`} size={20} />
+                </button>
+                {openFaq === index ? (
+                  <div className="border-t border-slate-100 px-5 pb-5 pt-4">
+                    <p className="max-w-4xl text-sm leading-6 text-slate-600 md:text-base md:leading-7">{answer}</p>
                   </div>
-                </div>
+                ) : null}
               </article>
             ))}
           </div>
