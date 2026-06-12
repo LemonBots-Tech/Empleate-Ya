@@ -37,40 +37,66 @@ const landingCopy = {
         name: "Lumo",
         stage: "Discovery",
         title: "Entender tu punto de partida",
+        objective: "Claridad personal y direccion profesional",
         description: "Identifica prioridades, energia, motivadores y direccion profesional antes de moverte. Esta etapa evita buscar empleo desde la urgencia y ayuda a elegir mejor el siguiente paso.",
         avatarHint: "Clarifica prioridades, motivacion, energia y direccion profesional.",
+        color: "#FDE2E4",
+        accent: "#E11D48",
       },
       {
         avatar: "/avatars/scorex.png",
         name: "ScoreX",
         stage: "CV estrategico",
         title: "Diagnosticar y fortalecer tu CV",
+        objective: "CV claro, medible y competitivo",
         description: "Evalua claridad, estructura, compatibilidad ATS y fuerza del perfil para saber que ajustar antes de competir por una vacante.",
         avatarHint: "Evalua claridad del CV, compatibilidad ATS y probabilidad contra vacantes.",
+        color: "#FFE8CC",
+        accent: "#F97316",
       },
       {
         avatar: "/avatars/mr-boost-linked.png",
         name: "Mr. Boost Linked",
         stage: "LinkedIn",
         title: "Alinear tu presencia profesional",
+        objective: "Marca profesional coherente",
         description: "Conecta tu narrativa de CV con tu perfil publico para que tu propuesta sea consistente en busquedas, mensajes y networking.",
         avatarHint: "Optimiza titular, acerca de, experiencia, habilidades y estrategia de LinkedIn.",
+        color: "#FEF3C7",
+        accent: "#D97706",
       },
       {
         avatar: "/avatars/new-job-challenge.png",
         name: "New Job Challenge",
         stage: "Prospeccion",
         title: "Buscar oportunidades con intencion",
+        objective: "Pipeline de oportunidades reales",
         description: "Ordena acciones, seguimiento y foco comercial para generar conversaciones, postulaciones y oportunidades reales.",
         avatarHint: "Convierte la busqueda de empleo en una rutina semanal medible y accionable.",
+        color: "#DCFCE7",
+        accent: "#16A34A",
       },
       {
         avatar: "/avatars/mr-wow.png",
         name: "Mr. Wow",
         stage: "Persuasion",
         title: "Prepararte para conversar y convencer",
+        objective: "Mensaje potente y defendible",
         description: "Convierte tu historia profesional en mensajes breves, potentes y defendibles para entrevistas, networking y decisiones clave.",
         avatarHint: "Crea mensajes de impacto para pitch, networking y conversaciones decisivas.",
+        color: "#DBEAFE",
+        accent: "#2563EB",
+      },
+      {
+        avatar: "/avatars/boost-me-impulsame.png",
+        name: "Empleate YA",
+        stage: "Trabajo ideal",
+        title: "Elegir y sostener el siguiente paso",
+        objective: "Decidir con confianza y avanzar",
+        description: "Integra claridad, CV, presencia digital, prospeccion y persuasion para acercarte a un trabajo que sea viable, coherente y deseable para tu momento profesional.",
+        avatarHint: "Cierre del proceso: convertir avances en una decision profesional concreta.",
+        color: "#EDE9FE",
+        accent: "#7C3AED",
       },
     ],
     faqEyebrow: "Preguntas frecuentes",
@@ -120,40 +146,66 @@ const landingCopy = {
         name: "Lumo",
         stage: "Discovery",
         title: "Understand your starting point",
+        objective: "Personal clarity and professional direction",
         description: "Identify priorities, energy, motivators, and professional direction before taking action. This stage helps you avoid searching from urgency and choose the next step more wisely.",
         avatarHint: "Clarifies priorities, motivation, energy, and professional direction.",
+        color: "#FDE2E4",
+        accent: "#E11D48",
       },
       {
         avatar: "/avatars/scorex.png",
         name: "ScoreX",
         stage: "Strategic resume",
         title: "Diagnose and strengthen your resume",
+        objective: "Clear, measurable, competitive resume",
         description: "Evaluate clarity, structure, ATS compatibility, and profile strength so you know what to improve before competing for a role.",
         avatarHint: "Evaluates resume clarity, ATS compatibility, and job-fit probability.",
+        color: "#FFE8CC",
+        accent: "#F97316",
       },
       {
         avatar: "/avatars/mr-boost-linked.png",
         name: "Mr. Boost Linked",
         stage: "LinkedIn",
         title: "Align your professional presence",
+        objective: "Consistent professional brand",
         description: "Connect your resume narrative with your public profile so your value proposition is consistent across search, messaging, and networking.",
         avatarHint: "Optimizes headline, about, experience, skills, and LinkedIn strategy.",
+        color: "#FEF3C7",
+        accent: "#D97706",
       },
       {
         avatar: "/avatars/new-job-challenge.png",
         name: "New Job Challenge",
         stage: "Prospecting",
         title: "Search for opportunities with intention",
+        objective: "Pipeline of real opportunities",
         description: "Organize actions, follow-up, and commercial focus to create conversations, applications, and real opportunities.",
         avatarHint: "Turns job search into a measurable weekly action routine.",
+        color: "#DCFCE7",
+        accent: "#16A34A",
       },
       {
         avatar: "/avatars/mr-wow.png",
         name: "Mr. Wow",
         stage: "Persuasion",
         title: "Prepare to speak and persuade",
+        objective: "Powerful and defensible message",
         description: "Turn your professional story into short, powerful, and defensible messages for interviews, networking, and key decisions.",
         avatarHint: "Creates high-impact messages for pitches, networking, and decisive conversations.",
+        color: "#DBEAFE",
+        accent: "#2563EB",
+      },
+      {
+        avatar: "/avatars/boost-me-impulsame.png",
+        name: "Empleate YA",
+        stage: "Ideal job",
+        title: "Choose and sustain the next step",
+        objective: "Decide with confidence and move forward",
+        description: "Bring together clarity, resume, digital presence, prospecting, and persuasion to move closer to work that is viable, coherent, and desirable for your professional moment.",
+        avatarHint: "Process close: turn progress into a concrete professional decision.",
+        color: "#EDE9FE",
+        accent: "#7C3AED",
       },
     ],
     faqEyebrow: "Frequently asked questions",
@@ -303,26 +355,49 @@ export default function LandingPage() {
             {t.methodology.map((item, index) => (
               <div key={item.stage} className="flex w-full justify-center">
                 <article
-                  className="flex w-full flex-col gap-5 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm md:flex-row md:items-center md:p-6"
+                  className="group/funnel relative min-h-[260px] w-full [perspective:1400px] md:min-h-[240px]"
                   style={{ maxWidth: `${1180 - index * 100}px` }}
                 >
-                  <div
-                    className="group/avatar relative mx-auto flex h-40 w-40 shrink-0 items-center justify-center rounded-full bg-white ring-8 ring-white shadow-[0_22px_60px_-28px_rgba(15,23,42,0.38)] md:mx-0 md:h-48 md:w-48"
-                    tabIndex={0}
-                    aria-label={`${item.name}: ${item.avatarHint}`}
-                  >
-                    <Image src={item.avatar} alt={item.name} fill sizes="192px" className="object-contain p-1" />
-                    <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-3 w-64 -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-xs font-bold leading-5 text-white opacity-0 shadow-2xl transition group-hover/avatar:opacity-100 group-focus/avatar:opacity-100">
-                      {item.avatarHint}
+                  <div className="relative h-full min-h-[260px] w-full rounded-[2rem] transition duration-700 [transform-style:preserve-3d] group-hover/funnel:[transform:rotateY(180deg)] group-focus-within/funnel:[transform:rotateY(180deg)] md:min-h-[240px]">
+                    <button
+                      type="button"
+                      className="absolute inset-0 flex h-full w-full flex-col justify-center rounded-[2rem] border border-white/80 p-6 text-left shadow-[0_22px_70px_-45px_rgba(15,23,42,0.55)] outline-none [backface-visibility:hidden] md:p-8"
+                      style={{ background: `linear-gradient(135deg, ${item.color}, #ffffff 78%)` }}
+                      aria-label={`${item.stage}: ${item.objective}`}
+                    >
+                      <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                        <div>
+                          <span className="inline-flex rounded-full bg-white/75 px-3 py-1 text-xs font-black uppercase tracking-[0.14em]" style={{ color: item.accent }}>
+                            {String(index + 1).padStart(2, "0")} - {item.stage}
+                          </span>
+                          <h3 className="mt-4 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">{item.title}</h3>
+                          <p className="mt-3 max-w-3xl text-lg font-black leading-7 text-slate-700">{item.objective}</p>
+                        </div>
+                        <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-white/75 text-4xl font-black shadow-inner" style={{ color: item.accent }}>
+                          {String(index + 1).padStart(2, "0")}
+                        </div>
+                      </div>
+                    </button>
+
+                    <div
+                      className="absolute inset-0 flex h-full w-full flex-col gap-5 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm [backface-visibility:hidden] [transform:rotateY(180deg)] md:flex-row md:items-center md:p-6"
+                      style={{ boxShadow: `0 26px 80px -48px ${item.accent}` }}
+                    >
+                      <div
+                        className="relative mx-auto flex h-44 w-44 shrink-0 items-center justify-center rounded-full bg-white ring-8 ring-white shadow-[0_22px_60px_-28px_rgba(15,23,42,0.38)] md:mx-0 md:h-52 md:w-52"
+                        aria-label={`${item.name}: ${item.avatarHint}`}
+                      >
+                        <Image src={item.avatar} alt={item.name} fill sizes="208px" className="object-contain p-0" />
+                      </div>
+                      <div className="min-w-0 flex-1 text-center md:text-left">
+                        <span className="inline-flex rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.14em]" style={{ background: item.color, color: item.accent }}>
+                          {item.stage}
+                        </span>
+                        <h3 className="mt-3 text-2xl font-black tracking-tight text-slate-950 md:text-3xl">{item.name}</h3>
+                        <p className="mt-2 text-sm font-black uppercase tracking-[0.14em] text-slate-500">{item.title}</p>
+                        <p className="mt-3 text-sm leading-6 text-slate-600 md:text-base md:leading-7">{item.description}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="min-w-0 flex-1 text-center md:text-left">
-                    <span className="inline-flex rounded-full bg-[var(--brand-primary-soft)] px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-[var(--brand-primary)]">
-                      {String(index + 1).padStart(2, "0")} - {item.stage}
-                    </span>
-                    <h3 className="mt-3 text-2xl font-black tracking-tight text-slate-950 md:text-3xl">{item.title}</h3>
-                    <p className="mt-2 text-sm font-black uppercase tracking-[0.14em] text-slate-500">{item.name}</p>
-                    <p className="mt-3 text-sm leading-6 text-slate-600 md:text-base md:leading-7">{item.description}</p>
                   </div>
                 </article>
               </div>
