@@ -38,6 +38,7 @@ const landingCopy = {
         stage: "Discovery",
         title: "Entender tu punto de partida",
         description: "Identifica prioridades, energia, motivadores y direccion profesional antes de moverte. Esta etapa evita buscar empleo desde la urgencia y ayuda a elegir mejor el siguiente paso.",
+        avatarHint: "Clarifica prioridades, motivacion, energia y direccion profesional.",
       },
       {
         avatar: "/avatars/scorex.png",
@@ -45,13 +46,15 @@ const landingCopy = {
         stage: "CV estrategico",
         title: "Diagnosticar y fortalecer tu CV",
         description: "Evalua claridad, estructura, compatibilidad ATS y fuerza del perfil para saber que ajustar antes de competir por una vacante.",
+        avatarHint: "Evalua claridad del CV, compatibilidad ATS y probabilidad contra vacantes.",
       },
       {
-        avatar: "/avatars/optim.png",
-        name: "Optim",
+        avatar: "/avatars/mr-boost-linked.png",
+        name: "Mr. Boost Linked",
         stage: "LinkedIn",
         title: "Alinear tu presencia profesional",
         description: "Conecta tu narrativa de CV con tu perfil publico para que tu propuesta sea consistente en busquedas, mensajes y networking.",
+        avatarHint: "Optimiza titular, acerca de, experiencia, habilidades y estrategia de LinkedIn.",
       },
       {
         avatar: "/avatars/new-job-challenge.png",
@@ -59,6 +62,7 @@ const landingCopy = {
         stage: "Prospeccion",
         title: "Buscar oportunidades con intencion",
         description: "Ordena acciones, seguimiento y foco comercial para generar conversaciones, postulaciones y oportunidades reales.",
+        avatarHint: "Convierte la busqueda de empleo en una rutina semanal medible y accionable.",
       },
       {
         avatar: "/avatars/mr-wow.png",
@@ -66,6 +70,7 @@ const landingCopy = {
         stage: "Persuasion",
         title: "Prepararte para conversar y convencer",
         description: "Convierte tu historia profesional en mensajes breves, potentes y defendibles para entrevistas, networking y decisiones clave.",
+        avatarHint: "Crea mensajes de impacto para pitch, networking y conversaciones decisivas.",
       },
     ],
     faqEyebrow: "Preguntas frecuentes",
@@ -116,6 +121,7 @@ const landingCopy = {
         stage: "Discovery",
         title: "Understand your starting point",
         description: "Identify priorities, energy, motivators, and professional direction before taking action. This stage helps you avoid searching from urgency and choose the next step more wisely.",
+        avatarHint: "Clarifies priorities, motivation, energy, and professional direction.",
       },
       {
         avatar: "/avatars/scorex.png",
@@ -123,13 +129,15 @@ const landingCopy = {
         stage: "Strategic resume",
         title: "Diagnose and strengthen your resume",
         description: "Evaluate clarity, structure, ATS compatibility, and profile strength so you know what to improve before competing for a role.",
+        avatarHint: "Evaluates resume clarity, ATS compatibility, and job-fit probability.",
       },
       {
-        avatar: "/avatars/optim.png",
-        name: "Optim",
+        avatar: "/avatars/mr-boost-linked.png",
+        name: "Mr. Boost Linked",
         stage: "LinkedIn",
         title: "Align your professional presence",
         description: "Connect your resume narrative with your public profile so your value proposition is consistent across search, messaging, and networking.",
+        avatarHint: "Optimizes headline, about, experience, skills, and LinkedIn strategy.",
       },
       {
         avatar: "/avatars/new-job-challenge.png",
@@ -137,6 +145,7 @@ const landingCopy = {
         stage: "Prospecting",
         title: "Search for opportunities with intention",
         description: "Organize actions, follow-up, and commercial focus to create conversations, applications, and real opportunities.",
+        avatarHint: "Turns job search into a measurable weekly action routine.",
       },
       {
         avatar: "/avatars/mr-wow.png",
@@ -144,6 +153,7 @@ const landingCopy = {
         stage: "Persuasion",
         title: "Prepare to speak and persuade",
         description: "Turn your professional story into short, powerful, and defensible messages for interviews, networking, and key decisions.",
+        avatarHint: "Creates high-impact messages for pitches, networking, and decisive conversations.",
       },
     ],
     faqEyebrow: "Frequently asked questions",
@@ -296,8 +306,15 @@ export default function LandingPage() {
                   className="flex w-full flex-col gap-5 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm md:flex-row md:items-center md:p-6"
                   style={{ maxWidth: `${1180 - index * 100}px` }}
                 >
-                  <div className="relative mx-auto flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f8f5ff] ring-8 ring-white shadow-[0_20px_55px_-32px_rgba(109,40,217,0.65)] md:mx-0 md:h-40 md:w-40">
-                    <Image src={item.avatar} alt={item.name} fill sizes="160px" className="object-contain p-4" />
+                  <div
+                    className="group/avatar relative mx-auto flex h-40 w-40 shrink-0 items-center justify-center rounded-full bg-white ring-8 ring-white shadow-[0_22px_60px_-28px_rgba(15,23,42,0.38)] md:mx-0 md:h-48 md:w-48"
+                    tabIndex={0}
+                    aria-label={`${item.name}: ${item.avatarHint}`}
+                  >
+                    <Image src={item.avatar} alt={item.name} fill sizes="192px" className="object-contain p-1" />
+                    <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-3 w-64 -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-xs font-bold leading-5 text-white opacity-0 shadow-2xl transition group-hover/avatar:opacity-100 group-focus/avatar:opacity-100">
+                      {item.avatarHint}
+                    </div>
                   </div>
                   <div className="min-w-0 flex-1 text-center md:text-left">
                     <span className="inline-flex rounded-full bg-[var(--brand-primary-soft)] px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-[var(--brand-primary)]">
