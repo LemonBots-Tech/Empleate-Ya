@@ -29,7 +29,7 @@ const landingCopy = {
     testimonialsTitle: "Acompanamiento humano con herramientas inteligentes.",
     testimonialsNote: "Los testimonios publicados deberan contar con autorizacion validada, folio y vigencia antes de mostrarse en produccion.",
     methodologyEyebrow: "Metodologia Empleate YA",
-    methodologyTitle: "Cuatro etapas para avanzar con orden.",
+    methodologyTitle: "Cinco etapas en forma de embudo.",
     methodologyDescription: "La plataforma no solo entrega documentos: acompana el proceso completo para entenderte, construir tu propuesta, buscar oportunidades y comunicarte mejor.",
     methodology: [
       {
@@ -40,25 +40,32 @@ const landingCopy = {
         description: "Identifica prioridades, energia, motivadores y direccion profesional antes de moverte. Esta etapa evita buscar empleo desde la urgencia y ayuda a elegir mejor el siguiente paso.",
       },
       {
+        avatar: "/avatars/scorex.png",
+        name: "ScoreX",
+        stage: "CV estrategico",
+        title: "Diagnosticar y fortalecer tu CV",
+        description: "Evalua claridad, estructura, compatibilidad ATS y fuerza del perfil para saber que ajustar antes de competir por una vacante.",
+      },
+      {
         avatar: "/avatars/optim.png",
         name: "Optim",
-        stage: "CV estrategico",
-        title: "Construir una propuesta profesional clara",
-        description: "Convierte experiencia, funciones y logros en un CV estructurado, compatible con ATS y facil de leer para reclutadores humanos.",
+        stage: "LinkedIn",
+        title: "Alinear tu presencia profesional",
+        description: "Conecta tu narrativa de CV con tu perfil publico para que tu propuesta sea consistente en busquedas, mensajes y networking.",
       },
       {
-        avatar: "/avatars/indiana-jobs.png",
-        name: "Indiana Jobs",
+        avatar: "/avatars/new-job-challenge.png",
+        name: "New Job Challenge",
         stage: "Prospeccion",
         title: "Buscar oportunidades con intencion",
-        description: "Ayuda a analizar vacantes, priorizar oportunidades y decidir donde conviene invertir tiempo, energia y postulaciones.",
+        description: "Ordena acciones, seguimiento y foco comercial para generar conversaciones, postulaciones y oportunidades reales.",
       },
       {
-        avatar: "/avatars/miss-quest.png",
-        name: "Miss Quest",
+        avatar: "/avatars/mr-wow.png",
+        name: "Mr. Wow",
         stage: "Persuasion",
         title: "Prepararte para conversar y convencer",
-        description: "Entrena entrevistas, respuestas por competencias y mensajes de valor para que puedas defender tu historia con seguridad y coherencia.",
+        description: "Convierte tu historia profesional en mensajes breves, potentes y defendibles para entrevistas, networking y decisiones clave.",
       },
     ],
     faqEyebrow: "Preguntas frecuentes",
@@ -100,7 +107,7 @@ const landingCopy = {
     testimonialsTitle: "Human guidance supported by intelligent tools.",
     testimonialsNote: "Published testimonials must have validated authorization, folio, and validity before production display.",
     methodologyEyebrow: "Empleate YA methodology",
-    methodologyTitle: "Four stages to move forward with structure.",
+    methodologyTitle: "Five funnel stages to move forward with structure.",
     methodologyDescription: "The platform does more than generate documents: it supports the full process so you can understand yourself, build your value proposition, find opportunities, and communicate better.",
     methodology: [
       {
@@ -111,25 +118,32 @@ const landingCopy = {
         description: "Identify priorities, energy, motivators, and professional direction before taking action. This stage helps you avoid searching from urgency and choose the next step more wisely.",
       },
       {
+        avatar: "/avatars/scorex.png",
+        name: "ScoreX",
+        stage: "Strategic resume",
+        title: "Diagnose and strengthen your resume",
+        description: "Evaluate clarity, structure, ATS compatibility, and profile strength so you know what to improve before competing for a role.",
+      },
+      {
         avatar: "/avatars/optim.png",
         name: "Optim",
-        stage: "Strategic resume",
-        title: "Build a clear professional proposition",
-        description: "Turn experience, responsibilities, and achievements into a structured resume that is ATS-friendly and easy for human recruiters to read.",
+        stage: "LinkedIn",
+        title: "Align your professional presence",
+        description: "Connect your resume narrative with your public profile so your value proposition is consistent across search, messaging, and networking.",
       },
       {
-        avatar: "/avatars/indiana-jobs.png",
-        name: "Indiana Jobs",
+        avatar: "/avatars/new-job-challenge.png",
+        name: "New Job Challenge",
         stage: "Prospecting",
         title: "Search for opportunities with intention",
-        description: "Helps analyze job postings, prioritize opportunities, and decide where it is worth investing time, energy, and applications.",
+        description: "Organize actions, follow-up, and commercial focus to create conversations, applications, and real opportunities.",
       },
       {
-        avatar: "/avatars/miss-quest.png",
-        name: "Miss Quest",
+        avatar: "/avatars/mr-wow.png",
+        name: "Mr. Wow",
         stage: "Persuasion",
         title: "Prepare to speak and persuade",
-        description: "Practice interviews, competency-based answers, and value messages so you can defend your story with confidence and coherence.",
+        description: "Turn your professional story into short, powerful, and defensible messages for interviews, networking, and key decisions.",
       },
     ],
     faqEyebrow: "Frequently asked questions",
@@ -275,23 +289,26 @@ export default function LandingPage() {
             <h2 className="mt-3 text-4xl font-black tracking-[-0.04em] text-slate-950 md:text-5xl">{t.methodologyTitle}</h2>
             <p className="mt-4 text-lg leading-8 text-slate-600">{t.methodologyDescription}</p>
           </div>
-          <div className="grid gap-4 lg:grid-cols-4">
+          <div className="space-y-4">
             {t.methodology.map((item, index) => (
-              <article key={item.stage} className="flex h-full flex-col rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <span className="rounded-full bg-[var(--brand-primary-soft)] px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-[var(--brand-primary)]">
-                      {String(index + 1).padStart(2, "0")} · {item.stage}
+              <div key={item.stage} className="flex w-full justify-center">
+                <article
+                  className="flex w-full flex-col gap-5 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm md:flex-row md:items-center md:p-6"
+                  style={{ maxWidth: `${1180 - index * 100}px` }}
+                >
+                  <div className="relative mx-auto flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f8f5ff] ring-8 ring-white shadow-[0_20px_55px_-32px_rgba(109,40,217,0.65)] md:mx-0 md:h-40 md:w-40">
+                    <Image src={item.avatar} alt={item.name} fill sizes="160px" className="object-contain p-4" />
+                  </div>
+                  <div className="min-w-0 flex-1 text-center md:text-left">
+                    <span className="inline-flex rounded-full bg-[var(--brand-primary-soft)] px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-[var(--brand-primary)]">
+                      {String(index + 1).padStart(2, "0")} - {item.stage}
                     </span>
-                    <h3 className="mt-4 text-2xl font-black tracking-tight text-slate-950">{item.title}</h3>
+                    <h3 className="mt-3 text-2xl font-black tracking-tight text-slate-950 md:text-3xl">{item.title}</h3>
+                    <p className="mt-2 text-sm font-black uppercase tracking-[0.14em] text-slate-500">{item.name}</p>
+                    <p className="mt-3 text-sm leading-6 text-slate-600 md:text-base md:leading-7">{item.description}</p>
                   </div>
-                  <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-3xl bg-[#f8f5ff] ring-1 ring-slate-100">
-                    <Image src={item.avatar} alt={item.name} fill sizes="80px" className="object-contain p-2" />
-                  </div>
-                </div>
-                <p className="mt-4 text-sm font-black uppercase tracking-[0.14em] text-slate-500">{item.name}</p>
-                <p className="mt-3 text-sm leading-6 text-slate-600">{item.description}</p>
-              </article>
+                </article>
+              </div>
             ))}
           </div>
         </div>
