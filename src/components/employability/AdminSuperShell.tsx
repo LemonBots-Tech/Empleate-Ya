@@ -60,6 +60,13 @@ const copy = {
     coaching: "Coaching",
     testimonials: "Testimonios",
     audit: "Bitacora",
+    userSubsections: [
+      ["Online", "/admin/users/online"],
+      ["Apoyos Super Admin", "/admin/users/super-admin-support"],
+      ["Coach Partner", "/admin/users/coach-partner"],
+      ["Empresa outplacement", "/admin/users/outplacement-rh"],
+      ["Coach interno 1o1", "/admin/users/internal-coach"],
+    ],
   },
   en: {
     title: "Super Admin",
@@ -82,6 +89,13 @@ const copy = {
     coaching: "Coaching",
     testimonials: "Testimonials",
     audit: "Audit log",
+    userSubsections: [
+      ["Online", "/admin/users/online"],
+      ["Super Admin Support", "/admin/users/super-admin-support"],
+      ["Coach Partner", "/admin/users/coach-partner"],
+      ["Outplacement company", "/admin/users/outplacement-rh"],
+      ["Internal 1:1 Coach", "/admin/users/internal-coach"],
+    ],
   },
 } as const;
 
@@ -109,17 +123,34 @@ export function AdminSuperShell({ children }: { children: ReactNode }) {
                     const Icon = item.icon;
                     const active = pathname === item.href;
                     return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={cn(
-                          "flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-black transition",
-                          active ? "bg-[var(--brand-primary)] text-white shadow-lg shadow-purple-500/20" : "text-slate-600 hover:bg-[var(--brand-primary-soft)] hover:text-[var(--brand-primary)]",
-                        )}
-                      >
-                        <Icon size={17} />
-                        {t[item.key]}
-                      </Link>
+                      <div key={item.href}>
+                        <Link
+                          href={item.href}
+                          className={cn(
+                            "flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-black transition",
+                            active || (item.key === "users" && pathname.startsWith("/admin/users")) ? "bg-[var(--brand-primary)] text-white shadow-lg shadow-purple-500/20" : "text-slate-600 hover:bg-[var(--brand-primary-soft)] hover:text-[var(--brand-primary)]",
+                          )}
+                        >
+                          <Icon size={17} />
+                          {t[item.key]}
+                        </Link>
+                        {item.key === "users" && pathname.startsWith("/admin/users") ? (
+                          <div className="ml-5 mt-2 grid gap-1 border-l border-slate-200 pl-3">
+                            {t.userSubsections.map(([label, href]) => (
+                              <Link
+                                key={href}
+                                href={href}
+                                className={cn(
+                                  "rounded-xl px-3 py-2 text-xs font-black transition",
+                                  pathname === href ? "bg-[var(--brand-primary-soft)] text-[var(--brand-primary)]" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900",
+                                )}
+                              >
+                                {label}
+                              </Link>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
                     );
                   })}
                 </div>
