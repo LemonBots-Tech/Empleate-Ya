@@ -403,7 +403,7 @@ export default function LandingPage() {
                         >
                           <Image src={item.avatar} alt={item.name} fill sizes="208px" className="object-cover object-center" />
                         </Link>
-                        <div className="pointer-events-none absolute left-1/2 top-full z-30 mt-3 w-72 -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-xs font-bold leading-5 text-white opacity-0 shadow-2xl transition group-hover/avatar:opacity-100 group-focus-within/avatar:opacity-100">
+                        <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-3 w-72 -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-xs font-bold leading-5 text-white opacity-0 shadow-2xl transition group-hover/avatar:opacity-100 group-focus-within/avatar:opacity-100 md:bottom-auto md:left-auto md:right-full md:top-1/2 md:mb-0 md:mr-4 md:-translate-x-0 md:-translate-y-1/2 md:text-left">
                           {item.avatarHint}
                         </div>
                       </div>
