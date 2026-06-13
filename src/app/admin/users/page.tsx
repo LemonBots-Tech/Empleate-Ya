@@ -1,12 +1,12 @@
 import { EmployabilityShell } from "@/components/employability/EmployabilityShell";
-import { AdminConsoleClient } from "@/components/employability/AdminConsoleClient";
+import { AdminUsersClient } from "@/components/employability/AdminUsersClient";
 import { AdminSuperShell } from "@/components/employability/AdminSuperShell";
 
 export default function AdminUsersPage() {
   return (
     <EmployabilityShell>
       <AdminSuperShell>
-        <AdminConsoleClient />
+        <AdminUsersClient />
       </AdminSuperShell>
     </EmployabilityShell>
   );
