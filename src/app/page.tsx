@@ -34,6 +34,7 @@ const landingCopy = {
     methodology: [
       {
         avatar: "/avatars/lumo.png",
+        href: "/modules/lumo",
         name: "Lumo",
         stage: "Discovery",
         title: "Entender tu punto de partida",
@@ -45,6 +46,7 @@ const landingCopy = {
       },
       {
         avatar: "/avatars/scorex.png",
+        href: "/modules/scorex",
         name: "ScoreX",
         stage: "CV estrategico",
         title: "Diagnosticar y fortalecer tu CV",
@@ -56,6 +58,7 @@ const landingCopy = {
       },
       {
         avatar: "/avatars/mr-boost-linked.png",
+        href: "/modules/mr_boost_linked",
         name: "Mr. Boost Linked",
         stage: "LinkedIn",
         title: "Alinear tu presencia profesional",
@@ -67,6 +70,7 @@ const landingCopy = {
       },
       {
         avatar: "/avatars/new-job-challenge.png",
+        href: "/modules/new_job_challenge",
         name: "New Job Challenge",
         stage: "Prospeccion",
         title: "Buscar oportunidades con intencion",
@@ -78,6 +82,7 @@ const landingCopy = {
       },
       {
         avatar: "/avatars/mr-wow.png",
+        href: "/modules/mr_wow",
         name: "Mr. Wow",
         stage: "Persuasion",
         title: "Prepararte para conversar y convencer",
@@ -88,8 +93,9 @@ const landingCopy = {
         accent: "#2563EB",
       },
       {
-        avatar: "/avatars/boost-me-impulsame.png",
-        name: "Empleate YA",
+        avatar: "/avatars/miss-quest.png",
+        href: "/modules/miss_quest",
+        name: "Miss Quest",
         stage: "Trabajo ideal",
         title: "Elegir y sostener el siguiente paso",
         objective: "Decidir con confianza y avanzar",
@@ -143,6 +149,7 @@ const landingCopy = {
     methodology: [
       {
         avatar: "/avatars/lumo.png",
+        href: "/modules/lumo",
         name: "Lumo",
         stage: "Discovery",
         title: "Understand your starting point",
@@ -154,6 +161,7 @@ const landingCopy = {
       },
       {
         avatar: "/avatars/scorex.png",
+        href: "/modules/scorex",
         name: "ScoreX",
         stage: "Strategic resume",
         title: "Diagnose and strengthen your resume",
@@ -165,6 +173,7 @@ const landingCopy = {
       },
       {
         avatar: "/avatars/mr-boost-linked.png",
+        href: "/modules/mr_boost_linked",
         name: "Mr. Boost Linked",
         stage: "LinkedIn",
         title: "Align your professional presence",
@@ -176,6 +185,7 @@ const landingCopy = {
       },
       {
         avatar: "/avatars/new-job-challenge.png",
+        href: "/modules/new_job_challenge",
         name: "New Job Challenge",
         stage: "Prospecting",
         title: "Search for opportunities with intention",
@@ -187,6 +197,7 @@ const landingCopy = {
       },
       {
         avatar: "/avatars/mr-wow.png",
+        href: "/modules/mr_wow",
         name: "Mr. Wow",
         stage: "Persuasion",
         title: "Prepare to speak and persuade",
@@ -197,8 +208,9 @@ const landingCopy = {
         accent: "#2563EB",
       },
       {
-        avatar: "/avatars/boost-me-impulsame.png",
-        name: "Empleate YA",
+        avatar: "/avatars/miss-quest.png",
+        href: "/modules/miss_quest",
+        name: "Miss Quest",
         stage: "Ideal job",
         title: "Choose and sustain the next step",
         objective: "Decide with confidence and move forward",
@@ -383,11 +395,17 @@ export default function LandingPage() {
                       className="absolute inset-0 flex h-full w-full flex-col gap-5 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm [backface-visibility:hidden] [transform:rotateY(180deg)] md:flex-row md:items-center md:p-6"
                       style={{ boxShadow: `0 26px 80px -48px ${item.accent}` }}
                     >
-                      <div
-                        className="relative mx-auto flex h-44 w-44 shrink-0 items-center justify-center rounded-full bg-white ring-8 ring-white shadow-[0_22px_60px_-28px_rgba(15,23,42,0.38)] md:mx-0 md:h-52 md:w-52"
-                        aria-label={`${item.name}: ${item.avatarHint}`}
-                      >
-                        <Image src={item.avatar} alt={item.name} fill sizes="208px" className="object-contain p-0" />
+                      <div className="group/avatar relative mx-auto shrink-0 md:mx-0">
+                        <Link
+                          href={item.href}
+                          className="relative flex h-44 w-44 items-center justify-center overflow-hidden rounded-full bg-white ring-8 ring-white shadow-[0_22px_60px_-28px_rgba(15,23,42,0.38)] outline-none transition hover:scale-[1.03] focus:scale-[1.03] focus:ring-[var(--brand-primary)] md:h-52 md:w-52"
+                          aria-label={`${item.name}: ${item.avatarHint}`}
+                        >
+                          <Image src={item.avatar} alt={item.name} fill sizes="208px" className="object-cover object-center" />
+                        </Link>
+                        <div className="pointer-events-none absolute left-1/2 top-full z-30 mt-3 w-72 -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-xs font-bold leading-5 text-white opacity-0 shadow-2xl transition group-hover/avatar:opacity-100 group-focus-within/avatar:opacity-100">
+                          {item.avatarHint}
+                        </div>
                       </div>
                       <div className="min-w-0 flex-1 text-center md:text-left">
                         <span className="inline-flex rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.14em]" style={{ background: item.color, color: item.accent }}>
