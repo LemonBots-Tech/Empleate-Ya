@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { Building2, Edit3, Search, ShieldCheck, Trash2, UserPlus, UsersRound } from "lucide-react";
+import { Building2, Edit3, KeyRound, Search, ShieldCheck, Trash2, UserPlus, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Select } from "@/components/ui/Input";
+import { skillRegistry, type SkillId } from "@/ai/skillRegistry";
+import { adminSections } from "./AdminSuperShell";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 export type AdminUserKind = "online" | "super-admin-support" | "coach-partner" | "outplacement-rh" | "internal-coach";
@@ -155,6 +157,20 @@ const copy = {
     orgHelp: "Para empresas de outplacement y coach partners, la organizacion viene del catalogo administrado por Super Admin o apoyos de Super Admin.",
     privacyAccepted: "Acepto privacidad",
     privacyReadonly: "Solo Super Admin puede modificar este registro.",
+    permissions: "Permisos",
+    permissionsTitle: "Permisos y limites de acceso",
+    permissionsHelp: "Configura avatares, opciones del menu lateral y submenus disponibles para este perfil. El consumo real se descuenta contra la bolsa de creditos correspondiente.",
+    avatars: "Avatares",
+    adminMenu: "Menu lateral Super Admin",
+    submenu: "Submenus de usuarios",
+    onlineRule: "Regla online",
+    onlineProspectRule: "Prospecto online: solo avatares basicos una vez por avatar. Cliente Online Pagado: acceso a todos los avatares, sujeto a saldo suficiente.",
+    partnerPlan: "Plan Coach Partner",
+    partnerCreditPool: "Bolsa maxima mensual de franquicia",
+    partnerRule: "El responsable de franquicia concentra la bolsa. Apoyos del partner y alumnos descuentan de esa bolsa principal.",
+    groups: "Grupos",
+    students: "Alumnos por grupo",
+    cycles: "Ciclos de uso",
     notes: "Notas internas",
     extra: "Datos especificos",
     results: "Usuarios encontrados",
@@ -187,6 +203,20 @@ const copy = {
     orgHelp: "For outplacement companies and coach partners, the organization comes from the organization catalog managed by Super Admin or Super Admin support users.",
     privacyAccepted: "Privacy accepted",
     privacyReadonly: "Only Super Admin can modify this record.",
+    permissions: "Permissions",
+    permissionsTitle: "Access permissions and limits",
+    permissionsHelp: "Configure avatars, left-side menu options, and user submenus available for this profile. Actual usage is deducted from the corresponding credit pool.",
+    avatars: "Avatars",
+    adminMenu: "Super Admin side menu",
+    submenu: "User submenus",
+    onlineRule: "Online rule",
+    onlineProspectRule: "Online prospect: basic avatars only, once per avatar. Paid online client: all avatars, subject to enough credit balance.",
+    partnerPlan: "Coach Partner plan",
+    partnerCreditPool: "Monthly franchise credit pool",
+    partnerRule: "The franchise owner holds the main pool. Partner support users and students deduct from that main pool.",
+    groups: "Groups",
+    students: "Students per group",
+    cycles: "Usage cycles",
     notes: "Internal notes",
     extra: "Specific data",
     results: "Found users",
@@ -196,10 +226,59 @@ const copy = {
   },
 } as const;
 
+const adminMenuLabels = {
+  es: {
+    overview: "Resumen",
+    users: "Usuarios",
+    organizations: "Organizaciones",
+    campaigns: "Campanas",
+    avatars: "Avatares",
+    catalogs: "Catalogos",
+    permissions: "Permisos",
+    credits: "Creditos",
+    payments: "Pagos",
+    reports: "Reportes",
+    coaching: "Coaching",
+    testimonials: "Testimonios",
+    audit: "Bitacora",
+  },
+  en: {
+    overview: "Overview",
+    users: "Users",
+    organizations: "Organizations",
+    campaigns: "Campaigns",
+    avatars: "Avatars",
+    catalogs: "Catalogs",
+    permissions: "Permissions",
+    credits: "Credits",
+    payments: "Payments",
+    reports: "Reports",
+    coaching: "Coaching",
+    testimonials: "Testimonials",
+    audit: "Audit log",
+  },
+} as const;
+
 const internalOwners = ["Leo Galvez - Super Admin", "Daniela Ponce - Apoyo cobranza", "Ricardo Vega - Operativo outplacement", "Valeria Nunez - Apoyo administrativo", "Monica Reyes - Supervisor delegado temporal"] as const;
 const empleateYaOrganization = "Empleate YA";
 const onlineBaselineCredits = 445;
 const canCurrentUserEditPrivacyAcceptance = true;
+const onlineBasicAvatarIds: SkillId[] = ["lumo", "recharge", "scorex", "mr_ikigai", "new_job_challenge", "mr_wow"];
+const coachStarterAvatarIds: SkillId[] = ["scorex", "optim", "mr_wow", "tommy_lee_picture"];
+const allAvatarIds = Object.keys(skillRegistry) as SkillId[];
+const userSubmenuPermissions = [
+  "/admin/users/online",
+  "/admin/users/super-admin-support",
+  "/admin/users/coach-partner",
+  "/admin/users/outplacement-rh",
+  "/admin/users/internal-coach",
+] as const;
+
+const coachPartnerPlans = {
+  starter: { label: "Coach Starter", avatarIds: coachStarterAvatarIds, groups: 4, studentsPerGroup: 5, cycles: 3 },
+  pro: { label: "Coach Pro", avatarIds: [...coachStarterAvatarIds, "mr_boost_linked", "miss_quest"] as SkillId[], groups: 8, studentsPerGroup: 8, cycles: 3 },
+  business: { label: "Coach Business", avatarIds: allAvatarIds, groups: 12, studentsPerGroup: 10, cycles: 3 },
+} as const;
 
 const organizationCatalog = {
   "coach-partner": ["Franquicia Demo Norte", "Franquicia Demo Bajio", "Partner Ejecutivo CDMX", "Partner Carrera Global"],
@@ -226,6 +305,8 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [selectedEmail, setSelectedEmail] = useState("");
+  const [showPermissions, setShowPermissions] = useState(false);
+  const [coachPlanKey, setCoachPlanKey] = useState<keyof typeof coachPartnerPlans>("starter");
 
   const filteredUsers = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -303,6 +384,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             <Button className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]"><UserPlus size={17} />{t.create}</Button>
             <Button disabled={!selectedUser} className="gap-2 bg-slate-950 text-white hover:bg-slate-800"><Edit3 size={17} />{t.edit}</Button>
             <Button disabled={!selectedUser} className="gap-2 bg-red-600 text-white hover:bg-red-700"><Trash2 size={17} />{t.deleteLogical}</Button>
+            <Button className="gap-2 border border-[var(--brand-border)] bg-white text-[var(--brand-primary)] hover:bg-[var(--brand-primary-soft)]" onClick={() => setShowPermissions((current) => !current)}><KeyRound size={17} />{t.permissions}</Button>
           </div>
         </div>
 
@@ -335,9 +417,142 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
           <Label>{t.notes}</Label>
           <textarea className="min-h-28 w-full rounded-2xl border border-[var(--brand-border)] bg-white px-4 py-3 text-sm text-[var(--brand-ink)] outline-none transition focus:border-[var(--brand-primary)] focus:ring-4 focus:ring-[var(--brand-primary-soft)]" defaultValue={selectedUser?.notes ?? ""} />
         </div>
+        {showPermissions ? (
+          <PermissionsPanel
+            userKind={userKind}
+            userRole={selectedUser?.role ?? kind.roles[0]}
+            language={language}
+            coachPlanKey={coachPlanKey}
+            onCoachPlanChange={setCoachPlanKey}
+          />
+        ) : null}
       </section>
     </div>
   );
+}
+
+function PermissionsPanel({
+  userKind,
+  userRole,
+  language,
+  coachPlanKey,
+  onCoachPlanChange,
+}: {
+  userKind: AdminUserKind;
+  userRole: string;
+  language: "es" | "en";
+  coachPlanKey: keyof typeof coachPartnerPlans;
+  onCoachPlanChange: (value: keyof typeof coachPartnerPlans) => void;
+}) {
+  const t = copy[language];
+  const userIsPaidOnline = userRole === "Cliente Online Pagado" || userRole === "Paid online client";
+  const allowedAvatarIds = allowedAvatarsFor(userKind, userRole, coachPlanKey);
+  const partnerPlan = coachPartnerPlans[coachPlanKey];
+  const partnerCreditPool = calculateCoachPartnerPool(partnerPlan.avatarIds, partnerPlan.groups, partnerPlan.studentsPerGroup, partnerPlan.cycles);
+
+  return (
+    <section className="mt-6 rounded-[1.5rem] border border-purple-200 bg-purple-50/40 p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h3 className="flex items-center gap-2 text-2xl font-black text-slate-950"><KeyRound size={20} />{t.permissionsTitle}</h3>
+          <p className="mt-2 max-w-4xl text-sm font-semibold leading-6 text-slate-600">{t.permissionsHelp}</p>
+        </div>
+        {userKind === "coach-partner" ? (
+          <div className="w-full rounded-2xl bg-white p-3 shadow-sm lg:w-80">
+            <Label>{t.partnerPlan}</Label>
+            <Select value={coachPlanKey} onChange={(event) => onCoachPlanChange(event.target.value as keyof typeof coachPartnerPlans)}>
+              {Object.entries(coachPartnerPlans).map(([key, plan]) => <option key={key} value={key}>{plan.label}</option>)}
+            </Select>
+            <div className="mt-3 rounded-xl bg-slate-950 p-3 text-sm font-bold text-white">
+              <p>{t.partnerCreditPool}: {partnerCreditPool.toLocaleString(language === "es" ? "es-MX" : "en-US")}</p>
+              <p className="mt-1 text-xs text-slate-300">{t.groups}: {partnerPlan.groups} · {t.students}: {partnerPlan.studentsPerGroup} · {t.cycles}: {partnerPlan.cycles}</p>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {userKind === "online" ? (
+        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold leading-6 text-amber-900">
+          {t.onlineRule}: {userIsPaidOnline ? (language === "es" ? "Cliente con acceso completo por saldo." : "Paid client with full access by balance.") : t.onlineProspectRule}
+        </div>
+      ) : null}
+      {userKind === "coach-partner" ? (
+        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold leading-6 text-emerald-900">{t.partnerRule}</div>
+      ) : null}
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-[1.2fr_1fr_1fr]">
+        <ChecklistCard title={t.avatars}>
+          <div className="grid max-h-80 gap-2 overflow-auto pr-1">
+            {allAvatarIds.map((avatarId) => {
+              const skill = skillRegistry[avatarId];
+              const checked = allowedAvatarIds.includes(avatarId);
+              return (
+                <PermissionCheck
+                  key={avatarId}
+                  checked={checked}
+                  title={skill.name}
+                  detail={`${skill.baseCredits} ${language === "es" ? "creditos" : "credits"}`}
+                />
+              );
+            })}
+          </div>
+        </ChecklistCard>
+        <ChecklistCard title={t.adminMenu}>
+          <div className="grid max-h-80 gap-2 overflow-auto pr-1">
+            {adminSections.map((section) => (
+              <PermissionCheck
+                key={section.href}
+                checked={menuAllowedFor(userKind, section.href)}
+                title={adminMenuLabels[language][section.key]}
+                detail={section.href}
+              />
+            ))}
+          </div>
+        </ChecklistCard>
+        <ChecklistCard title={t.submenu}>
+          <div className="grid max-h-80 gap-2 overflow-auto pr-1">
+            {userSubmenuPermissions.map((href) => (
+              <PermissionCheck
+                key={href}
+                checked={userSubmenuAllowedFor(userKind, href)}
+                title={href.split("/").at(-1)?.replaceAll("-", " ") ?? href}
+                detail={href}
+              />
+            ))}
+          </div>
+        </ChecklistCard>
+      </div>
+    </section>
+  );
+}
+
+function allowedAvatarsFor(userKind: AdminUserKind, userRole: string, coachPlanKey: keyof typeof coachPartnerPlans) {
+  if (userKind === "online") {
+    return userRole === "Cliente Online Pagado" || userRole === "Paid online client" ? allAvatarIds : onlineBasicAvatarIds;
+  }
+  if (userKind === "coach-partner") return coachPartnerPlans[coachPlanKey].avatarIds;
+  return allAvatarIds;
+}
+
+function calculateCoachPartnerPool(avatarIds: readonly SkillId[], groups: number, studentsPerGroup: number, cycles: number) {
+  const creditsPerStudentCycle = avatarIds.reduce((total, avatarId) => total + skillRegistry[avatarId].baseCredits, 0);
+  return creditsPerStudentCycle * groups * studentsPerGroup * cycles;
+}
+
+function menuAllowedFor(userKind: AdminUserKind, href: string) {
+  if (userKind === "online") return false;
+  if (userKind === "coach-partner") return ["/admin/users", "/admin/campaigns", "/admin/credits", "/admin/reports", "/admin/coaching"].includes(href);
+  if (userKind === "outplacement-rh") return ["/admin/users", "/admin/organizations", "/admin/campaigns", "/admin/reports"].includes(href);
+  if (userKind === "internal-coach") return ["/admin/users", "/admin/coaching", "/admin/testimonials", "/admin/reports"].includes(href);
+  return true;
+}
+
+function userSubmenuAllowedFor(userKind: AdminUserKind, href: string) {
+  if (userKind === "super-admin-support") return true;
+  if (userKind === "coach-partner") return href === "/admin/users/coach-partner" || href === "/admin/users/online";
+  if (userKind === "outplacement-rh") return href === "/admin/users/outplacement-rh" || href === "/admin/users/online";
+  if (userKind === "internal-coach") return href === "/admin/users/internal-coach" || href === "/admin/users/online";
+  return href === "/admin/users/online";
 }
 
 function usesOrganizationCatalog(userKind: AdminUserKind): userKind is "coach-partner" | "outplacement-rh" {
@@ -375,4 +590,25 @@ function Td({ children }: { children: ReactNode }) {
 
 function Pill({ children }: { children: ReactNode }) {
   return <span className="inline-flex whitespace-nowrap rounded-full bg-[var(--brand-primary-soft)] px-3 py-1 text-xs font-black text-[var(--brand-primary)]">{children}</span>;
+}
+
+function ChecklistCard({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="rounded-[1.25rem] border border-slate-200 bg-white p-4 shadow-sm">
+      <h4 className="mb-3 text-lg font-black text-slate-950">{title}</h4>
+      {children}
+    </section>
+  );
+}
+
+function PermissionCheck({ checked, title, detail }: { checked: boolean; title: string; detail: string }) {
+  return (
+    <label className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm">
+      <input type="checkbox" className="mt-1" defaultChecked={checked} />
+      <span className="min-w-0">
+        <span className="block font-black text-slate-900">{title}</span>
+        <small className="block truncate font-semibold text-slate-500">{detail}</small>
+      </span>
+    </label>
+  );
 }
