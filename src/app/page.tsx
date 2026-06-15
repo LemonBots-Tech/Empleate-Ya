@@ -28,6 +28,17 @@ const landingCopy = {
     testimonialsEyebrow: "Historias reales",
     testimonialsTitle: "Acompanamiento humano con herramientas inteligentes.",
     testimonialsNote: "Los testimonios publicados deberan contar con autorizacion validada, folio y vigencia antes de mostrarse en produccion.",
+    solutionsEyebrow: "Soluciones para organizaciones",
+    solutionsTitle: "Llevamos la metodologia a coaches, partners y empresas.",
+    solutionsDescription: "Empleate YA puede operar como plataforma directa para usuarios finales o como infraestructura metodologica para terceros que acompanan talento.",
+    partnerTitle: "Partnership con coaches terceros",
+    partnerDescription: "Creamos un esquema para coaches independientes, consultores y emprendedores que quieran usar la metodologia Empleate YA con sus propios clientes. El partner conserva la relacion comercial con su cliente, mientras la plataforma aporta avatares, entregables, seguimiento, reportes y una ruta ordenada de trabajo.",
+    partnerPoints: ["Licencia minima de 6 meses", "Curso online de metodologia", "Clientes propios dentro de la plataforma", "Seguimiento de avance, creditos y entregables"],
+    partnerCta: "Ver emprendedores",
+    outplacementTitle: "Outplacement para empresas",
+    outplacementDescription: "Para empresas que necesitan acompanar a ex-colaboradores en procesos de transicion laboral. El administrador de RH puede crear campanas, asignar participantes, revisar avances autorizados y combinar plataforma con coaching online o presencial.",
+    outplacementPoints: ["Campanas por empresa y grupo", "Acceso para ex-colaboradores autorizados", "Reportes de avance y consumo", "Coaching opcional para casos clave"],
+    outplacementCta: "Servicios para empresas",
     methodologyEyebrow: "Metodologia Empleate YA",
     methodologyTitle: "Cinco etapas en forma de embudo.",
     methodologyDescription: "La plataforma no solo entrega documentos: acompana el proceso completo para entenderte, construir tu propuesta, buscar oportunidades y comunicarte mejor.",
@@ -143,6 +154,17 @@ const landingCopy = {
     testimonialsEyebrow: "Real stories",
     testimonialsTitle: "Human guidance supported by intelligent tools.",
     testimonialsNote: "Published testimonials must have validated authorization, folio, and validity before production display.",
+    solutionsEyebrow: "Solutions for organizations",
+    solutionsTitle: "We bring the methodology to coaches, partners, and companies.",
+    solutionsDescription: "Empleate YA can operate as a direct platform for final users or as methodological infrastructure for third parties supporting talent.",
+    partnerTitle: "Partnership with third-party coaches",
+    partnerDescription: "We provide a model for independent coaches, consultants, and entrepreneurs who want to use the Empleate YA methodology with their own clients. The partner keeps the commercial relationship while the platform provides avatars, deliverables, tracking, reports, and a structured working path.",
+    partnerPoints: ["Minimum 6-month license", "Online methodology course", "Own clients inside the platform", "Progress, credits, and deliverables tracking"],
+    partnerCta: "View entrepreneurs",
+    outplacementTitle: "Outplacement for companies",
+    outplacementDescription: "For companies that need to support former employees through career transition. HR admins can create campaigns, assign participants, review authorized progress, and combine the platform with online or in-person coaching.",
+    outplacementPoints: ["Campaigns by company and group", "Access for authorized former employees", "Progress and credit consumption reports", "Optional coaching for key cases"],
+    outplacementCta: "Business services",
     methodologyEyebrow: "Empleate YA methodology",
     methodologyTitle: "Five funnel stages to move forward with structure.",
     methodologyDescription: "The platform does more than generate documents: it supports the full process so you can understand yourself, build your value proposition, find opportunities, and communicate better.",
@@ -421,6 +443,53 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-5 py-16 md:py-20">
+        <div className="mb-10 max-w-3xl">
+          <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-[var(--brand-primary)]">{t.solutionsEyebrow}</p>
+          <h2 className="mt-3 text-4xl font-black tracking-[-0.04em] text-slate-950 md:text-5xl">{t.solutionsTitle}</h2>
+          <p className="mt-4 text-lg leading-8 text-slate-600">{t.solutionsDescription}</p>
+        </div>
+        <div className="grid gap-5 lg:grid-cols-2">
+          <article className="flex min-h-[420px] flex-col justify-between rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.45)] md:p-8">
+            <div>
+              <span className="inline-flex rounded-full bg-[var(--brand-primary-soft)] px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-[var(--brand-primary)]">Partnership</span>
+              <h3 className="mt-5 text-3xl font-black tracking-tight text-slate-950">{t.partnerTitle}</h3>
+              <p className="mt-4 text-base leading-7 text-slate-600">{t.partnerDescription}</p>
+              <div className="mt-6 grid gap-3">
+                {t.partnerPoints.map((point) => (
+                  <div key={point} className="flex items-start gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700">
+                    <Check className="mt-0.5 shrink-0 text-emerald-500" size={17} />
+                    {point}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <Link href="/entrepreneurs" className="mt-7 inline-flex w-fit items-center gap-2 rounded-full bg-[var(--brand-primary)] px-5 py-3 text-sm font-black text-white shadow-lg shadow-purple-500/20 transition hover:bg-[var(--brand-primary-strong)]">
+              {t.partnerCta} <ArrowRight size={17} />
+            </Link>
+          </article>
+
+          <article className="flex min-h-[420px] flex-col justify-between rounded-[2rem] border border-slate-200 bg-[#fbfdff] p-6 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.45)] md:p-8">
+            <div>
+              <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-blue-700">Outplacement</span>
+              <h3 className="mt-5 text-3xl font-black tracking-tight text-slate-950">{t.outplacementTitle}</h3>
+              <p className="mt-4 text-base leading-7 text-slate-600">{t.outplacementDescription}</p>
+              <div className="mt-6 grid gap-3">
+                {t.outplacementPoints.map((point) => (
+                  <div key={point} className="flex items-start gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
+                    <Check className="mt-0.5 shrink-0 text-blue-600" size={17} />
+                    {point}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <Link href="/business-services" className="mt-7 inline-flex w-fit items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-lg shadow-slate-900/10 transition hover:bg-[var(--brand-primary)]">
+              {t.outplacementCta} <ArrowRight size={17} />
+            </Link>
+          </article>
         </div>
       </section>
 
