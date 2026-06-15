@@ -151,6 +151,8 @@ const copy = {
     statusLabel: "Estado",
     credits: "Creditos / bolsa inicial",
     owner: "Responsable interno",
+    ownerHelp: "Solo el Super Admin puede modificar esta asignacion. Los nuevos usuarios se reparten aleatoriamente entre Super Admin y usuarios de apoyo.",
+    orgHelp: "Para empresas de outplacement y coach partners, la organizacion viene del catalogo administrado por Super Admin o apoyos de Super Admin.",
     notes: "Notas internas",
     extra: "Datos especificos",
     results: "Usuarios encontrados",
@@ -179,6 +181,8 @@ const copy = {
     statusLabel: "Status",
     credits: "Credits / initial pool",
     owner: "Internal owner",
+    ownerHelp: "Only the Super Admin can modify this assignment. New users are distributed randomly among Super Admin and support users.",
+    orgHelp: "For outplacement companies and coach partners, the organization comes from the organization catalog managed by Super Admin or Super Admin support users.",
     notes: "Internal notes",
     extra: "Specific data",
     results: "Found users",
@@ -186,6 +190,13 @@ const copy = {
     columns: ["Select", "User", "Type", "Organization", "Role", "Phone", "Credits", "Status", "Owner", "Last change", "Notes"],
     statuses: ["active", "invited", "pending", "blocked", "logical_delete"],
   },
+} as const;
+
+const internalOwners = ["Leo Galvez - Super Admin", "Daniela Ponce - Apoyo cobranza", "Ricardo Vega - Operativo outplacement", "Valeria Nunez - Apoyo administrativo", "Monica Reyes - Supervisor delegado temporal"] as const;
+
+const organizationCatalog = {
+  "coach-partner": ["Franquicia Demo Norte", "Franquicia Demo Bajio", "Partner Ejecutivo CDMX", "Partner Carrera Global"],
+  "outplacement-rh": ["Empresa Demo Outplacement", "Grupo Industrial Norte", "Servicios Financieros Delta", "Retail Nacional"],
 } as const;
 
 const demoUsers: DemoUser[] = [
@@ -243,48 +254,12 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
         </div>
       </section>
 
-      <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h2 className="text-2xl font-black text-slate-950">{t.formTitle}</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-500">{selectedUser ? `${t.selected}: ${selectedUser.name}` : t.noSelected}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]"><UserPlus size={17} />{t.create}</Button>
-            <Button disabled={!selectedUser} className="gap-2 bg-slate-950 text-white hover:bg-slate-800"><Edit3 size={17} />{t.edit}</Button>
-            <Button disabled={!selectedUser} className="gap-2 bg-red-600 text-white hover:bg-red-700"><Trash2 size={17} />{t.deleteLogical}</Button>
-          </div>
-        </div>
-
-        <div className="grid gap-5 xl:grid-cols-3">
-          <FormGroup title={t.name} icon={<UsersRound size={18} />}>
-            <Field label={t.name}><Input placeholder="Ej. Laura Mendez" defaultValue={selectedUser?.name ?? ""} /></Field>
-            <Field label={t.email}><Input placeholder="correo@ejemplo.com" defaultValue={selectedUser?.email ?? ""} type="email" /></Field>
-            <Field label={t.phone}><Input placeholder="+52 55 0000 0000" defaultValue={selectedUser?.phone ?? ""} /></Field>
-          </FormGroup>
-          <FormGroup title={kind.organizationLabel} icon={<Building2 size={18} />}>
-            <Field label={t.organization}><Input placeholder={kind.organizationPlaceholder} defaultValue={selectedUser?.organization ?? ""} /></Field>
-            <Field label={kind.roleLabel}><Select defaultValue={selectedUser?.role}>{kind.roles.map((item) => <option key={item}>{item}</option>)}</Select></Field>
-            <Field label={t.owner}><Input placeholder="Leo Galvez" defaultValue={selectedUser?.owner ?? ""} /></Field>
-          </FormGroup>
-          <FormGroup title={t.extra} icon={<ShieldCheck size={18} />}>
-            <Field label={t.statusLabel}><Select defaultValue={selectedUser?.status}>{t.statuses.map((item) => <option key={item}>{item}</option>)}</Select></Field>
-            <Field label={t.credits}><Input placeholder="0" type="number" defaultValue={selectedUser?.credits ?? 0} /></Field>
-            {kind.extraFields.map((field) => <Field key={field} label={field}><Input placeholder={field} /></Field>)}
-          </FormGroup>
-        </div>
-        <div className="mt-5">
-          <Label>{t.notes}</Label>
-          <textarea className="min-h-28 w-full rounded-2xl border border-[var(--brand-border)] bg-white px-4 py-3 text-sm text-[var(--brand-ink)] outline-none transition focus:border-[var(--brand-primary)] focus:ring-4 focus:ring-[var(--brand-primary-soft)]" defaultValue={selectedUser?.notes ?? ""} />
-        </div>
-      </section>
-
       <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-5 py-4">
           <h2 className="text-xl font-black text-slate-950">{t.results}</h2>
           <p className="mt-1 text-sm font-semibold text-slate-500">{t.resultHelp}</p>
         </div>
-        <div className="max-h-[360px] overflow-auto">
+        <div className="max-h-[156px] overflow-auto">
           <table className="w-full min-w-[1280px] text-left text-sm">
             <thead className="sticky top-0 z-10">
               <tr>{t.columns.map((column) => <Th key={column}>{column}</Th>)}</tr>
@@ -309,8 +284,54 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
           </table>
         </div>
       </section>
+
+      <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-2xl font-black text-slate-950">{t.formTitle}</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">{selectedUser ? `${t.selected}: ${selectedUser.name}` : t.noSelected}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]"><UserPlus size={17} />{t.create}</Button>
+            <Button disabled={!selectedUser} className="gap-2 bg-slate-950 text-white hover:bg-slate-800"><Edit3 size={17} />{t.edit}</Button>
+            <Button disabled={!selectedUser} className="gap-2 bg-red-600 text-white hover:bg-red-700"><Trash2 size={17} />{t.deleteLogical}</Button>
+          </div>
+        </div>
+
+        <div className="grid gap-5 xl:grid-cols-3">
+          <FormGroup title={t.name} icon={<UsersRound size={18} />}>
+            <Field label={t.name}><Input placeholder="Ej. Laura Mendez" defaultValue={selectedUser?.name ?? ""} /></Field>
+            <Field label={t.email}><Input placeholder="correo@ejemplo.com" defaultValue={selectedUser?.email ?? ""} type="email" /></Field>
+            <Field label={t.phone}><Input placeholder="+52 55 0000 0000" defaultValue={selectedUser?.phone ?? ""} /></Field>
+          </FormGroup>
+          <FormGroup title={kind.organizationLabel} icon={<Building2 size={18} />}>
+            <Field label={t.organization}>{usesOrganizationCatalog(userKind) ? <Select defaultValue={selectedUser?.organization}>{organizationCatalog[userKind].map((item) => <option key={item}>{item}</option>)}</Select> : <Input placeholder={kind.organizationPlaceholder} defaultValue={selectedUser?.organization ?? ""} />}</Field>
+            {usesOrganizationCatalog(userKind) ? <p className="text-xs font-semibold leading-5 text-slate-500">{t.orgHelp}</p> : null}
+            <Field label={kind.roleLabel}><Select defaultValue={selectedUser?.role}>{kind.roles.map((item) => <option key={item}>{item}</option>)}</Select></Field>
+            <Field label={t.owner}><Select defaultValue={selectedUser?.owner ? ownerOptionFor(selectedUser.owner) : internalOwners[0]}>{internalOwners.map((item) => <option key={item}>{item}</option>)}</Select></Field>
+            <p className="text-xs font-semibold leading-5 text-slate-500">{t.ownerHelp}</p>
+          </FormGroup>
+          <FormGroup title={t.extra} icon={<ShieldCheck size={18} />}>
+            <Field label={t.statusLabel}><Select defaultValue={selectedUser?.status}>{t.statuses.map((item) => <option key={item}>{item}</option>)}</Select></Field>
+            <Field label={t.credits}><Input placeholder="0" type="number" defaultValue={selectedUser?.credits ?? 0} /></Field>
+            {kind.extraFields.map((field) => <Field key={field} label={field}><Input placeholder={field} /></Field>)}
+          </FormGroup>
+        </div>
+        <div className="mt-5">
+          <Label>{t.notes}</Label>
+          <textarea className="min-h-28 w-full rounded-2xl border border-[var(--brand-border)] bg-white px-4 py-3 text-sm text-[var(--brand-ink)] outline-none transition focus:border-[var(--brand-primary)] focus:ring-4 focus:ring-[var(--brand-primary-soft)]" defaultValue={selectedUser?.notes ?? ""} />
+        </div>
+      </section>
     </div>
   );
+}
+
+function usesOrganizationCatalog(userKind: AdminUserKind): userKind is "coach-partner" | "outplacement-rh" {
+  return userKind === "coach-partner" || userKind === "outplacement-rh";
+}
+
+function ownerOptionFor(owner: string) {
+  return internalOwners.find((item) => item.startsWith(owner)) ?? internalOwners[0];
 }
 
 function FormGroup({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
