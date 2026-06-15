@@ -9,6 +9,13 @@ import { adminSections } from "./AdminSuperShell";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 export type AdminUserKind = "online" | "super-admin-support" | "coach-partner" | "outplacement-rh" | "internal-coach";
+type CoachPartnerPlanKey = "starter" | "pro" | "business";
+type UserPermissions = {
+  avatarIds: SkillId[];
+  adminMenuHrefs: string[];
+  userSubmenuHrefs: string[];
+  coachPlanKey: CoachPartnerPlanKey;
+};
 
 type DemoUser = {
   kind: AdminUserKind;
@@ -22,6 +29,7 @@ type DemoUser = {
   owner: string;
   lastChange: string;
   notes: string;
+  permissions?: UserPermissions;
 };
 
 const kindConfig = {
@@ -322,9 +330,10 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const [status, setStatus] = useState("all");
   const [selectedEmail, setSelectedEmail] = useState("");
   const [showPermissions, setShowPermissions] = useState(false);
-  const [coachPlanKey, setCoachPlanKey] = useState<keyof typeof coachPartnerPlans>("starter");
+  const [coachPlanKey, setCoachPlanKey] = useState<CoachPartnerPlanKey>("starter");
   const [users, setUsers] = useState<DemoUser[]>(demoUsers);
   const [notice, setNotice] = useState("");
+  const [pendingPermissions, setPendingPermissions] = useState<UserPermissions | null>(null);
 
   const filteredUsers = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -340,6 +349,8 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const fixedEmpleateYaOrg = usesFixedEmpleateYaOrganization(userKind);
   const unlimitedCredits = hasUnlimitedCredits(userKind);
   const defaultStatus = selectedUser?.status ?? t.statuses[0];
+  const activeRole = selectedUser?.role ?? kind.roles[0];
+  const activePermissions = selectedUser?.permissions ?? pendingPermissions ?? defaultPermissionsFor(userKind, activeRole, coachPlanKey);
 
   function handleSaveUser(formData: FormData) {
     const email = String(formData.get("email") || "").trim();
@@ -355,6 +366,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       owner: String(formData.get("owner") || internalOwners[0]),
       lastChange: new Date().toLocaleString(language === "es" ? "es-MX" : "en-US", { dateStyle: "short", timeStyle: "short" }),
       notes: String(formData.get("notes") || "").trim(),
+      permissions: selectedUser?.permissions ?? pendingPermissions ?? defaultPermissionsFor(userKind, String(formData.get("role") || kind.roles[0]), coachPlanKey),
     };
 
     setUsers((currentUsers) => {
@@ -364,6 +376,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       return currentUsers.map((user, index) => (index === existingIndex ? savedUser : user));
     });
     setSelectedEmail(savedUser.email);
+    setPendingPermissions(null);
     setNotice(t.savedDataMessage);
   }
 
@@ -377,12 +390,16 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     return (
       <PermissionsPanel
         userKind={userKind}
-        userRole={selectedUser?.role ?? kind.roles[0]}
+        userRole={activeRole}
         language={language}
-        coachPlanKey={coachPlanKey}
-        onCoachPlanChange={setCoachPlanKey}
+        permissions={activePermissions}
         onBack={() => setShowPermissions(false)}
-        onSave={() => {
+        onSave={(permissions) => {
+          setCoachPlanKey(permissions.coachPlanKey);
+          setPendingPermissions(permissions);
+          if (selectedUser) {
+            setUsers((currentUsers) => currentUsers.map((user) => (user.email === selectedUser.email ? { ...user, permissions, lastChange: new Date().toLocaleString(language === "es" ? "es-MX" : "en-US", { dateStyle: "short", timeStyle: "short" }) } : user)));
+          }
           setShowPermissions(false);
           setNotice(t.savedPermissionsMessage);
         }}
@@ -456,7 +473,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             <Button type="button" disabled={!selectedUser} className="gap-2 bg-slate-950 text-white hover:bg-slate-800"><Edit3 size={17} />{t.edit}</Button>
             <Button type="submit" className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"><Save size={17} />{t.saveData}</Button>
             <Button type="button" disabled={!selectedUser} className="gap-2 bg-red-600 text-white hover:bg-red-700" onClick={handleLogicalDelete}><Trash2 size={17} />{t.deleteLogical}</Button>
-            <Button type="button" className="gap-2 border border-[var(--brand-border)] bg-white text-[var(--brand-primary)] hover:bg-[var(--brand-primary-soft)]" onClick={() => setShowPermissions((current) => !current)}><KeyRound size={17} />{t.permissions}</Button>
+            <Button type="button" className="gap-2 border border-[var(--brand-border)] bg-white text-[var(--brand-primary)] hover:bg-[var(--brand-primary-soft)]" onClick={() => { setPendingPermissions(activePermissions); setShowPermissions(true); }}><KeyRound size={17} />{t.permissions}</Button>
           </div>
         </div>
 
@@ -508,25 +525,27 @@ function PermissionsPanel({
   userKind,
   userRole,
   language,
-  coachPlanKey,
-  onCoachPlanChange,
+  permissions,
   onBack,
   onSave,
 }: {
   userKind: AdminUserKind;
   userRole: string;
   language: "es" | "en";
-  coachPlanKey: keyof typeof coachPartnerPlans;
-  onCoachPlanChange: (value: keyof typeof coachPartnerPlans) => void;
+  permissions: UserPermissions;
   onBack: () => void;
-  onSave: () => void;
+  onSave: (permissions: UserPermissions) => void;
 }) {
   const t = copy[language];
   const userIsPaidOnline = userRole === "Cliente Online Pagado" || userRole === "Paid online client";
-  const allowedAvatarIds = allowedAvatarsFor(userKind, userRole, coachPlanKey);
-  const partnerPlan = coachPartnerPlans[coachPlanKey];
+  const [avatarIds, setAvatarIds] = useState<SkillId[]>(permissions.avatarIds);
+  const [adminMenuHrefs, setAdminMenuHrefs] = useState<string[]>(permissions.adminMenuHrefs);
+  const [userSubmenuHrefs, setUserSubmenuHrefs] = useState<string[]>(permissions.userSubmenuHrefs);
+  const [localCoachPlanKey, setLocalCoachPlanKey] = useState<CoachPartnerPlanKey>(permissions.coachPlanKey);
+  const partnerPlan = coachPartnerPlans[localCoachPlanKey];
   const partnerCreditPool = calculateCoachPartnerPool(partnerPlan.avatarIds, partnerPlan.groups, partnerPlan.studentsPerGroup, partnerPlan.cycles);
   const showAdminPermissionSections = userKind === "super-admin-support";
+  const savePermissions = () => onSave({ avatarIds, adminMenuHrefs, userSubmenuHrefs, coachPlanKey: localCoachPlanKey });
 
   return (
     <section className="space-y-5 rounded-[1.5rem] border border-purple-200 bg-white p-5 shadow-sm">
@@ -536,7 +555,7 @@ function PermissionsPanel({
           <p className="mt-2 max-w-4xl text-sm font-semibold leading-6 text-slate-600">{t.permissionsHelp}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]" onClick={onSave}><ShieldCheck size={17} />{t.savePermissions}</Button>
+          <Button className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]" onClick={savePermissions}><ShieldCheck size={17} />{t.savePermissions}</Button>
           <Button className="gap-2 border border-[var(--brand-border)] bg-white text-slate-700 hover:bg-slate-50" onClick={onBack}>{t.backToCapture}</Button>
         </div>
       </div>
@@ -552,7 +571,11 @@ function PermissionsPanel({
         {userKind === "coach-partner" ? (
           <div className="w-full rounded-2xl bg-white p-3 shadow-sm lg:w-80">
             <Label>{t.partnerPlan}</Label>
-            <Select value={coachPlanKey} onChange={(event) => onCoachPlanChange(event.target.value as keyof typeof coachPartnerPlans)}>
+            <Select value={localCoachPlanKey} onChange={(event) => {
+              const nextPlanKey = event.target.value as CoachPartnerPlanKey;
+              setLocalCoachPlanKey(nextPlanKey);
+              setAvatarIds(coachPartnerPlans[nextPlanKey].avatarIds.slice());
+            }}>
               {Object.entries(coachPartnerPlans).map(([key, plan]) => <option key={key} value={key}>{plan.label}</option>)}
             </Select>
             <div className="mt-3 rounded-xl bg-slate-950 p-3 text-sm font-bold text-white">
@@ -577,13 +600,14 @@ function PermissionsPanel({
           <div className="grid max-h-80 gap-2 overflow-auto pr-1">
             {allAvatarIds.map((avatarId) => {
               const skill = skillRegistry[avatarId];
-              const checked = allowedAvatarIds.includes(avatarId);
+              const checked = avatarIds.includes(avatarId);
               return (
                 <PermissionCheck
                   key={avatarId}
                   checked={checked}
                   title={skill.name}
                   detail={`${skill.baseCredits} ${language === "es" ? "creditos" : "credits"}`}
+                  onChange={(nextChecked) => setAvatarIds((currentIds) => toggleItem(currentIds, avatarId, nextChecked))}
                 />
               );
             })}
@@ -596,9 +620,10 @@ function PermissionsPanel({
                 {adminSections.map((section) => (
                   <PermissionCheck
                     key={section.href}
-                    checked={menuAllowedFor(userKind, section.href)}
+                    checked={adminMenuHrefs.includes(section.href)}
                     title={adminMenuLabels[language][section.key]}
                     detail={section.href}
+                    onChange={(nextChecked) => setAdminMenuHrefs((currentHrefs) => toggleItem(currentHrefs, section.href, nextChecked))}
                   />
                 ))}
               </div>
@@ -608,9 +633,10 @@ function PermissionsPanel({
                 {userSubmenuPermissions.map((href) => (
                   <PermissionCheck
                     key={href}
-                    checked={userSubmenuAllowedFor(userKind, href)}
+                    checked={userSubmenuHrefs.includes(href)}
                     title={href.split("/").at(-1)?.replaceAll("-", " ") ?? href}
                     detail={href}
+                    onChange={(nextChecked) => setUserSubmenuHrefs((currentHrefs) => toggleItem(currentHrefs, href, nextChecked))}
                   />
                 ))}
               </div>
@@ -622,12 +648,26 @@ function PermissionsPanel({
   );
 }
 
-function allowedAvatarsFor(userKind: AdminUserKind, userRole: string, coachPlanKey: keyof typeof coachPartnerPlans) {
+function defaultPermissionsFor(userKind: AdminUserKind, userRole: string, coachPlanKey: CoachPartnerPlanKey): UserPermissions {
+  return {
+    avatarIds: allowedAvatarsFor(userKind, userRole, coachPlanKey),
+    adminMenuHrefs: adminSections.filter((section) => menuAllowedFor(userKind, section.href)).map((section) => section.href),
+    userSubmenuHrefs: userSubmenuPermissions.filter((href) => userSubmenuAllowedFor(userKind, href)),
+    coachPlanKey,
+  };
+}
+
+function allowedAvatarsFor(userKind: AdminUserKind, userRole: string, coachPlanKey: CoachPartnerPlanKey) {
   if (userKind === "online") {
     return userRole === "Cliente Online Pagado" || userRole === "Paid online client" ? allAvatarIds : onlineBasicAvatarIds;
   }
   if (userKind === "coach-partner") return coachPartnerPlans[coachPlanKey].avatarIds;
   return allAvatarIds;
+}
+
+function toggleItem<T>(items: T[], item: T, checked: boolean) {
+  if (checked) return items.includes(item) ? items : [...items, item];
+  return items.filter((currentItem) => currentItem !== item);
 }
 
 function calculateCoachPartnerPool(avatarIds: readonly SkillId[], groups: number, studentsPerGroup: number, cycles: number) {
@@ -701,10 +741,10 @@ function ChecklistCard({ title, children }: { title: string; children: ReactNode
   );
 }
 
-function PermissionCheck({ checked, title, detail }: { checked: boolean; title: string; detail: string }) {
+function PermissionCheck({ checked, title, detail, onChange }: { checked: boolean; title: string; detail: string; onChange: (checked: boolean) => void }) {
   return (
     <label className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm">
-      <input type="checkbox" className="mt-1" defaultChecked={checked} />
+      <input type="checkbox" className="mt-1" checked={checked} onChange={(event) => onChange(event.target.checked)} />
       <span className="min-w-0">
         <span className="block font-black text-slate-900">{title}</span>
         <small className="block truncate font-semibold text-slate-500">{detail}</small>
