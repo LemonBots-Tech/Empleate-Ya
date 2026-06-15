@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { Building2, Edit3, KeyRound, Search, ShieldCheck, Trash2, UserPlus, UsersRound } from "lucide-react";
+import { Building2, Edit3, KeyRound, Save, Search, ShieldCheck, Trash2, UserPlus, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Select } from "@/components/ui/Input";
 import { skillRegistry, type SkillId } from "@/ai/skillRegistry";
@@ -142,7 +142,11 @@ const copy = {
     formTitle: "Captura y mantenimiento",
     create: "Crear",
     edit: "Editar seleccionado",
+    saveData: "Guardar datos",
     deleteLogical: "Borrado logico",
+    savedDataMessage: "Datos del usuario guardados en la tabla correspondiente.",
+    savedPermissionsMessage: "Permisos guardados. Regresaste a captura y mantenimiento del usuario.",
+    logicalDeleteMessage: "El usuario seleccionado paso a estado borrado_logico. No se elimino definitivamente.",
     selected: "Seleccionado",
     noSelected: "Selecciona un usuario existente para editar o borrar logicamente.",
     name: "Nombre completo",
@@ -192,7 +196,11 @@ const copy = {
     formTitle: "Capture and maintenance",
     create: "Create",
     edit: "Edit selected",
+    saveData: "Save data",
     deleteLogical: "Logical delete",
+    savedDataMessage: "User data saved in the corresponding table.",
+    savedPermissionsMessage: "Permissions saved. You are back in user capture and maintenance.",
+    logicalDeleteMessage: "The selected user was moved to logical_delete. It was not permanently deleted.",
     selected: "Selected",
     noSelected: "Select an existing user to edit or logically delete.",
     name: "Full name",
@@ -315,20 +323,55 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const [selectedEmail, setSelectedEmail] = useState("");
   const [showPermissions, setShowPermissions] = useState(false);
   const [coachPlanKey, setCoachPlanKey] = useState<keyof typeof coachPartnerPlans>("starter");
+  const [users, setUsers] = useState<DemoUser[]>(demoUsers);
+  const [notice, setNotice] = useState("");
 
   const filteredUsers = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return demoUsers.filter((user) => {
+    return users.filter((user) => {
       const matchesKind = user.kind === userKind;
       const matchesStatus = status === "all" || user.status === status;
       const matchesText = !normalized || Object.values(user).some((value) => String(value).toLowerCase().includes(normalized));
       return matchesKind && matchesStatus && matchesText;
     });
-  }, [query, status, userKind]);
+  }, [query, status, userKind, users]);
 
   const selectedUser = filteredUsers.find((user) => user.email === selectedEmail);
   const fixedEmpleateYaOrg = usesFixedEmpleateYaOrganization(userKind);
   const unlimitedCredits = hasUnlimitedCredits(userKind);
+  const defaultStatus = selectedUser?.status ?? t.statuses[0];
+
+  function handleSaveUser(formData: FormData) {
+    const email = String(formData.get("email") || "").trim();
+    const savedUser: DemoUser = {
+      kind: userKind,
+      name: String(formData.get("name") || "").trim() || "Usuario sin nombre",
+      email: email || `usuario-${Date.now()}@empleateya.local`,
+      organization: fixedEmpleateYaOrg ? empleateYaOrganization : String(formData.get("organization") || "").trim(),
+      role: String(formData.get("role") || kind.roles[0]),
+      phone: String(formData.get("phone") || "").trim(),
+      status: String(formData.get("status") || defaultStatus),
+      credits: unlimitedCredits ? 0 : Number(formData.get("credits") || 0),
+      owner: String(formData.get("owner") || internalOwners[0]),
+      lastChange: new Date().toLocaleString(language === "es" ? "es-MX" : "en-US", { dateStyle: "short", timeStyle: "short" }),
+      notes: String(formData.get("notes") || "").trim(),
+    };
+
+    setUsers((currentUsers) => {
+      const previousEmail = selectedUser?.email;
+      const existingIndex = currentUsers.findIndex((user) => user.email === previousEmail || user.email === savedUser.email);
+      if (existingIndex === -1) return [savedUser, ...currentUsers];
+      return currentUsers.map((user, index) => (index === existingIndex ? savedUser : user));
+    });
+    setSelectedEmail(savedUser.email);
+    setNotice(t.savedDataMessage);
+  }
+
+  function handleLogicalDelete() {
+    if (!selectedUser) return;
+    setUsers((currentUsers) => currentUsers.map((user) => (user.email === selectedUser.email ? { ...user, status: "borrado_logico", lastChange: new Date().toLocaleString(language === "es" ? "es-MX" : "en-US", { dateStyle: "short", timeStyle: "short" }) } : user)));
+    setNotice(t.logicalDeleteMessage);
+  }
 
   if (showPermissions) {
     return (
@@ -339,6 +382,10 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
         coachPlanKey={coachPlanKey}
         onCoachPlanChange={setCoachPlanKey}
         onBack={() => setShowPermissions(false)}
+        onSave={() => {
+          setShowPermissions(false);
+          setNotice(t.savedPermissionsMessage);
+        }}
       />
     );
   }
@@ -396,49 +443,53 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
         </div>
       </section>
 
-      <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+      {notice ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-800">{notice}</div> : null}
+
+      <form key={`${userKind}-${selectedEmail || "new"}`} action={handleSaveUser} className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
         <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-2xl font-black text-slate-950">{t.formTitle}</h2>
             <p className="mt-1 text-sm font-semibold text-slate-500">{selectedUser ? `${t.selected}: ${selectedUser.name}` : t.noSelected}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]"><UserPlus size={17} />{t.create}</Button>
-            <Button disabled={!selectedUser} className="gap-2 bg-slate-950 text-white hover:bg-slate-800"><Edit3 size={17} />{t.edit}</Button>
-            <Button disabled={!selectedUser} className="gap-2 bg-red-600 text-white hover:bg-red-700"><Trash2 size={17} />{t.deleteLogical}</Button>
-            <Button className="gap-2 border border-[var(--brand-border)] bg-white text-[var(--brand-primary)] hover:bg-[var(--brand-primary-soft)]" onClick={() => setShowPermissions((current) => !current)}><KeyRound size={17} />{t.permissions}</Button>
+            <Button type="button" className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]" onClick={() => { setSelectedEmail(""); setNotice(""); }}><UserPlus size={17} />{t.create}</Button>
+            <Button type="button" disabled={!selectedUser} className="gap-2 bg-slate-950 text-white hover:bg-slate-800"><Edit3 size={17} />{t.edit}</Button>
+            <Button type="submit" className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"><Save size={17} />{t.saveData}</Button>
+            <Button type="button" disabled={!selectedUser} className="gap-2 bg-red-600 text-white hover:bg-red-700" onClick={handleLogicalDelete}><Trash2 size={17} />{t.deleteLogical}</Button>
+            <Button type="button" className="gap-2 border border-[var(--brand-border)] bg-white text-[var(--brand-primary)] hover:bg-[var(--brand-primary-soft)]" onClick={() => setShowPermissions((current) => !current)}><KeyRound size={17} />{t.permissions}</Button>
           </div>
         </div>
 
         <div className="grid gap-5 xl:grid-cols-3">
           <FormGroup title={t.name} icon={<UsersRound size={18} />}>
-            <Field label={t.name}><Input placeholder="Ej. Laura Mendez" defaultValue={selectedUser?.name ?? ""} /></Field>
-            <Field label={t.email}><Input placeholder="correo@ejemplo.com" defaultValue={selectedUser?.email ?? ""} type="email" /></Field>
-            <Field label={t.phone}><Input placeholder="+52 55 0000 0000" defaultValue={selectedUser?.phone ?? ""} /></Field>
+            <Field label={t.name}><Input name="name" placeholder="Ej. Laura Mendez" defaultValue={selectedUser?.name ?? ""} /></Field>
+            <Field label={t.email}><Input name="email" placeholder="correo@ejemplo.com" defaultValue={selectedUser?.email ?? ""} type="email" /></Field>
+            <Field label={t.phone}><Input name="phone" placeholder="+52 55 0000 0000" defaultValue={selectedUser?.phone ?? ""} /></Field>
           </FormGroup>
           <FormGroup title={kind.organizationLabel} icon={<Building2 size={18} />}>
-            <Field label={t.organization}>{fixedEmpleateYaOrg ? <Input value={empleateYaOrganization} readOnly /> : usesOrganizationCatalog(userKind) ? <Select defaultValue={selectedUser?.organization}>{organizationCatalog[userKind].map((item) => <option key={item}>{item}</option>)}</Select> : <Input placeholder={kind.organizationPlaceholder} defaultValue={selectedUser?.organization ?? ""} />}</Field>
+            <Field label={t.organization}>{fixedEmpleateYaOrg ? <Input name="organization" value={empleateYaOrganization} readOnly /> : usesOrganizationCatalog(userKind) ? <Select name="organization" defaultValue={selectedUser?.organization}>{organizationCatalog[userKind].map((item) => <option key={item}>{item}</option>)}</Select> : <Input name="organization" placeholder={kind.organizationPlaceholder} defaultValue={selectedUser?.organization ?? ""} />}</Field>
             {usesOrganizationCatalog(userKind) ? <p className="text-xs font-semibold leading-5 text-slate-500">{t.orgHelp}</p> : null}
-            <Field label={kind.roleLabel}><Select defaultValue={selectedUser?.role}>{kind.roles.map((item) => <option key={item}>{item}</option>)}</Select></Field>
-            <Field label={t.owner}><Select defaultValue={selectedUser?.owner ? ownerOptionFor(selectedUser.owner) : internalOwners[0]}>{internalOwners.map((item) => <option key={item}>{item}</option>)}</Select></Field>
+            <Field label={kind.roleLabel}><Select name="role" defaultValue={selectedUser?.role}>{kind.roles.map((item) => <option key={item}>{item}</option>)}</Select></Field>
+            <Field label={t.owner}><Select name="owner" defaultValue={selectedUser?.owner ? ownerOptionFor(selectedUser.owner) : internalOwners[0]}>{internalOwners.map((item) => <option key={item}>{item}</option>)}</Select></Field>
             <p className="text-xs font-semibold leading-5 text-slate-500">{t.ownerHelp}</p>
           </FormGroup>
           <FormGroup title={t.extra} icon={<ShieldCheck size={18} />}>
-            <Field label={t.statusLabel}><Select defaultValue={selectedUser?.status}>{t.statuses.map((item) => <option key={item}>{item}</option>)}</Select></Field>
+            <Field label={t.statusLabel}><Select name="status" defaultValue={defaultStatus}>{t.statuses.map((item) => <option key={item}>{item}</option>)}</Select></Field>
             <Field label={t.credits}>
               {unlimitedCredits ? (
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-800">
                   {t.unlimitedCredits}
                   <small className="mt-1 block font-semibold text-emerald-700">{t.unlimitedCreditsHelp}</small>
+                  <input type="hidden" name="credits" value="0" />
                 </div>
               ) : (
-                <Input placeholder="0" type="number" defaultValue={selectedUser?.credits ?? (userKind === "online" ? onlineBaselineCredits : 0)} readOnly={userKind === "online"} />
+                <Input name="credits" placeholder="0" type="number" defaultValue={selectedUser?.credits ?? (userKind === "online" ? onlineBaselineCredits : 0)} readOnly={userKind === "online"} />
               )}
             </Field>
-            {kind.extraFields.map((field) => <Field key={field} label={field}><Input placeholder={field} /></Field>)}
+            {kind.extraFields.map((field) => <Field key={field} label={field}><Input name={`extra-${field}`} placeholder={field} /></Field>)}
             {userKind === "online" ? (
               <label className="flex items-start gap-3 rounded-2xl bg-white p-3 text-sm font-bold text-slate-700">
-                <input type="checkbox" className="mt-1" defaultChecked disabled={!canCurrentUserEditPrivacyAcceptance} />
+                <input name="privacyAccepted" type="checkbox" className="mt-1" defaultChecked disabled={!canCurrentUserEditPrivacyAcceptance} />
                 <span>{t.privacyAccepted} <small className="block font-semibold text-slate-500">{t.privacyReadonly}</small></span>
               </label>
             ) : null}
@@ -446,9 +497,9 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
         </div>
         <div className="mt-5">
           <Label>{t.notes}</Label>
-          <textarea className="min-h-28 w-full rounded-2xl border border-[var(--brand-border)] bg-white px-4 py-3 text-sm text-[var(--brand-ink)] outline-none transition focus:border-[var(--brand-primary)] focus:ring-4 focus:ring-[var(--brand-primary-soft)]" defaultValue={selectedUser?.notes ?? ""} />
+          <textarea name="notes" className="min-h-28 w-full rounded-2xl border border-[var(--brand-border)] bg-white px-4 py-3 text-sm text-[var(--brand-ink)] outline-none transition focus:border-[var(--brand-primary)] focus:ring-4 focus:ring-[var(--brand-primary-soft)]" defaultValue={selectedUser?.notes ?? ""} />
         </div>
-      </section>
+      </form>
     </div>
   );
 }
@@ -460,6 +511,7 @@ function PermissionsPanel({
   coachPlanKey,
   onCoachPlanChange,
   onBack,
+  onSave,
 }: {
   userKind: AdminUserKind;
   userRole: string;
@@ -467,6 +519,7 @@ function PermissionsPanel({
   coachPlanKey: keyof typeof coachPartnerPlans;
   onCoachPlanChange: (value: keyof typeof coachPartnerPlans) => void;
   onBack: () => void;
+  onSave: () => void;
 }) {
   const t = copy[language];
   const userIsPaidOnline = userRole === "Cliente Online Pagado" || userRole === "Paid online client";
@@ -483,7 +536,7 @@ function PermissionsPanel({
           <p className="mt-2 max-w-4xl text-sm font-semibold leading-6 text-slate-600">{t.permissionsHelp}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]"><ShieldCheck size={17} />{t.savePermissions}</Button>
+          <Button className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]" onClick={onSave}><ShieldCheck size={17} />{t.savePermissions}</Button>
           <Button className="gap-2 border border-[var(--brand-border)] bg-white text-slate-700 hover:bg-slate-50" onClick={onBack}>{t.backToCapture}</Button>
         </div>
       </div>
