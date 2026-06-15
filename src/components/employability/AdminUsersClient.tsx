@@ -160,9 +160,13 @@ const copy = {
     permissions: "Permisos",
     permissionsTitle: "Permisos y limites de acceso",
     permissionsHelp: "Configura avatares, opciones del menu lateral y submenus disponibles para este perfil. El consumo real se descuenta contra la bolsa de creditos correspondiente.",
+    savePermissions: "Guardar permisos",
+    backToCapture: "Regresar",
     avatars: "Avatares",
     adminMenu: "Menu lateral Super Admin",
     submenu: "Submenus de usuarios",
+    unlimitedCredits: "Creditos ilimitados",
+    unlimitedCreditsHelp: "Este perfil no descuenta de una bolsa individual de creditos para operar.",
     onlineRule: "Regla online",
     onlineProspectRule: "Prospecto online: solo avatares basicos una vez por avatar. Cliente Online Pagado: acceso a todos los avatares, sujeto a saldo suficiente.",
     partnerPlan: "Plan Coach Partner",
@@ -206,9 +210,13 @@ const copy = {
     permissions: "Permissions",
     permissionsTitle: "Access permissions and limits",
     permissionsHelp: "Configure avatars, left-side menu options, and user submenus available for this profile. Actual usage is deducted from the corresponding credit pool.",
+    savePermissions: "Save permissions",
+    backToCapture: "Back",
     avatars: "Avatars",
     adminMenu: "Super Admin side menu",
     submenu: "User submenus",
+    unlimitedCredits: "Unlimited credits",
+    unlimitedCreditsHelp: "This profile does not deduct from an individual credit pool to operate.",
     onlineRule: "Online rule",
     onlineProspectRule: "Online prospect: basic avatars only, once per avatar. Paid online client: all avatars, subject to enough credit balance.",
     partnerPlan: "Coach Partner plan",
@@ -320,6 +328,20 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
 
   const selectedUser = filteredUsers.find((user) => user.email === selectedEmail);
   const fixedEmpleateYaOrg = usesFixedEmpleateYaOrganization(userKind);
+  const unlimitedCredits = hasUnlimitedCredits(userKind);
+
+  if (showPermissions) {
+    return (
+      <PermissionsPanel
+        userKind={userKind}
+        userRole={selectedUser?.role ?? kind.roles[0]}
+        language={language}
+        coachPlanKey={coachPlanKey}
+        onCoachPlanChange={setCoachPlanKey}
+        onBack={() => setShowPermissions(false)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-7">
@@ -362,7 +384,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
                   <Td>{user.organization}</Td>
                   <Td>{user.role}</Td>
                   <Td>{user.phone}</Td>
-                  <Td>{user.credits}</Td>
+                  <Td>{hasUnlimitedCredits(user.kind) ? t.unlimitedCredits : user.credits}</Td>
                   <Td><Pill>{user.status}</Pill></Td>
                   <Td>{user.owner}</Td>
                   <Td>{user.lastChange}</Td>
@@ -403,7 +425,16 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
           </FormGroup>
           <FormGroup title={t.extra} icon={<ShieldCheck size={18} />}>
             <Field label={t.statusLabel}><Select defaultValue={selectedUser?.status}>{t.statuses.map((item) => <option key={item}>{item}</option>)}</Select></Field>
-            <Field label={t.credits}><Input placeholder="0" type="number" defaultValue={selectedUser?.credits ?? (userKind === "online" ? onlineBaselineCredits : 0)} readOnly={userKind === "online"} /></Field>
+            <Field label={t.credits}>
+              {unlimitedCredits ? (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-800">
+                  {t.unlimitedCredits}
+                  <small className="mt-1 block font-semibold text-emerald-700">{t.unlimitedCreditsHelp}</small>
+                </div>
+              ) : (
+                <Input placeholder="0" type="number" defaultValue={selectedUser?.credits ?? (userKind === "online" ? onlineBaselineCredits : 0)} readOnly={userKind === "online"} />
+              )}
+            </Field>
             {kind.extraFields.map((field) => <Field key={field} label={field}><Input placeholder={field} /></Field>)}
             {userKind === "online" ? (
               <label className="flex items-start gap-3 rounded-2xl bg-white p-3 text-sm font-bold text-slate-700">
@@ -417,15 +448,6 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
           <Label>{t.notes}</Label>
           <textarea className="min-h-28 w-full rounded-2xl border border-[var(--brand-border)] bg-white px-4 py-3 text-sm text-[var(--brand-ink)] outline-none transition focus:border-[var(--brand-primary)] focus:ring-4 focus:ring-[var(--brand-primary-soft)]" defaultValue={selectedUser?.notes ?? ""} />
         </div>
-        {showPermissions ? (
-          <PermissionsPanel
-            userKind={userKind}
-            userRole={selectedUser?.role ?? kind.roles[0]}
-            language={language}
-            coachPlanKey={coachPlanKey}
-            onCoachPlanChange={setCoachPlanKey}
-          />
-        ) : null}
       </section>
     </div>
   );
@@ -437,25 +459,42 @@ function PermissionsPanel({
   language,
   coachPlanKey,
   onCoachPlanChange,
+  onBack,
 }: {
   userKind: AdminUserKind;
   userRole: string;
   language: "es" | "en";
   coachPlanKey: keyof typeof coachPartnerPlans;
   onCoachPlanChange: (value: keyof typeof coachPartnerPlans) => void;
+  onBack: () => void;
 }) {
   const t = copy[language];
   const userIsPaidOnline = userRole === "Cliente Online Pagado" || userRole === "Paid online client";
   const allowedAvatarIds = allowedAvatarsFor(userKind, userRole, coachPlanKey);
   const partnerPlan = coachPartnerPlans[coachPlanKey];
   const partnerCreditPool = calculateCoachPartnerPool(partnerPlan.avatarIds, partnerPlan.groups, partnerPlan.studentsPerGroup, partnerPlan.cycles);
+  const showAdminPermissionSections = userKind === "super-admin-support";
 
   return (
-    <section className="mt-6 rounded-[1.5rem] border border-purple-200 bg-purple-50/40 p-4">
+    <section className="space-y-5 rounded-[1.5rem] border border-purple-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h3 className="flex items-center gap-2 text-2xl font-black text-slate-950"><KeyRound size={20} />{t.permissionsTitle}</h3>
           <p className="mt-2 max-w-4xl text-sm font-semibold leading-6 text-slate-600">{t.permissionsHelp}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]"><ShieldCheck size={17} />{t.savePermissions}</Button>
+          <Button className="gap-2 border border-[var(--brand-border)] bg-white text-slate-700 hover:bg-slate-50" onClick={onBack}>{t.backToCapture}</Button>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          {hasUnlimitedCredits(userKind) ? (
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold leading-6 text-emerald-900">
+              {t.unlimitedCredits}. {t.unlimitedCreditsHelp}
+            </div>
+          ) : null}
         </div>
         {userKind === "coach-partner" ? (
           <div className="w-full rounded-2xl bg-white p-3 shadow-sm lg:w-80">
@@ -480,7 +519,7 @@ function PermissionsPanel({
         <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold leading-6 text-emerald-900">{t.partnerRule}</div>
       ) : null}
 
-      <div className="mt-5 grid gap-4 xl:grid-cols-[1.2fr_1fr_1fr]">
+      <div className={`grid gap-4 ${showAdminPermissionSections ? "xl:grid-cols-[1.2fr_1fr_1fr]" : "xl:grid-cols-1"}`}>
         <ChecklistCard title={t.avatars}>
           <div className="grid max-h-80 gap-2 overflow-auto pr-1">
             {allAvatarIds.map((avatarId) => {
@@ -497,30 +536,34 @@ function PermissionsPanel({
             })}
           </div>
         </ChecklistCard>
-        <ChecklistCard title={t.adminMenu}>
-          <div className="grid max-h-80 gap-2 overflow-auto pr-1">
-            {adminSections.map((section) => (
-              <PermissionCheck
-                key={section.href}
-                checked={menuAllowedFor(userKind, section.href)}
-                title={adminMenuLabels[language][section.key]}
-                detail={section.href}
-              />
-            ))}
-          </div>
-        </ChecklistCard>
-        <ChecklistCard title={t.submenu}>
-          <div className="grid max-h-80 gap-2 overflow-auto pr-1">
-            {userSubmenuPermissions.map((href) => (
-              <PermissionCheck
-                key={href}
-                checked={userSubmenuAllowedFor(userKind, href)}
-                title={href.split("/").at(-1)?.replaceAll("-", " ") ?? href}
-                detail={href}
-              />
-            ))}
-          </div>
-        </ChecklistCard>
+        {showAdminPermissionSections ? (
+          <>
+            <ChecklistCard title={t.adminMenu}>
+              <div className="grid max-h-80 gap-2 overflow-auto pr-1">
+                {adminSections.map((section) => (
+                  <PermissionCheck
+                    key={section.href}
+                    checked={menuAllowedFor(userKind, section.href)}
+                    title={adminMenuLabels[language][section.key]}
+                    detail={section.href}
+                  />
+                ))}
+              </div>
+            </ChecklistCard>
+            <ChecklistCard title={t.submenu}>
+              <div className="grid max-h-80 gap-2 overflow-auto pr-1">
+                {userSubmenuPermissions.map((href) => (
+                  <PermissionCheck
+                    key={href}
+                    checked={userSubmenuAllowedFor(userKind, href)}
+                    title={href.split("/").at(-1)?.replaceAll("-", " ") ?? href}
+                    detail={href}
+                  />
+                ))}
+              </div>
+            </ChecklistCard>
+          </>
+        ) : null}
       </div>
     </section>
   );
@@ -561,6 +604,10 @@ function usesOrganizationCatalog(userKind: AdminUserKind): userKind is "coach-pa
 
 function usesFixedEmpleateYaOrganization(userKind: AdminUserKind) {
   return userKind === "online" || userKind === "super-admin-support" || userKind === "internal-coach";
+}
+
+function hasUnlimitedCredits(userKind: AdminUserKind) {
+  return userKind === "super-admin-support" || userKind === "internal-coach";
 }
 
 function ownerOptionFor(owner: string) {
