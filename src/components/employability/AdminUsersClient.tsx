@@ -31,8 +31,8 @@ const kindConfig = {
       organizationLabel: "Origen comercial",
       organizationPlaceholder: "Ej. Empleate YA / campana online / referido",
       roleLabel: "Tipo de usuario online",
-      roles: ["Usuario final con creditos", "Usuario final prueba", "Usuario final referido", "Usuario final sin compra"],
-      extraFields: ["Paquete de creditos", "Stripe customer ID", "Acepto privacidad"],
+      roles: ["Prospecto online", "Cliente Online Pagado"],
+      extraFields: ["Stripe customer ID"],
     },
     "super-admin-support": {
       title: "Usuarios de apoyo a Super Admin",
@@ -83,8 +83,8 @@ const kindConfig = {
       organizationLabel: "Commercial origin",
       organizationPlaceholder: "Example: Empleate YA / online campaign / referral",
       roleLabel: "Online user type",
-      roles: ["Final user with credits", "Trial final user", "Referred final user", "Final user without purchase"],
-      extraFields: ["Credit package", "Stripe customer ID", "Privacy accepted"],
+      roles: ["Online prospect", "Paid online client"],
+      extraFields: ["Stripe customer ID"],
     },
     "super-admin-support": {
       title: "Super Admin support users",
@@ -153,6 +153,8 @@ const copy = {
     owner: "Responsable interno",
     ownerHelp: "Solo el Super Admin puede modificar esta asignacion. Los nuevos usuarios se reparten aleatoriamente entre Super Admin y usuarios de apoyo.",
     orgHelp: "Para empresas de outplacement y coach partners, la organizacion viene del catalogo administrado por Super Admin o apoyos de Super Admin.",
+    privacyAccepted: "Acepto privacidad",
+    privacyReadonly: "Solo Super Admin puede modificar este registro.",
     notes: "Notas internas",
     extra: "Datos especificos",
     results: "Usuarios encontrados",
@@ -183,6 +185,8 @@ const copy = {
     owner: "Internal owner",
     ownerHelp: "Only the Super Admin can modify this assignment. New users are distributed randomly among Super Admin and support users.",
     orgHelp: "For outplacement companies and coach partners, the organization comes from the organization catalog managed by Super Admin or Super Admin support users.",
+    privacyAccepted: "Privacy accepted",
+    privacyReadonly: "Only Super Admin can modify this record.",
     notes: "Internal notes",
     extra: "Specific data",
     results: "Found users",
@@ -193,6 +197,9 @@ const copy = {
 } as const;
 
 const internalOwners = ["Leo Galvez - Super Admin", "Daniela Ponce - Apoyo cobranza", "Ricardo Vega - Operativo outplacement", "Valeria Nunez - Apoyo administrativo", "Monica Reyes - Supervisor delegado temporal"] as const;
+const empleateYaOrganization = "Empleate YA";
+const onlineBaselineCredits = 445;
+const canCurrentUserEditPrivacyAcceptance = true;
 
 const organizationCatalog = {
   "coach-partner": ["Franquicia Demo Norte", "Franquicia Demo Bajio", "Partner Ejecutivo CDMX", "Partner Carrera Global"],
@@ -200,8 +207,8 @@ const organizationCatalog = {
 } as const;
 
 const demoUsers: DemoUser[] = [
-  { kind: "online", name: "Laura Mendez", email: "laura@email.com", organization: "Empleate YA", role: "Usuario final con creditos", phone: "+52 55 1000 0001", status: "activo", credits: 220, owner: "Leo Galvez", lastChange: "12/06/2026 10:40", notes: "Compra individual Stripe. Puede ejecutar avatares segun saldo." },
-  { kind: "online", name: "Jorge Luna", email: "jorge@email.com", organization: "Campana ScoreX Online", role: "Usuario final prueba", phone: "+52 55 1000 0006", status: "pendiente", credits: 35, owner: "Sistema", lastChange: "12/06/2026 08:20", notes: "Prueba limitada. Requiere registro para consumir mas avatares." },
+  { kind: "online", name: "Laura Mendez", email: "laura@email.com", organization: empleateYaOrganization, role: "Cliente Online Pagado", phone: "+52 55 1000 0001", status: "activo", credits: onlineBaselineCredits, owner: "Leo Galvez", lastChange: "12/06/2026 10:40", notes: "Compra individual Stripe. Puede ejecutar avatares segun saldo." },
+  { kind: "online", name: "Jorge Luna", email: "jorge@email.com", organization: empleateYaOrganization, role: "Prospecto online", phone: "+52 55 1000 0006", status: "pendiente", credits: onlineBaselineCredits, owner: "Sistema", lastChange: "12/06/2026 08:20", notes: "Prueba limitada. Requiere registro para consumir mas avatares." },
   { kind: "super-admin-support", name: "Daniela Ponce", email: "daniela@empleateya.mx", organization: "Cobranza", role: "Apoyo cobranza", phone: "+52 55 1000 0002", status: "activo", credits: 0, owner: "Leo Galvez", lastChange: "12/06/2026 10:10", notes: "Acceso a pagos, estados de cuenta y comentarios internos." },
   { kind: "super-admin-support", name: "Ricardo Vega", email: "ricardo@empleateya.mx", organization: "Operaciones", role: "Operativo outplacement", phone: "+52 55 1000 0007", status: "invitado", credits: 0, owner: "Leo Galvez", lastChange: "12/06/2026 07:52", notes: "Apoya altas masivas y seguimiento operativo de campanas." },
   { kind: "coach-partner", name: "Mariana Soto", email: "mariana@franquicia-demo.mx", organization: "Franquicia Demo Norte", role: "Responsable franquicia", phone: "+52 55 1000 0003", status: "activo", credits: 600, owner: "Leo Galvez", lastChange: "11/06/2026 17:20", notes: "Licencia minima 6 meses. Administra clientes propios." },
@@ -231,6 +238,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   }, [query, status, userKind]);
 
   const selectedUser = filteredUsers.find((user) => user.email === selectedEmail);
+  const fixedEmpleateYaOrg = usesFixedEmpleateYaOrganization(userKind);
 
   return (
     <div className="space-y-7">
@@ -305,7 +313,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             <Field label={t.phone}><Input placeholder="+52 55 0000 0000" defaultValue={selectedUser?.phone ?? ""} /></Field>
           </FormGroup>
           <FormGroup title={kind.organizationLabel} icon={<Building2 size={18} />}>
-            <Field label={t.organization}>{usesOrganizationCatalog(userKind) ? <Select defaultValue={selectedUser?.organization}>{organizationCatalog[userKind].map((item) => <option key={item}>{item}</option>)}</Select> : <Input placeholder={kind.organizationPlaceholder} defaultValue={selectedUser?.organization ?? ""} />}</Field>
+            <Field label={t.organization}>{fixedEmpleateYaOrg ? <Input value={empleateYaOrganization} readOnly /> : usesOrganizationCatalog(userKind) ? <Select defaultValue={selectedUser?.organization}>{organizationCatalog[userKind].map((item) => <option key={item}>{item}</option>)}</Select> : <Input placeholder={kind.organizationPlaceholder} defaultValue={selectedUser?.organization ?? ""} />}</Field>
             {usesOrganizationCatalog(userKind) ? <p className="text-xs font-semibold leading-5 text-slate-500">{t.orgHelp}</p> : null}
             <Field label={kind.roleLabel}><Select defaultValue={selectedUser?.role}>{kind.roles.map((item) => <option key={item}>{item}</option>)}</Select></Field>
             <Field label={t.owner}><Select defaultValue={selectedUser?.owner ? ownerOptionFor(selectedUser.owner) : internalOwners[0]}>{internalOwners.map((item) => <option key={item}>{item}</option>)}</Select></Field>
@@ -313,8 +321,14 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
           </FormGroup>
           <FormGroup title={t.extra} icon={<ShieldCheck size={18} />}>
             <Field label={t.statusLabel}><Select defaultValue={selectedUser?.status}>{t.statuses.map((item) => <option key={item}>{item}</option>)}</Select></Field>
-            <Field label={t.credits}><Input placeholder="0" type="number" defaultValue={selectedUser?.credits ?? 0} /></Field>
+            <Field label={t.credits}><Input placeholder="0" type="number" defaultValue={selectedUser?.credits ?? (userKind === "online" ? onlineBaselineCredits : 0)} readOnly={userKind === "online"} /></Field>
             {kind.extraFields.map((field) => <Field key={field} label={field}><Input placeholder={field} /></Field>)}
+            {userKind === "online" ? (
+              <label className="flex items-start gap-3 rounded-2xl bg-white p-3 text-sm font-bold text-slate-700">
+                <input type="checkbox" className="mt-1" defaultChecked disabled={!canCurrentUserEditPrivacyAcceptance} />
+                <span>{t.privacyAccepted} <small className="block font-semibold text-slate-500">{t.privacyReadonly}</small></span>
+              </label>
+            ) : null}
           </FormGroup>
         </div>
         <div className="mt-5">
@@ -328,6 +342,10 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
 
 function usesOrganizationCatalog(userKind: AdminUserKind): userKind is "coach-partner" | "outplacement-rh" {
   return userKind === "coach-partner" || userKind === "outplacement-rh";
+}
+
+function usesFixedEmpleateYaOrganization(userKind: AdminUserKind) {
+  return userKind === "online" || userKind === "super-admin-support" || userKind === "internal-coach";
 }
 
 function ownerOptionFor(owner: string) {
