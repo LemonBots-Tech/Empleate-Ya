@@ -32,6 +32,17 @@ type DemoUser = {
   permissions?: UserPermissions;
 };
 
+type CreditAuditEvent = {
+  id: string;
+  userEmail: string;
+  userName: string;
+  amount: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  actor: string;
+  createdAt: string;
+};
+
 const kindConfig = {
   es: {
     online: {
@@ -155,6 +166,7 @@ const copy = {
     savedDataMessage: "Datos del usuario guardados en la tabla correspondiente.",
     savedPermissionsMessage: "Permisos guardados. Regresaste a captura y mantenimiento del usuario.",
     logicalDeleteMessage: "El usuario seleccionado paso a estado borrado_logico. No se elimino definitivamente.",
+    creditAdjustmentMessage: "Movimiento manual de creditos registrado en bitacora.",
     selected: "Seleccionado",
     noSelected: "Selecciona un usuario existente para editar o borrar logicamente.",
     name: "Nombre completo",
@@ -164,6 +176,9 @@ const copy = {
     role: "Rol",
     statusLabel: "Estado",
     credits: "Creditos / bolsa inicial",
+    creditsHelp: "Solo Super Admin puede mover manualmente la bolsa de usuarios online. Cada aumento o disminucion queda en bitacora.",
+    creditAuditTitle: "Bitacora de movimientos manuales de creditos",
+    creditAuditEmpty: "Aun no hay ajustes manuales de creditos en esta sesion.",
     owner: "Responsable interno",
     ownerHelp: "Solo el Super Admin puede modificar esta asignacion. Los nuevos usuarios se reparten aleatoriamente entre Super Admin y usuarios de apoyo.",
     orgHelp: "Para empresas de outplacement y coach partners, la organizacion viene del catalogo administrado por Super Admin o apoyos de Super Admin.",
@@ -209,6 +224,7 @@ const copy = {
     savedDataMessage: "User data saved in the corresponding table.",
     savedPermissionsMessage: "Permissions saved. You are back in user capture and maintenance.",
     logicalDeleteMessage: "The selected user was moved to logical_delete. It was not permanently deleted.",
+    creditAdjustmentMessage: "Manual credit movement recorded in the audit log.",
     selected: "Selected",
     noSelected: "Select an existing user to edit or logically delete.",
     name: "Full name",
@@ -218,6 +234,9 @@ const copy = {
     role: "Role",
     statusLabel: "Status",
     credits: "Credits / initial pool",
+    creditsHelp: "Only Super Admin can manually move the online user credit pool. Every increase or decrease is logged.",
+    creditAuditTitle: "Manual credit movement audit log",
+    creditAuditEmpty: "There are no manual credit adjustments in this session yet.",
     owner: "Internal owner",
     ownerHelp: "Only the Super Admin can modify this assignment. New users are distributed randomly among Super Admin and support users.",
     orgHelp: "For outplacement companies and coach partners, the organization comes from the organization catalog managed by Super Admin or Super Admin support users.",
@@ -285,8 +304,9 @@ const adminMenuLabels = {
 
 const internalOwners = ["Leo Galvez - Super Admin", "Daniela Ponce - Apoyo cobranza", "Ricardo Vega - Operativo outplacement", "Valeria Nunez - Apoyo administrativo", "Monica Reyes - Supervisor delegado temporal"] as const;
 const empleateYaOrganization = "Empleate YA";
-const onlineBaselineCredits = 445;
+const onlineBaselineCredits = 150;
 const canCurrentUserEditPrivacyAcceptance = true;
+const canCurrentUserEditOnlineCredits = true;
 const onlineBasicAvatarIds: SkillId[] = ["lumo", "recharge", "scorex", "mr_ikigai", "new_job_challenge", "mr_wow"];
 const coachStarterAvatarIds: SkillId[] = ["scorex", "optim", "mr_wow", "tommy_lee_picture"];
 const allAvatarIds = Object.keys(skillRegistry) as SkillId[];
@@ -334,6 +354,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const [users, setUsers] = useState<DemoUser[]>(demoUsers);
   const [notice, setNotice] = useState("");
   const [pendingPermissions, setPendingPermissions] = useState<UserPermissions | null>(null);
+  const [creditAuditEvents, setCreditAuditEvents] = useState<CreditAuditEvent[]>([]);
 
   const filteredUsers = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -354,6 +375,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
 
   function handleSaveUser(formData: FormData) {
     const email = String(formData.get("email") || "").trim();
+    const nextCredits = unlimitedCredits ? 0 : Number(formData.get("credits") || 0);
     const savedUser: DemoUser = {
       kind: userKind,
       name: String(formData.get("name") || "").trim() || "Usuario sin nombre",
@@ -362,12 +384,13 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       role: String(formData.get("role") || kind.roles[0]),
       phone: String(formData.get("phone") || "").trim(),
       status: String(formData.get("status") || defaultStatus),
-      credits: unlimitedCredits ? 0 : Number(formData.get("credits") || 0),
+      credits: nextCredits,
       owner: String(formData.get("owner") || internalOwners[0]),
       lastChange: new Date().toLocaleString(language === "es" ? "es-MX" : "en-US", { dateStyle: "short", timeStyle: "short" }),
       notes: String(formData.get("notes") || "").trim(),
       permissions: selectedUser?.permissions ?? pendingPermissions ?? defaultPermissionsFor(userKind, String(formData.get("role") || kind.roles[0]), coachPlanKey),
     };
+    let creditAdjusted = false;
 
     setUsers((currentUsers) => {
       const previousEmail = selectedUser?.email;
@@ -375,9 +398,29 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       if (existingIndex === -1) return [savedUser, ...currentUsers];
       return currentUsers.map((user, index) => (index === existingIndex ? savedUser : user));
     });
+    if (userKind === "online") {
+      const balanceBefore = selectedUser?.credits ?? onlineBaselineCredits;
+      const difference = nextCredits - balanceBefore;
+      if (difference !== 0) {
+        creditAdjusted = true;
+        setCreditAuditEvents((currentEvents) => [
+          {
+            id: `${Date.now()}-${savedUser.email}`,
+            userEmail: savedUser.email,
+            userName: savedUser.name,
+            amount: difference,
+            balanceBefore,
+            balanceAfter: nextCredits,
+            actor: "Leo Galvez - Super Admin",
+            createdAt: new Date().toLocaleString(language === "es" ? "es-MX" : "en-US", { dateStyle: "short", timeStyle: "short" }),
+          },
+          ...currentEvents,
+        ]);
+      }
+    }
     setSelectedEmail(savedUser.email);
     setPendingPermissions(null);
-    setNotice(t.savedDataMessage);
+    setNotice(creditAdjusted ? `${t.savedDataMessage} ${t.creditAdjustmentMessage}` : t.savedDataMessage);
   }
 
   function handleLogicalDelete() {
@@ -500,9 +543,10 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
                   <input type="hidden" name="credits" value="0" />
                 </div>
               ) : (
-                <Input name="credits" placeholder="0" type="number" defaultValue={selectedUser?.credits ?? (userKind === "online" ? onlineBaselineCredits : 0)} readOnly={userKind === "online"} />
+                <Input name="credits" placeholder="0" type="number" defaultValue={selectedUser?.credits ?? (userKind === "online" ? onlineBaselineCredits : 0)} readOnly={userKind !== "online" || !canCurrentUserEditOnlineCredits} />
               )}
             </Field>
+            {userKind === "online" ? <p className="text-xs font-semibold leading-5 text-slate-500">{t.creditsHelp}</p> : null}
             {kind.extraFields.map((field) => <Field key={field} label={field}><Input name={`extra-${field}`} placeholder={field} /></Field>)}
             {userKind === "online" ? (
               <label className="flex items-start gap-3 rounded-2xl bg-white p-3 text-sm font-bold text-slate-700">
@@ -516,6 +560,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
           <Label>{t.notes}</Label>
           <textarea name="notes" className="min-h-28 w-full rounded-2xl border border-[var(--brand-border)] bg-white px-4 py-3 text-sm text-[var(--brand-ink)] outline-none transition focus:border-[var(--brand-primary)] focus:ring-4 focus:ring-[var(--brand-primary-soft)]" defaultValue={selectedUser?.notes ?? ""} />
         </div>
+        {userKind === "online" ? <CreditAuditLog title={t.creditAuditTitle} empty={t.creditAuditEmpty} events={creditAuditEvents} /> : null}
       </form>
     </div>
   );
@@ -730,6 +775,42 @@ function Td({ children }: { children: ReactNode }) {
 
 function Pill({ children }: { children: ReactNode }) {
   return <span className="inline-flex whitespace-nowrap rounded-full bg-[var(--brand-primary-soft)] px-3 py-1 text-xs font-black text-[var(--brand-primary)]">{children}</span>;
+}
+
+function CreditAuditLog({ title, empty, events }: { title: string; empty: string; events: CreditAuditEvent[] }) {
+  return (
+    <section className="mt-5 rounded-[1.25rem] border border-slate-200 bg-slate-50/70 p-4">
+      <h3 className="text-lg font-black text-slate-950">{title}</h3>
+      {events.length ? (
+        <div className="mt-3 max-h-44 overflow-auto rounded-2xl border border-slate-200 bg-white">
+          <table className="w-full min-w-[820px] text-left text-sm">
+            <thead>
+              <tr>
+                <Th>Usuario</Th>
+                <Th>Movimiento</Th>
+                <Th>Saldo</Th>
+                <Th>Actor</Th>
+                <Th>Fecha</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {events.map((event) => (
+                <tr key={event.id} className="border-b border-slate-100 last:border-0">
+                  <Td><strong className="block text-slate-950">{event.userName}</strong><span className="text-xs text-slate-500">{event.userEmail}</span></Td>
+                  <Td><strong className={event.amount >= 0 ? "text-emerald-700" : "text-rose-700"}>{event.amount >= 0 ? "+" : ""}{event.amount}</strong></Td>
+                  <Td>{event.balanceBefore} -&gt; {event.balanceAfter}</Td>
+                  <Td>{event.actor}</Td>
+                  <Td>{event.createdAt}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="mt-2 text-sm font-semibold text-slate-500">{empty}</p>
+      )}
+    </section>
+  );
 }
 
 function ChecklistCard({ title, children }: { title: string; children: ReactNode }) {

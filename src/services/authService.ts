@@ -155,8 +155,8 @@ export function registerUser(input: z.infer<typeof registerSchema>, ipAddress?: 
     updatedAt: now(),
   };
   db.users.push(user);
-  db.wallets.push({ id: newId(), userId: user.id, balance: 250, currency: "MXN", updatedAt: now() });
-  db.ledger.push({ id: newId(), userId: user.id, type: "adjustment", amount: 250, balanceBefore: 0, balanceAfter: 250, description: "Créditos de bienvenida MVP", createdAt: now() });
+  db.wallets.push({ id: newId(), userId: user.id, balance: 150, currency: "MXN", updatedAt: now() });
+  db.ledger.push({ id: newId(), userId: user.id, type: "adjustment", amount: 150, balanceBefore: 0, balanceAfter: 150, description: "Créditos de bienvenida MVP", createdAt: now() });
   (["privacy_notice", "terms", "ai_processing", "artifact_storage"] as const).forEach((consentType) => {
     db.consents.push({ id: newId(), userId: user.id, consentType, accepted: true, version: CONSENT_VERSION, ipAddress, acceptedAt: now() });
   });
