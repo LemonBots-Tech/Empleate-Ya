@@ -6,32 +6,32 @@ import { personaRegistry } from "@/ai/personaRegistry";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 const cardsCopy = {
-  es: { specialized: "IA especializada", agent: "Agente de empleabilidad", tone: "Tono", credits: "créditos" },
-  en: { specialized: "Specialized AI", agent: "Employability agent", tone: "Tone", credits: "credits" },
+  es: { specialized: "IA especializada", agent: "Agente de empleabilidad", tone: "Tono", credits: "creditos", locked: "No disponible en tu perfil" },
+  en: { specialized: "Specialized AI", agent: "Employability agent", tone: "Tone", credits: "credits", locked: "Not available in your profile" },
 } as const;
 
 const descriptionCopy: Record<string, { es: string; en: string }> = {
-  lumo: { es: "Evalúa tus pilares personales para entender prioridades, motivación y dirección antes de buscar empleo.", en: "Evaluate your personal pillars to understand priorities, motivation, and direction before job searching." },
-  boost_me: { es: "Convierte objetivos y prioridades en un plan de acción personal claro y sostenible.", en: "Turn goals and priorities into a clear, sustainable personal action plan." },
-  clio: { es: "Lectura simbólica y motivacional para convertir incertidumbre en reflexión y próximos pasos.", en: "A symbolic, motivational reading to turn uncertainty into reflection and next steps." },
-  scorex: { es: "Evalúa CVs, compatibilidad ATS y comparación contra vacantes con reportes antes/después.", en: "Evaluate resumes, ATS compatibility, and job-posting fit with before/after reports." },
+  lumo: { es: "Evalua tus pilares personales para entender prioridades, motivacion y direccion antes de buscar empleo.", en: "Evaluate your personal pillars to understand priorities, motivation, and direction before job searching." },
+  boost_me: { es: "Convierte objetivos y prioridades en un plan de accion personal claro y sostenible.", en: "Turn goals and priorities into a clear, sustainable personal action plan." },
+  clio: { es: "Lectura simbolica y motivacional para convertir incertidumbre en reflexion y proximos pasos.", en: "A symbolic, motivational reading to turn uncertainty into reflection and next steps." },
+  scorex: { es: "Evalua CVs, compatibilidad ATS y comparacion contra vacantes con reportes antes/despues.", en: "Evaluate resumes, ATS compatibility, and job-posting fit with before/after reports." },
   optim: { es: "Crea, optimiza y adapta CVs a vacantes, convirtiendo funciones en logros medibles.", en: "Create, optimize, and tailor resumes to job postings by turning responsibilities into measurable achievements." },
-  scorex_360: { es: "Evalúa tu CV con una vista integral de compatibilidad, claridad, brechas y oportunidades.", en: "Evaluate your resume with an integral view of compatibility, clarity, gaps, and opportunities." },
+  scorex_360: { es: "Evalua tu CV con una vista integral de compatibilidad, claridad, brechas y oportunidades.", en: "Evaluate your resume with an integral view of compatibility, clarity, gaps, and opportunities." },
   mr_boost_linked: { es: "Optimiza titular, acerca de, experiencia, habilidades y estrategia de LinkedIn.", en: "Optimize headline, about section, experience, skills, and LinkedIn strategy." },
-  tommy_lee_picture: { es: "Prepara flujo de fotografía profesional para LinkedIn con consentimiento de imagen.", en: "Prepare a professional LinkedIn photo flow with image consent." },
-  miss_quest: { es: "Simula entrevistas por competencias, evalúa respuestas y genera reportes finales.", en: "Simulate competency interviews, evaluate answers, and generate final reports." },
-  mr_wow: { es: "Crea elevator pitches de 30, 60 y 90 segundos para múltiples contextos.", en: "Create 30, 60, and 90-second elevator pitches for multiple contexts." },
-  new_job_challenge: { es: "Analiza mercado laboral, tendencias, brechas y plan estratégico de búsqueda.", en: "Analyze the labor market, trends, gaps, and a strategic search plan." },
+  tommy_lee_picture: { es: "Prepara flujo de fotografia profesional para LinkedIn con consentimiento de imagen.", en: "Prepare a professional LinkedIn photo flow with image consent." },
+  miss_quest: { es: "Simula entrevistas por competencias, evalua respuestas y genera reportes finales.", en: "Simulate competency interviews, evaluate answers, and generate final reports." },
+  mr_wow: { es: "Crea elevator pitches de 30, 60 y 90 segundos para multiples contextos.", en: "Create 30, 60, and 90-second elevator pitches for multiple contexts." },
+  new_job_challenge: { es: "Analiza mercado laboral, tendencias, brechas y plan estrategico de busqueda.", en: "Analyze the labor market, trends, gaps, and a strategic search plan." },
   indiana_jobs: { es: "Busca, analiza, compara y prioriza vacantes contra tu perfil.", en: "Search, analyze, compare, and prioritize jobs against your profile." },
-  recharge: { es: "Detecta desánimo y recomienda microacciones para sostener la búsqueda laboral.", en: "Detect low motivation and recommend micro-actions to sustain the job search." },
-  mr_ikigai: { es: "Genera un mapa de dirección profesional cruzando motivación, habilidades, mercado e ingresos.", en: "Generate a professional direction map across motivation, skills, market, and income." },
+  recharge: { es: "Detecta desanimo y recomienda microacciones para sostener la busqueda laboral.", en: "Detect low motivation and recommend micro-actions to sustain the job search." },
+  mr_ikigai: { es: "Genera un mapa de direccion profesional cruzando motivacion, habilidades, mercado e ingresos.", en: "Generate a professional direction map across motivation, skills, market, and income." },
 };
 
 function routeForSkill(skillId: string) {
   return `/modules/${skillId}`;
 }
 
-export function AgentCards() {
+export function AgentCards({ enabledSkillIds }: { enabledSkillIds?: string[] }) {
   const { language } = useLanguage();
   const t = cardsCopy[language];
 
@@ -39,25 +39,17 @@ export function AgentCards() {
     <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
       {skills.map((skill) => {
         const persona = personaRegistry[skill.personaId];
-        return (
-          <Link
-            key={skill.id}
-            href={routeForSkill(skill.id)}
-            className="group min-w-0 overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white p-5 shadow-[0_18px_50px_-35px_rgba(71,85,105,0.5)] transition duration-300 hover:-translate-y-1 hover:border-[var(--brand-border)] hover:shadow-[0_24px_60px_-30px_rgba(109,40,217,0.22)]"
-          >
+        const enabled = !enabledSkillIds || enabledSkillIds.includes(skill.id);
+        const className = `group min-w-0 overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white p-5 shadow-[0_18px_50px_-35px_rgba(71,85,105,0.5)] transition duration-300 ${enabled ? "hover:-translate-y-1 hover:border-[var(--brand-border)] hover:shadow-[0_24px_60px_-30px_rgba(109,40,217,0.22)]" : "cursor-not-allowed opacity-45 grayscale"}`;
+        const content = (
+          <>
             <div className={`relative flex min-h-52 items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br ${persona.themeClass}`}>
               <div className="absolute -right-6 -top-8 h-24 w-24 rounded-full bg-white/70 blur-xl" />
               <div className="relative h-40 w-40 overflow-hidden rounded-full border-4 border-white/90 bg-white shadow-xl ring-8 ring-white/40 sm:h-44 sm:w-44">
-                <Image
-                  src={persona.avatarPath}
-                  alt={`Avatar de ${persona.name}`}
-                  fill
-                  sizes="176px"
-                  className="object-cover transition duration-300 group-hover:scale-105"
-                />
+                <Image src={persona.avatarPath} alt={`Avatar de ${persona.name}`} fill sizes="176px" className="object-cover transition duration-300 group-hover:scale-105" />
               </div>
               <span className="absolute bottom-3 right-3 flex items-center gap-1 rounded-full bg-white/85 px-2.5 py-1 text-[11px] font-bold text-slate-600 backdrop-blur">
-                <Sparkles size={12} /> {t.specialized}
+                <Sparkles size={12} /> {enabled ? t.specialized : t.locked}
               </span>
             </div>
             <div className="pt-5">
@@ -66,7 +58,7 @@ export function AgentCards() {
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--brand-primary)]">{t.agent}</p>
                   <h3 className="mt-2 text-xl font-extrabold tracking-tight text-slate-900">{skill.name}</h3>
                 </div>
-                <span className="shrink-0 rounded-full bg-slate-100 p-2 text-slate-500 transition group-hover:bg-[var(--brand-primary)] group-hover:text-white">
+                <span className={`shrink-0 rounded-full p-2 transition ${enabled ? "bg-slate-100 text-slate-500 group-hover:bg-[var(--brand-primary)] group-hover:text-white" : "bg-slate-100 text-slate-400"}`}>
                   <ArrowUpRight size={17} />
                 </span>
               </div>
@@ -76,8 +68,14 @@ export function AgentCards() {
                 <span className="font-extrabold text-[var(--brand-primary)]">{skill.baseCredits} {t.credits}</span>
               </div>
             </div>
-          </Link>
+          </>
         );
+
+        if (!enabled) {
+          return <div key={skill.id} className={className}>{content}</div>;
+        }
+
+        return <Link key={skill.id} href={routeForSkill(skill.id)} className={className}>{content}</Link>;
       })}
     </div>
   );

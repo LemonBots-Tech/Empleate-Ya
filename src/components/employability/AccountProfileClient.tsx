@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Save, ShieldCheck, UserRound } from "lucide-react";
+import { Camera, Save, ShieldCheck, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Select, Textarea } from "@/components/ui/Input";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
@@ -45,6 +45,9 @@ const copy = {
     loading: "Cargando perfil...",
     login: "Inicia sesión para editar tu perfil.",
     saved: "Perfil actualizado.",
+    ownerHelp: "Este perfil lo llena el usuario dueno de los datos: usuario online, alumno, ex-empleado o cliente autorizado. El Super Admin solo apoya o audita cuando exista una relacion de servicio.",
+    photo: "Foto de perfil",
+    photoHelp: "Imagen visible para coaches, reportes internos y experiencia personalizada.",
     targetRole: "Puesto objetivo",
     seniority: "Nivel",
     industry: "Industria",
@@ -68,6 +71,9 @@ const copy = {
     loading: "Loading profile...",
     login: "Sign in to edit your profile.",
     saved: "Profile updated.",
+    ownerHelp: "This profile is completed by the data owner: online user, student, former employee, or authorized client. The Super Admin only supports or audits when a service relationship exists.",
+    photo: "Profile photo",
+    photoHelp: "Image shown to coaches, internal reports, and the personalized experience.",
     targetRole: "Target role",
     seniority: "Level",
     industry: "Industry",
@@ -94,6 +100,7 @@ export function AccountProfileClient() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadProfile() {
@@ -161,6 +168,13 @@ export function AccountProfileClient() {
     setMessage(t.saved);
   }
 
+  function updatePhoto(file: File | undefined) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setPhotoPreview(typeof reader.result === "string" ? reader.result : null);
+    reader.readAsDataURL(file);
+  }
+
   if (loading) return <div className="rounded-[2rem] border border-slate-200 bg-white p-6 text-slate-600">{t.loading}</div>;
 
   return (
@@ -173,10 +187,32 @@ export function AccountProfileClient() {
             <p className="mt-3 max-w-3xl text-slate-600">{t.description}</p>
           </div>
         </div>
+        <p className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold leading-6 text-slate-600">{t.ownerHelp}</p>
         {message ? <p className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{message}</p> : null}
         {error ? <p className="mt-5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{error}</p> : null}
 
         <div className="mt-7 grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <Label>{t.photo}</Label>
+            <div className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center">
+              <div className="relative flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-white shadow-sm">
+                {photoPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={photoPreview} alt={t.photo} className="h-full w-full object-cover" />
+                ) : (
+                  <UserRound className="text-slate-300" size={44} />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-slate-600">{t.photoHelp}</p>
+                <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white shadow-sm transition hover:bg-slate-800">
+                  <Camera size={16} />
+                  {t.photo}
+                  <input type="file" accept="image/*" className="sr-only" onChange={(event) => updatePhoto(event.target.files?.[0])} />
+                </label>
+              </div>
+            </div>
+          </div>
           <div><Label>{t.targetRole}</Label><Input value={form.targetRole} onChange={(event) => updateField("targetRole", event.target.value)} /></div>
           <div>
             <Label>{t.seniority}</Label>
