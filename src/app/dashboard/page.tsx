@@ -80,7 +80,7 @@ export default function DashboardPage() {
           <p className="mt-2 text-4xl font-black text-[var(--brand-primary)]">
             {credits === null ? t.loading : `${currentCredits.toLocaleString(language === "es" ? "es-MX" : "en-US")} ${t.credits}`}
           </p>
-          <CreditFuelGauge percent={fuelPercent} status={status} />
+          <CreditFuelGauge percent={fuelPercent} status={status} credits={currentCredits} creditLabel={t.credits} />
           <p className="mt-2 text-sm text-slate-600">{t.note}</p>
           <p className="mt-2 text-xs font-semibold text-slate-500">{t.gaugeFull}: {fullTankCredits.toLocaleString(language === "es" ? "es-MX" : "en-US")} {t.credits}</p>
         </div>
@@ -95,23 +95,28 @@ export default function DashboardPage() {
   );
 }
 
-function CreditFuelGauge({ percent, status }: { percent: number; status: string }) {
-  const angle = -90 + (percent / 100) * 180;
+function CreditFuelGauge({ percent, status, credits, creditLabel }: { percent: number; status: string; credits: number; creditLabel: string }) {
+  const angle = 180 - (percent / 100) * 180;
+  const needleLength = 70;
+  const radians = (Math.PI / 180) * angle;
+  const needleX = 120 + Math.cos(radians) * needleLength;
+  const needleY = 116 - Math.sin(radians) * needleLength;
 
   return (
-    <div className="mt-5">
-      <div className="relative mx-auto h-28 w-56 overflow-hidden">
-        <div
-          className="absolute inset-x-0 bottom-0 h-56 rounded-full border-[14px] border-slate-800"
-          style={{ background: "conic-gradient(from 270deg, #ef4444 0deg 36deg, #facc15 36deg 78deg, #d9f99d 78deg 116deg, #86efac 116deg 150deg, #22c55e 150deg 180deg, transparent 180deg 360deg)" }}
-        />
-        <div className="absolute inset-x-7 bottom-0 h-40 rounded-t-full bg-white" />
-        <div className="absolute bottom-0 left-1/2 h-5 w-5 -translate-x-1/2 rounded-full bg-slate-800" />
-        <div
-          className="absolute bottom-2 left-1/2 h-20 w-1 origin-bottom rounded-full bg-slate-950 shadow"
-          style={{ transform: `translateX(-50%) rotate(${angle}deg)` }}
-        />
-      </div>
+    <div className="mt-5 rounded-2xl bg-slate-50 p-3">
+      <svg viewBox="0 0 240 142" role="img" aria-label={`${status} ${percent}%`} className="mx-auto h-36 w-full max-w-[260px]">
+        <path d="M 28 116 A 92 92 0 0 1 66 42" fill="none" stroke="#ef4444" strokeWidth="18" strokeLinecap="round" />
+        <path d="M 66 42 A 92 92 0 0 1 108 25" fill="none" stroke="#facc15" strokeWidth="18" strokeLinecap="round" />
+        <path d="M 108 25 A 92 92 0 0 1 150 31" fill="none" stroke="#d9f99d" strokeWidth="18" strokeLinecap="round" />
+        <path d="M 150 31 A 92 92 0 0 1 190 62" fill="none" stroke="#86efac" strokeWidth="18" strokeLinecap="round" />
+        <path d="M 190 62 A 92 92 0 0 1 212 116" fill="none" stroke="#22c55e" strokeWidth="18" strokeLinecap="round" />
+        <path d="M 28 116 A 92 92 0 0 1 212 116" fill="none" stroke="#1f2937" strokeWidth="6" strokeLinecap="round" />
+        <line x1="120" y1="116" x2={needleX} y2={needleY} stroke="#111827" strokeWidth="5" strokeLinecap="round" />
+        <circle cx="120" cy="116" r="11" fill="#111827" />
+        <circle cx="120" cy="116" r="5" fill="#64748b" />
+        <text x="120" y="80" textAnchor="middle" className="fill-slate-950 text-[18px] font-black">{percent}%</text>
+        <text x="120" y="99" textAnchor="middle" className="fill-slate-500 text-[10px] font-bold">{credits.toLocaleString()} {creditLabel}</text>
+      </svg>
       <div className="mt-2 flex items-center justify-between text-xs font-black uppercase tracking-[0.12em] text-slate-500">
         <span>{status}</span>
         <span>{percent}%</span>
