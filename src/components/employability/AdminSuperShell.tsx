@@ -26,9 +26,11 @@ export const adminSections = [
   { href: "/admin", key: "overview", icon: ShieldCheck, group: "core" },
   { href: "/admin/users", key: "users", icon: UsersRound, group: "core" },
   { href: "/admin/organizations", key: "organizations", icon: Building2, group: "core" },
-  { href: "/admin/campaigns", key: "campaigns", icon: FolderKanban, group: "core" },
-  { href: "/admin/groups", key: "groups", icon: ClipboardCheck, group: "core" },
-  { href: "/admin/coaching", key: "coaching", icon: BookOpenCheck, group: "core" },
+  { href: "/admin/coaching", key: "coaching", icon: BookOpenCheck, group: "programs" },
+  { href: "/admin/users/students", key: "students", icon: UsersRound, group: "programs" },
+  { href: "/admin/users/outplacement-employees", key: "outplacementEmployees", icon: UsersRound, group: "programs" },
+  { href: "/admin/campaigns", key: "campaigns", icon: FolderKanban, group: "programs" },
+  { href: "/admin/groups", key: "groups", icon: ClipboardCheck, group: "programs" },
   { href: "/admin/avatars", key: "avatars", icon: Bot, group: "configuration" },
   { href: "/admin/catalogs", key: "catalogs", icon: Settings2, group: "configuration" },
   { href: "/admin/permissions", key: "permissions", icon: KeyRound, group: "configuration" },
@@ -44,6 +46,7 @@ const copy = {
     title: "Super Admin",
     subtitle: "Control total de usuarios, licencias, creditos, permisos, avatares, pagos y reportes.",
     core: "Operacion",
+    programs: "Programas de capacitacion / outplacement",
     configuration: "Configuracion",
     money: "Creditos y pagos",
     operations: "Seguimiento",
@@ -53,6 +56,8 @@ const copy = {
     organizations: "Organizaciones",
     campaigns: "Campañas",
     groups: "Grupos",
+    students: "Alumnos",
+    outplacementEmployees: "Ex-empleados outplacement",
     avatars: "Avatares",
     catalogs: "Catalogos",
     permissions: "Permisos",
@@ -76,6 +81,7 @@ const copy = {
     title: "Super Admin",
     subtitle: "Full control over users, licenses, credits, permissions, avatars, payments, and reports.",
     core: "Operations",
+    programs: "Training / outplacement programs",
     configuration: "Configuration",
     money: "Credits and payments",
     operations: "Follow-up",
@@ -85,6 +91,8 @@ const copy = {
     organizations: "Organizations",
     campaigns: "Campaigns",
     groups: "Groups",
+    students: "Students",
+    outplacementEmployees: "Outplacement former employees",
     avatars: "Avatars",
     catalogs: "Catalogs",
     permissions: "Permissions",
@@ -106,7 +114,8 @@ const copy = {
   },
 } as const;
 
-const groups = ["core", "configuration", "money", "operations", "security"] as const;
+const groups = ["core", "programs", "configuration", "money", "operations", "security"] as const;
+const programUserHrefs = ["/admin/users/students", "/admin/users/outplacement-employees"] as const;
 
 export function AdminSuperShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -129,13 +138,14 @@ export function AdminSuperShell({ children }: { children: ReactNode }) {
                   {adminSections.filter((item) => item.group === group).map((item) => {
                     const Icon = item.icon;
                     const active = pathname === item.href;
+                    const userHubActive = item.key === "users" && pathname.startsWith("/admin/users") && !programUserHrefs.includes(pathname as (typeof programUserHrefs)[number]);
                     return (
                       <div key={item.href}>
                         <Link
                           href={item.href}
                           className={cn(
                             "flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-black transition",
-                            active || (item.key === "users" && pathname.startsWith("/admin/users")) ? "bg-[var(--brand-primary)] text-white shadow-lg shadow-purple-500/20" : "text-slate-600 hover:bg-[var(--brand-primary-soft)] hover:text-[var(--brand-primary)]",
+                            active || userHubActive ? "bg-[var(--brand-primary)] text-white shadow-lg shadow-purple-500/20" : "text-slate-600 hover:bg-[var(--brand-primary-soft)] hover:text-[var(--brand-primary)]",
                           )}
                         >
                           <Icon size={17} />

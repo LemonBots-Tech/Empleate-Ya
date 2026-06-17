@@ -50,8 +50,8 @@ const copy = {
       },
       groups: {
         title: "Grupos",
-        description: "Administra grupos de Coach Partner y coaching 1o1: organizacion, coach responsable, alumnos asignados, capacidad, bolsa de creditos y estado.",
-        columns: ["Grupo", "Organizacion", "Coach", "Alumnos", "Capacidad", "Bolsa creditos", "Estado"],
+        description: "Administra grupos activos asociados a una organizacion interna o externa, una plantilla Trainee & Coaching y uno o mas alumnos o ex-empleados autorizados. Cada empresa solo ve sus propios cursos; Super Admin ve todo.",
+        columns: ["Grupo / campana", "Organizacion", "Plantilla", "Participantes", "Bolsa creditos", "Alcance", "Estado"],
       },
       testimonials: {
         title: "Testimonios y autorizaciones",
@@ -107,8 +107,8 @@ const copy = {
       },
       groups: {
         title: "Groups",
-        description: "Manage Coach Partner and 1:1 coaching groups: organization, responsible coach, assigned students, capacity, credit pool, and status.",
-        columns: ["Group", "Organization", "Coach", "Students", "Capacity", "Credit pool", "Status"],
+        description: "Manage active groups tied to an internal or external organization, a Trainee & Coaching template, and one or more authorized students or former employees. Each company sees only its own courses; Super Admin sees everything.",
+        columns: ["Group / campaign", "Organization", "Template", "Participants", "Credit pool", "Scope", "Status"],
       },
       testimonials: {
         title: "Testimonials and authorizations",
@@ -151,9 +151,9 @@ const rows: Record<AdminModuleKey, string[][]> = {
     ["Coaching 1o1 ejecutivo", "Grupo interno Empleate YA", "ScoreX, Optim, Mr. Linked, Miss Quest", "515", "pending"],
   ],
   groups: [
-    ["Grupo CV Estrategico Norte", "Franquicia Demo Norte", "Mariana Soto", "5", "20", "30,900", "active"],
-    ["Coaching 1o1 Ejecutivo", "Empleate YA", "Sofia Rivera", "4", "8", "Ilimitada", "active"],
-    ["Grupo Entrevistas Bajio", "Franquicia Demo Bajio", "Hector Ramos", "0", "10", "15,450", "pending"],
+    ["Grupo CV Estrategico Norte", "Franquicia Demo Norte", "CV estrategico base", "5 alumnos", "30,900", "Solo organizacion", "active"],
+    ["Coaching 1o1 Ejecutivo", "Empleate YA", "Coaching 1o1 ejecutivo", "4 alumnos", "Ilimitada", "Interno", "active"],
+    ["Outplacement Junio 2026", "Empresa Demo Outplacement", "Outplacement completo", "18 ex-empleados", "27,810", "Solo empresa", "pending"],
   ],
   testimonials: [
     ["Candidata area salud", "TES-2026-001", "31/12/2026", "PDF validado", "active"],

@@ -351,6 +351,8 @@ const adminMenuLabels = {
     organizations: "Organizaciones",
     campaigns: "Campanas",
     groups: "Grupos",
+    students: "Alumnos",
+    outplacementEmployees: "Ex-empleados outplacement",
     avatars: "Avatares",
     catalogs: "Catalogos",
     permissions: "Permisos",
@@ -367,6 +369,8 @@ const adminMenuLabels = {
     organizations: "Organizations",
     campaigns: "Campaigns",
     groups: "Groups",
+    students: "Students",
+    outplacementEmployees: "Outplacement former employees",
     avatars: "Avatars",
     catalogs: "Catalogs",
     permissions: "Permissions",
@@ -892,11 +896,11 @@ function calculateCoachPartnerPool(avatarIds: readonly SkillId[], groups: number
 
 function menuAllowedFor(userKind: AdminUserKind, userRole: string, href: string) {
   if (userKind === "online") return false;
-  if (userKind === "coach-partner") return ["/admin/users", "/admin/groups", "/admin/credits", "/admin/reports", "/admin/coaching"].includes(href);
+  if (userKind === "coach-partner") return ["/admin/users", "/admin/users/students", "/admin/groups", "/admin/credits", "/admin/reports", "/admin/coaching"].includes(href);
   if (userKind === "student") return false;
-  if (userKind === "outplacement-rh") return ["/admin/users", "/admin/organizations", "/admin/campaigns", "/admin/reports"].includes(href);
+  if (userKind === "outplacement-rh") return ["/admin/users", "/admin/users/outplacement-employees", "/admin/organizations", "/admin/campaigns", "/admin/reports", "/admin/coaching"].includes(href);
   if (userKind === "outplacement-employee") return false;
-  if (userKind === "internal-coach") return ["/admin/users", "/admin/groups", "/admin/coaching", "/admin/testimonials", "/admin/reports"].includes(href);
+  if (userKind === "internal-coach") return ["/admin/users", "/admin/users/students", "/admin/groups", "/admin/coaching", "/admin/testimonials", "/admin/reports"].includes(href);
   if (userKind === "super-admin-support") return supportRoleMenuAllowed(userRole, href);
   return true;
 }
@@ -913,9 +917,9 @@ function supportRoleMenuAllowed(userRole: string, href: string) {
   const role = normalizeRole(userRole);
   if (role.includes("supervisor delegado") || role.includes("temporary delegated")) return true;
   if (role.includes("cobranza") || role.includes("collections")) return ["/admin", "/admin/credits", "/admin/payments", "/admin/reports", "/admin/audit"].includes(href);
-  if (role.includes("outplacement")) return ["/admin", "/admin/users", "/admin/organizations", "/admin/campaigns", "/admin/permissions", "/admin/reports", "/admin/audit"].includes(href);
-  if (role.includes("coach partner")) return ["/admin", "/admin/users", "/admin/organizations", "/admin/groups", "/admin/coaching", "/admin/permissions", "/admin/reports", "/admin/audit"].includes(href);
-  return ["/admin", "/admin/users", "/admin/organizations", "/admin/permissions", "/admin/reports"].includes(href);
+  if (role.includes("outplacement")) return ["/admin", "/admin/users", "/admin/users/outplacement-employees", "/admin/organizations", "/admin/campaigns", "/admin/coaching", "/admin/permissions", "/admin/reports", "/admin/audit"].includes(href);
+  if (role.includes("coach partner")) return ["/admin", "/admin/users", "/admin/users/students", "/admin/organizations", "/admin/groups", "/admin/coaching", "/admin/permissions", "/admin/reports", "/admin/audit"].includes(href);
+  return ["/admin", "/admin/users", "/admin/users/students", "/admin/users/outplacement-employees", "/admin/organizations", "/admin/permissions", "/admin/reports"].includes(href);
 }
 
 function supportRoleUserSubmenuAllowed(userRole: string, href: string) {
