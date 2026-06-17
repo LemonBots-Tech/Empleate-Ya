@@ -68,10 +68,13 @@ const copy = {
     edit: "Editar seleccionada",
     save: "Guardar organizacion",
     renew: "Renovacion",
+    deleteRenewal: "Borrar renovacion",
     extendGrace: "Extender gracia",
     deleteLogical: "Borrado logico",
     saved: "Organizacion guardada en la tabla correspondiente.",
     renewed: "Renovacion creada como una licencia distinta para esta organizacion.",
+    renewalBlocked: "No se puede renovar: la licencia seleccionada sigue vigente o dentro del periodo de gracia.",
+    renewalDeleted: "Renovacion marcada como cancelada por Super Admin y registrada en bitacora.",
     graceExtended: "Periodo de gracia extendido por Super Admin y registrado en bitacora.",
     deleted: "La organizacion paso a estado borrado_logico. No fue eliminada definitivamente.",
     identity: "Identidad",
@@ -90,6 +93,8 @@ const copy = {
     city: "Ciudad",
     address: "Direccion",
     license: "Licencia, contrato y capacidad",
+    currentLicense: "Licencia vigente",
+    licenseStatus: "Estatus licencia",
     plan: "Plan Coach Partner",
     outplacementService: "Servicio outplacement",
     planHelp: "Los planes solo aplican a Coach Partner. En outplacement se registra el servicio contratado, campanas autorizadas y ex-empleados.",
@@ -106,7 +111,7 @@ const copy = {
     auditEmpty: "Aun no hay movimientos de licencia en esta sesion.",
     internalOwner: "Responsable interno",
     notes: "Notas internas",
-    columns: ["Seleccion", "Organizacion", "Tipo", "Representante", "Contacto", "Ubicacion", "Plan", "Capacidad", "Responsable", "Estado", "Ultimo cambio"],
+    columns: ["Seleccion", "Organizacion", "Tipo", "Representante", "Contacto", "Ubicacion", "Licencia vigente", "Plan", "Capacidad", "Responsable", "Estado", "Ultimo cambio"],
     types: {
       coach_partner: "Coach Partner",
       outplacement_company: "Empresa outplacement",
@@ -133,10 +138,13 @@ const copy = {
     edit: "Edit selected",
     save: "Save organization",
     renew: "Renewal",
+    deleteRenewal: "Delete renewal",
     extendGrace: "Extend grace",
     deleteLogical: "Logical delete",
     saved: "Organization saved in the corresponding table.",
     renewed: "Renewal created as a separate license for this organization.",
+    renewalBlocked: "Cannot renew: the selected license is still active or inside its grace period.",
+    renewalDeleted: "Renewal marked as cancelled by Super Admin and recorded in the audit log.",
     graceExtended: "Grace period extended by Super Admin and recorded in the audit log.",
     deleted: "The organization was moved to logical_delete. It was not permanently deleted.",
     identity: "Identity",
@@ -155,6 +163,8 @@ const copy = {
     city: "City",
     address: "Address",
     license: "License, contract, and capacity",
+    currentLicense: "Current license",
+    licenseStatus: "License status",
     plan: "Coach Partner plan",
     outplacementService: "Outplacement service",
     planHelp: "Plans apply only to Coach Partner. For outplacement, register the contracted service, authorized campaigns, and former employees.",
@@ -171,7 +181,7 @@ const copy = {
     auditEmpty: "There are no license movements in this session yet.",
     internalOwner: "Internal owner",
     notes: "Internal notes",
-    columns: ["Select", "Organization", "Type", "Representative", "Contact", "Location", "Plan", "Capacity", "Owner", "Status", "Last change"],
+    columns: ["Select", "Organization", "Type", "Representative", "Contact", "Location", "Current license", "Plan", "Capacity", "Owner", "Status", "Last change"],
     types: {
       coach_partner: "Coach Partner",
       outplacement_company: "Outplacement company",
@@ -270,6 +280,7 @@ export function AdminOrganizationsClient() {
   }, [organizations, query, statusFilter, typeFilter]);
 
   const selectedOrganization = filteredOrganizations.find((organization) => organization.id === selectedId);
+  const selectedLicenseState = selectedOrganization ? getLicenseState(selectedOrganization) : null;
 
   function createNew() {
     setSelectedId("");
@@ -321,6 +332,12 @@ export function AdminOrganizationsClient() {
 
   function renewLicense() {
     if (!selectedOrganization) return;
+    const licenseState = getLicenseState(selectedOrganization);
+    if (licenseState === "vigente" || licenseState === "gracia") {
+      addAuditEvent(selectedOrganization.name, "license.renewal.blocked", `Intento de renovacion bloqueado por estatus ${licenseState}`);
+      setNotice(t.renewalBlocked);
+      return;
+    }
     const nextStart = selectedOrganization.licenseEnd || todayInputValue();
     const nextEnd = addMonths(nextStart, selectedOrganization.contractTermMonths);
     const renewed: OrganizationRecord = {
@@ -340,6 +357,18 @@ export function AdminOrganizationsClient() {
     setDraftType(renewed.type);
     addAuditEvent(renewed.name, "license.renewal", `Nueva licencia v${renewed.licenseVersion}: ${renewed.licenseStart} - ${renewed.licenseEnd}`);
     setNotice(t.renewed);
+  }
+
+  function deleteRenewal() {
+    if (!selectedOrganization || selectedOrganization.licenseVersion <= 1) return;
+    setOrganizations((current) => current.map((organization) => organization.id === selectedOrganization.id ? {
+      ...organization,
+      status: "borrado_logico",
+      lastChange: new Date().toLocaleString(language === "es" ? "es-MX" : "en-US", { dateStyle: "short", timeStyle: "short" }),
+      notes: `${organization.notes}\nRenovacion cancelada por Super Admin.`,
+    } : organization));
+    addAuditEvent(selectedOrganization.name, "license.renewal.cancelled", `Renovacion v${selectedOrganization.licenseVersion} marcada como borrado_logico`);
+    setNotice(t.renewalDeleted);
   }
 
   function extendGracePeriod() {
@@ -427,7 +456,12 @@ export function AdminOrganizationsClient() {
                   <Td>{organization.legalRepresentative}</Td>
                   <Td><strong className="block text-slate-700">{organization.contactName}</strong><span className="text-xs text-slate-500">{organization.contactEmail}</span></Td>
                   <Td>{organization.city}, {organization.state}</Td>
-                  <Td>{organization.plan}<span className="block text-xs text-slate-500">v{organization.licenseVersion} · {organization.contractTermMonths} meses</span></Td>
+                  <Td>
+                    <strong>v{organization.licenseVersion}</strong>
+                    <span className="block text-xs text-slate-500">{organization.licenseStart || "-"} - {organization.licenseEnd || "-"}</span>
+                    <span className="mt-1 inline-block"><Pill>{getLicenseState(organization)}</Pill></span>
+                  </Td>
+                  <Td>{organization.plan}<span className="block text-xs text-slate-500">{organization.contractTermMonths} meses</span></Td>
                   <Td>{organization.type === "coach_partner" ? `${organization.monthlyGroups} x ${organization.studentsPerGroup}` : `${organization.outplacementCampaigns} campanas`}</Td>
                   <Td>{organization.internalOwner}</Td>
                   <Td><Pill>{organization.status}</Pill></Td>
@@ -452,10 +486,32 @@ export function AdminOrganizationsClient() {
             <Button type="button" disabled={!selectedOrganization} className="gap-2 bg-slate-950 text-white hover:bg-slate-800"><Edit3 size={17} />{t.edit}</Button>
             <Button type="submit" className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"><Save size={17} />{t.save}</Button>
             <Button type="button" disabled={!selectedOrganization} className="gap-2 bg-blue-600 text-white hover:bg-blue-700" onClick={renewLicense}>{t.renew}</Button>
+            <Button type="button" disabled={!selectedOrganization || selectedOrganization.licenseVersion <= 1} className="gap-2 bg-orange-600 text-white hover:bg-orange-700" onClick={deleteRenewal}>{t.deleteRenewal}</Button>
             <Button type="button" disabled={!selectedOrganization} className="gap-2 bg-amber-500 text-white hover:bg-amber-600" onClick={extendGracePeriod}>{t.extendGrace}</Button>
             <Button type="button" disabled={!selectedOrganization} className="gap-2 bg-red-600 text-white hover:bg-red-700" onClick={logicalDelete}><Trash2 size={17} />{t.deleteLogical}</Button>
           </div>
         </div>
+
+        <section className="mb-5 rounded-[1.25rem] border border-purple-100 bg-purple-50 p-4">
+          <div className="grid gap-3 md:grid-cols-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--brand-primary)]">{t.currentLicense}</p>
+              <p className="mt-1 text-2xl font-black text-slate-950">v{selectedOrganization?.licenseVersion ?? 1}</p>
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">{t.licenseStart}</p>
+              <p className="mt-1 font-black text-slate-900">{selectedOrganization?.licenseStart || "-"}</p>
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">{t.licenseEnd}</p>
+              <p className="mt-1 font-black text-slate-900">{selectedOrganization?.licenseEnd || "-"}</p>
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">{t.licenseStatus}</p>
+              <p className="mt-2"><Pill>{selectedLicenseState ?? "sin seleccion"}</Pill></p>
+            </div>
+          </div>
+        </section>
 
         <div className="grid gap-5 xl:grid-cols-3">
           <FormGroup title={t.identity} icon={<Building2 size={18} />}>
@@ -599,4 +655,12 @@ function addDays(dateValue: string, days: number) {
   const date = new Date(`${dateValue}T00:00:00`);
   date.setDate(date.getDate() + days);
   return date.toISOString().slice(0, 10);
+}
+
+function getLicenseState(organization: OrganizationRecord) {
+  if (organization.status === "borrado_logico") return "cancelada";
+  const today = todayInputValue();
+  if (organization.licenseEnd && today <= organization.licenseEnd) return "vigente";
+  if (organization.graceUntil && today <= organization.graceUntil) return "gracia";
+  return "vencida";
 }
