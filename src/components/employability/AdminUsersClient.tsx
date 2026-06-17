@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { Building2, Edit3, KeyRound, Save, Search, ShieldCheck, Trash2, UserPlus, UsersRound } from "lucide-react";
+import { Building2, Edit3, FileText, KeyRound, Mail, Printer, Save, Search, ShieldCheck, Trash2, UserPlus, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Select } from "@/components/ui/Input";
 import { skillRegistry, type SkillId } from "@/ai/skillRegistry";
@@ -47,6 +47,13 @@ type CreditAuditEvent = {
 };
 
 type UserSearchMode = "capture" | "edit" | "delete";
+type BalancePeriod = "day" | "week" | "month" | "custom";
+type BalanceMovement = {
+  date: string;
+  concept: string;
+  credits: number;
+  consumption: number;
+};
 
 const kindConfig = {
   es: {
@@ -206,6 +213,8 @@ const copy = {
     formTitle: "Captura y mantenimiento",
     create: "Crear",
     edit: "Buscar para editar",
+    balance: "Movimientos / balance",
+    balanceDisabledHelp: "Selecciona primero un usuario online para consultar su balance.",
     saveData: "Guardar datos",
     deleteLogical: "Buscar para borrar",
     confirmDelete: "Confirmar borrado logico",
@@ -217,6 +226,24 @@ const copy = {
     savedPermissionsMessage: "Permisos guardados. Regresaste a captura y mantenimiento del usuario.",
     logicalDeleteMessage: "El usuario seleccionado paso a estado borrado_logico. No se elimino definitivamente.",
     creditAdjustmentMessage: "Movimiento manual de creditos registrado en bitacora.",
+    balanceEmailMessage: "Balance preparado para enviarse al correo del cliente con PDF adjunto.",
+    balanceTitle: "Estado de cuenta de creditos",
+    balanceDescription: "Consulta movimientos desde la creacion del usuario y genera un preview para imprimir, PDF o envio por correo.",
+    balancePeriod: "Periodo a consultar",
+    balanceDay: "Dia",
+    balanceWeek: "Semana",
+    balanceMonth: "Mes",
+    balanceCustom: "Periodo personalizado",
+    balanceStart: "Fecha inicial",
+    balanceEnd: "Fecha final",
+    balancePreview: "Preview del balance",
+    balanceGeneralData: "Datos generales",
+    balancePrint: "Imprimir",
+    balancePdf: "PDF",
+    balanceEmail: "Enviar por email",
+    balanceFinal: "Balance final",
+    balanceColumns: ["Fecha", "Concepto", "Creditos", "Consumos"],
+    balanceDefaultConcept: "Creditos de prueba default",
     selected: "Seleccionado",
     noSelected: "Selecciona un usuario existente para editar o borrar logicamente.",
     name: "Nombre completo",
@@ -279,6 +306,8 @@ const copy = {
     formTitle: "Capture and maintenance",
     create: "Create",
     edit: "Find to edit",
+    balance: "Movements / balance",
+    balanceDisabledHelp: "Select an online user first to review their balance.",
     saveData: "Save data",
     deleteLogical: "Find to delete",
     confirmDelete: "Confirm logical delete",
@@ -290,6 +319,24 @@ const copy = {
     savedPermissionsMessage: "Permissions saved. You are back in user capture and maintenance.",
     logicalDeleteMessage: "The selected user was moved to logical_delete. It was not permanently deleted.",
     creditAdjustmentMessage: "Manual credit movement recorded in the audit log.",
+    balanceEmailMessage: "Balance prepared to be emailed to the client with the PDF attached.",
+    balanceTitle: "Credit statement",
+    balanceDescription: "Review movements since the user was created and generate a preview for print, PDF, or email delivery.",
+    balancePeriod: "Period to review",
+    balanceDay: "Day",
+    balanceWeek: "Week",
+    balanceMonth: "Month",
+    balanceCustom: "Custom period",
+    balanceStart: "Start date",
+    balanceEnd: "End date",
+    balancePreview: "Balance preview",
+    balanceGeneralData: "General data",
+    balancePrint: "Print",
+    balancePdf: "PDF",
+    balanceEmail: "Email",
+    balanceFinal: "Final balance",
+    balanceColumns: ["Date", "Concept", "Credits", "Consumption"],
+    balanceDefaultConcept: "Default trial credits",
     selected: "Selected",
     noSelected: "Select an existing user to edit or logically delete.",
     name: "Full name",
@@ -462,6 +509,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const [pendingPermissions, setPendingPermissions] = useState<UserPermissions | null>(null);
   const [creditAuditEvents, setCreditAuditEvents] = useState<CreditAuditEvent[]>([]);
   const [searchMode, setSearchMode] = useState<UserSearchMode>("capture");
+  const [showBalance, setShowBalance] = useState(false);
 
   const filteredUsers = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -567,6 +615,21 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     );
   }
 
+  if (showBalance && selectedUser && userKind === "online") {
+    return (
+      <OnlineBalancePanel
+        user={selectedUser}
+        language={language}
+        creditAuditEvents={creditAuditEvents}
+        onBack={() => setShowBalance(false)}
+        onEmail={() => {
+          setShowBalance(false);
+          setNotice(t.balanceEmailMessage);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-7">
       <header>
@@ -642,6 +705,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             <Button type="button" className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]" onClick={() => { setSelectedEmail(""); setNotice(""); setSearchMode("capture"); }}><UserPlus size={17} />{t.create}</Button>
             <Button type="button" className="gap-2 bg-slate-950 text-white hover:bg-slate-800" onClick={() => { setSearchMode("edit"); setNotice(""); }}><Edit3 size={17} />{t.edit}</Button>
             <Button type="button" className="gap-2 bg-amber-500 text-white hover:bg-amber-600" onClick={() => { setSearchMode("delete"); setNotice(""); }}><Trash2 size={17} />{t.deleteLogical}</Button>
+            {userKind === "online" ? <Button type="button" disabled={!selectedUser} title={!selectedUser ? t.balanceDisabledHelp : undefined} className="gap-2 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50" onClick={() => setShowBalance(true)}><FileText size={17} />{t.balance}</Button> : null}
             <Button type="submit" className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"><Save size={17} />{t.saveData}</Button>
             {selectedUser ? <Button type="button" className="gap-2 bg-red-600 text-white hover:bg-red-700" onClick={handleLogicalDelete}><Trash2 size={17} />{t.confirmDelete}</Button> : null}
             <Button type="button" className="gap-2 border border-[var(--brand-border)] bg-white text-[var(--brand-primary)] hover:bg-[var(--brand-primary-soft)]" onClick={() => { setPendingPermissions(activePermissions); setShowPermissions(true); }}><KeyRound size={17} />{t.permissions}</Button>
@@ -735,6 +799,98 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
         {userKind === "online" ? <CreditAuditLog title={t.creditAuditTitle} empty={t.creditAuditEmpty} events={creditAuditEvents} /> : null}
       </form>
     </div>
+  );
+}
+
+function OnlineBalancePanel({
+  user,
+  language,
+  creditAuditEvents,
+  onBack,
+  onEmail,
+}: {
+  user: DemoUser;
+  language: "es" | "en";
+  creditAuditEvents: CreditAuditEvent[];
+  onBack: () => void;
+  onEmail: () => void;
+}) {
+  const t = copy[language];
+  const [period, setPeriod] = useState<BalancePeriod>("month");
+  const [startDate, setStartDate] = useState("2026-06-01");
+  const [endDate, setEndDate] = useState("2026-06-30");
+  const movements = useMemo(() => filterBalanceMovements(buildBalanceMovements(user, creditAuditEvents, language), period, startDate, endDate), [creditAuditEvents, endDate, language, period, startDate, user]);
+  const finalBalance = movements.reduce((total, movement) => total + movement.credits + movement.consumption, 0);
+
+  function printStatement() {
+    if (typeof window !== "undefined") window.print();
+  }
+
+  return (
+    <section className="space-y-5 rounded-[1.5rem] border border-indigo-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--brand-primary)]">{t.balance}</p>
+          <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">{t.balanceTitle}</h2>
+          <p className="mt-2 max-w-4xl text-sm font-semibold leading-6 text-slate-600">{t.balanceDescription}</p>
+        </div>
+        <Button type="button" className="border border-[var(--brand-border)] bg-white text-slate-700 hover:bg-slate-50" onClick={onBack}>{t.backToCapture}</Button>
+      </div>
+
+      <div className="grid gap-4 rounded-[1.25rem] border border-slate-200 bg-slate-50/80 p-4 lg:grid-cols-[240px_1fr_1fr]">
+        <Field label={t.balancePeriod}>
+          <Select value={period} onChange={(event) => setPeriod(event.target.value as BalancePeriod)}>
+            <option value="day">{t.balanceDay}</option>
+            <option value="week">{t.balanceWeek}</option>
+            <option value="month">{t.balanceMonth}</option>
+            <option value="custom">{t.balanceCustom}</option>
+          </Select>
+        </Field>
+        <Field label={t.balanceStart}>
+          <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} disabled={period !== "custom"} />
+        </Field>
+        <Field label={t.balanceEnd}>
+          <Input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} disabled={period !== "custom"} />
+        </Field>
+      </div>
+
+      <article className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-4 border-b border-slate-100 bg-slate-50 px-5 py-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h3 className="text-2xl font-black text-slate-950">{t.balancePreview}</h3>
+            <p className="mt-2 text-sm font-semibold text-slate-600">{t.balanceGeneralData}: {user.name} | {user.email} | {user.phone} | {user.role}</p>
+            <p className="mt-1 text-sm font-semibold text-slate-500">{user.organization} | {user.status}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" className="gap-2 bg-slate-700 text-white hover:bg-slate-800" onClick={printStatement}><Printer size={17} />{t.balancePrint}</Button>
+            <Button type="button" className="gap-2 bg-rose-500 text-white hover:bg-rose-600" onClick={printStatement}><FileText size={17} />{t.balancePdf}</Button>
+            <Button type="button" className="gap-2 bg-indigo-600 text-white hover:bg-indigo-700" onClick={onEmail}><Mail size={17} />{t.balanceEmail}</Button>
+          </div>
+        </div>
+
+        <div className="overflow-auto">
+          <table className="w-full min-w-[780px] text-left text-sm">
+            <thead>
+              <tr>{t.balanceColumns.map((column) => <Th key={column}>{column}</Th>)}</tr>
+            </thead>
+            <tbody>
+              {movements.map((movement) => (
+                <tr key={`${movement.date}-${movement.concept}`} className="border-b border-slate-100 last:border-0">
+                  <Td>{formatBalanceDate(movement.date, language)}</Td>
+                  <Td><span className="font-bold text-slate-900">{movement.concept}</span></Td>
+                  <Td>{movement.credits > 0 ? formatSignedCredits(movement.credits) : "-"}</Td>
+                  <Td>{movement.consumption < 0 ? formatSignedCredits(movement.consumption) : "-"}</Td>
+                </tr>
+              ))}
+              <tr className="bg-slate-950 text-white">
+                <td className="px-4 py-3 text-sm font-black" colSpan={2}>{t.balanceFinal}</td>
+                <td className="px-4 py-3 text-sm font-black" colSpan={2}>{finalBalance.toLocaleString(language === "es" ? "es-MX" : "en-US")}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
   );
 }
 
@@ -890,6 +1046,50 @@ function toggleItem<T>(items: T[], item: T, checked: boolean) {
 function calculateCoachPartnerPool(avatarIds: readonly SkillId[], groups: number, studentsPerGroup: number, cycles: number) {
   const creditsPerStudentCycle = avatarIds.reduce((total, avatarId) => total + skillRegistry[avatarId].baseCredits, 0);
   return creditsPerStudentCycle * groups * studentsPerGroup * cycles;
+}
+
+function buildBalanceMovements(user: DemoUser, creditAuditEvents: CreditAuditEvent[], language: "es" | "en"): BalanceMovement[] {
+  const defaultConcept = copy[language].balanceDefaultConcept;
+  const userAuditMovements = creditAuditEvents
+    .filter((event) => event.userEmail === user.email)
+    .map((event) => ({
+      date: isoDateFromDisplayDate(event.createdAt),
+      concept: language === "es" ? `Ajuste manual de creditos | ${event.actor}` : `Manual credit adjustment | ${event.actor}`,
+      credits: event.amount > 0 ? event.amount : 0,
+      consumption: event.amount < 0 ? event.amount : 0,
+    }));
+
+  return [
+    { date: "2026-06-01", concept: defaultConcept, credits: onlineBaselineCredits, consumption: 0 },
+    { date: "2026-06-05", concept: "ScoreX | evalua CV para ATS", credits: 0, consumption: -skillRegistry.scorex.baseCredits },
+    { date: "2026-06-08", concept: "Compra de 999 creditos | Referencia Stripe: 9999999999", credits: 500, consumption: 0 },
+    ...userAuditMovements,
+  ].sort((left, right) => left.date.localeCompare(right.date));
+}
+
+function filterBalanceMovements(movements: BalanceMovement[], period: BalancePeriod, startDate: string, endDate: string) {
+  const today = "2026-06-17";
+  const ranges: Record<Exclude<BalancePeriod, "custom">, [string, string]> = {
+    day: [today, today],
+    week: ["2026-06-15", "2026-06-21"],
+    month: ["2026-06-01", "2026-06-30"],
+  };
+  const [start, end] = period === "custom" ? [startDate || "0000-01-01", endDate || "9999-12-31"] : ranges[period];
+  return movements.filter((movement) => movement.date >= start && movement.date <= end);
+}
+
+function isoDateFromDisplayDate(value: string) {
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+  return "2026-06-17";
+}
+
+function formatBalanceDate(value: string, language: "es" | "en") {
+  return new Date(`${value}T12:00:00`).toLocaleDateString(language === "es" ? "es-MX" : "en-US", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function formatSignedCredits(value: number) {
+  return value > 0 ? `+${value.toLocaleString("es-MX")}` : value.toLocaleString("es-MX");
 }
 
 function menuAllowedFor(userKind: AdminUserKind, userRole: string, href: string) {
