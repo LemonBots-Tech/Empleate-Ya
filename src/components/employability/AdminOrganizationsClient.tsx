@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input, Label, Select, Textarea } from "@/components/ui/Input";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
-type OrganizationType = "empleate_ya" | "coach_partner" | "outplacement_company";
+type OrganizationType = "coach_partner" | "outplacement_company";
 
 type OrganizationRecord = {
   id: string;
@@ -26,7 +26,10 @@ type OrganizationRecord = {
   plan: string;
   licenseStart: string;
   licenseEnd: string;
-  minimumTermMonths: number;
+  contractTermMonths: number;
+  gracePeriodDays: number;
+  graceUntil: string;
+  licenseVersion: number;
   monthlyGroups: number;
   studentsPerGroup: number;
   outplacementCampaigns: number;
@@ -35,12 +38,21 @@ type OrganizationRecord = {
   lastChange: string;
 };
 
+type OrganizationAuditEvent = {
+  id: string;
+  organizationName: string;
+  action: string;
+  detail: string;
+  actor: string;
+  createdAt: string;
+};
+
 const copy = {
   es: {
     eyebrow: "Super Admin",
     title: "Organizaciones",
-    description: "Todas las personas pertenecen a una organizacion: Empleate YA, una empresa de outplacement o una empresa/franquicia Coach Partner.",
-    rule: "Regla base: usuarios online, apoyos internos, coaches internos y Super Admin pertenecen a Empleate YA. Ex-empleados pertenecen a la empresa de outplacement. Alumnos de Coach Partner pertenecen a la organizacion que representa el coach.",
+    description: "Administra organizaciones externas: empresas que contratan outplacement y empresas/franquicias Coach Partner.",
+    rule: "Regla base: Empleate YA no se captura aqui. Los usuarios internos, online, apoyos Super Admin y coaches internos tienen Empleate YA por default en su pantalla de usuario. Primero crea la organizacion externa y despues sus administradores, apoyos, alumnos o ex-empleados.",
     filters: "Filtros",
     search: "Buscar",
     searchPlaceholder: "Nombre, RFC, contacto, ciudad, responsable...",
@@ -55,8 +67,12 @@ const copy = {
     create: "Crear",
     edit: "Editar seleccionada",
     save: "Guardar organizacion",
+    renew: "Renovacion",
+    extendGrace: "Extender gracia",
     deleteLogical: "Borrado logico",
     saved: "Organizacion guardada en la tabla correspondiente.",
+    renewed: "Renovacion creada como una licencia distinta para esta organizacion.",
+    graceExtended: "Periodo de gracia extendido por Super Admin y registrado en bitacora.",
     deleted: "La organizacion paso a estado borrado_logico. No fue eliminada definitivamente.",
     identity: "Identidad",
     commercialName: "Nombre comercial",
@@ -73,19 +89,25 @@ const copy = {
     state: "Estado",
     city: "Ciudad",
     address: "Direccion",
-    license: "Licencia y capacidad",
-    plan: "Plan / servicio contratado",
+    license: "Licencia, contrato y capacidad",
+    plan: "Plan Coach Partner",
+    outplacementService: "Servicio outplacement",
+    planHelp: "Los planes solo aplican a Coach Partner. En outplacement se registra el servicio contratado, campanas autorizadas y ex-empleados.",
     licenseStart: "Inicio licencia",
     licenseEnd: "Fin licencia",
-    minimumTerm: "Plazo minimo meses",
+    contractTerm: "Duracion del contrato",
+    gracePeriod: "Dias de gracia",
+    graceUntil: "Gracia vigente hasta",
+    licenseVersion: "Version licencia",
     groups: "Grupos mensuales",
     students: "Alumnos por grupo",
     campaigns: "Campanas outplacement",
+    audit: "Bitacora de licencias",
+    auditEmpty: "Aun no hay movimientos de licencia en esta sesion.",
     internalOwner: "Responsable interno",
     notes: "Notas internas",
     columns: ["Seleccion", "Organizacion", "Tipo", "Representante", "Contacto", "Ubicacion", "Plan", "Capacidad", "Responsable", "Estado", "Ultimo cambio"],
     types: {
-      empleate_ya: "Empleate YA",
       coach_partner: "Coach Partner",
       outplacement_company: "Empresa outplacement",
     },
@@ -94,8 +116,8 @@ const copy = {
   en: {
     eyebrow: "Super Admin",
     title: "Organizations",
-    description: "Every person belongs to an organization: Empleate YA, an outplacement company, or a Coach Partner company/franchise.",
-    rule: "Base rule: online users, internal support users, internal coaches, and Super Admin belong to Empleate YA. Former employees belong to the outplacement company. Coach Partner students belong to the organization represented by the coach.",
+    description: "Manage external organizations: companies hiring outplacement and Coach Partner companies/franchises.",
+    rule: "Base rule: Empleate YA is not captured here. Internal users, online users, Super Admin support users, and internal coaches get Empleate YA by default in their user screen. Create the external organization first, then its admins, support users, students, or former employees.",
     filters: "Filters",
     search: "Search",
     searchPlaceholder: "Name, tax ID, contact, city, owner...",
@@ -110,8 +132,12 @@ const copy = {
     create: "Create",
     edit: "Edit selected",
     save: "Save organization",
+    renew: "Renewal",
+    extendGrace: "Extend grace",
     deleteLogical: "Logical delete",
     saved: "Organization saved in the corresponding table.",
+    renewed: "Renewal created as a separate license for this organization.",
+    graceExtended: "Grace period extended by Super Admin and recorded in the audit log.",
     deleted: "The organization was moved to logical_delete. It was not permanently deleted.",
     identity: "Identity",
     commercialName: "Commercial name",
@@ -128,19 +154,25 @@ const copy = {
     state: "State",
     city: "City",
     address: "Address",
-    license: "License and capacity",
-    plan: "Plan / contracted service",
+    license: "License, contract, and capacity",
+    plan: "Coach Partner plan",
+    outplacementService: "Outplacement service",
+    planHelp: "Plans apply only to Coach Partner. For outplacement, register the contracted service, authorized campaigns, and former employees.",
     licenseStart: "License start",
     licenseEnd: "License end",
-    minimumTerm: "Minimum term months",
+    contractTerm: "Contract duration",
+    gracePeriod: "Grace days",
+    graceUntil: "Grace valid until",
+    licenseVersion: "License version",
     groups: "Monthly groups",
     students: "Students per group",
     campaigns: "Outplacement campaigns",
+    audit: "License audit log",
+    auditEmpty: "There are no license movements in this session yet.",
     internalOwner: "Internal owner",
     notes: "Internal notes",
     columns: ["Select", "Organization", "Type", "Representative", "Contact", "Location", "Plan", "Capacity", "Owner", "Status", "Last change"],
     types: {
-      empleate_ya: "Empleate YA",
       coach_partner: "Coach Partner",
       outplacement_company: "Outplacement company",
     },
@@ -150,34 +182,11 @@ const copy = {
 
 const internalOwners = ["Leo Galvez - Super Admin", "Valeria Nunez - Apoyo administrativo", "Ricardo Vega - Operativo outplacement", "Daniela Ponce - Apoyo cobranza"] as const;
 const legalRepresentatives = ["Leo Galvez - Super Admin", "Mariana Soto - Coach Partner principal", "Ana Torres - Administrador RH", "Sofia Rivera - Coach interno 1o1"] as const;
+const contractTermOptions = [3, 6, 9, 12, 18, 24] as const;
+const coachPartnerPlans = ["Coach Starter", "Coach Pro", "Coach Business"] as const;
+const outplacementServices = ["Outplacement por campana", "Outplacement anual + campanas", "Outplacement ejecutivo", "Outplacement masivo"] as const;
 
 const initialOrganizations: OrganizationRecord[] = [
-  {
-    id: "org-empleate-ya",
-    type: "empleate_ya",
-    name: "Empleate YA",
-    legalName: "Empleate YA",
-    taxId: "EYA-INTERNO",
-    status: "activo",
-    legalRepresentative: "Leo Galvez - Super Admin",
-    contactName: "Leo Galvez",
-    contactEmail: "leo.galvez.medina@gmail.com",
-    contactPhone: "+52 55 4588 1648",
-    country: "Mexico",
-    state: "CDMX",
-    city: "Ciudad de Mexico",
-    address: "Operacion interna",
-    plan: "Operacion interna",
-    licenseStart: "2026-06-01",
-    licenseEnd: "",
-    minimumTermMonths: 0,
-    monthlyGroups: 0,
-    studentsPerGroup: 0,
-    outplacementCampaigns: 0,
-    internalOwner: "Leo Galvez - Super Admin",
-    notes: "Organizacion interna para Super Admin, apoyos, usuarios online y coaches 1o1.",
-    lastChange: "16/06/2026 09:00",
-  },
   {
     id: "org-coach-norte",
     type: "coach_partner",
@@ -196,7 +205,10 @@ const initialOrganizations: OrganizationRecord[] = [
     plan: "Coach Starter",
     licenseStart: "2026-06-01",
     licenseEnd: "2026-12-01",
-    minimumTermMonths: 6,
+    contractTermMonths: 6,
+    gracePeriodDays: 0,
+    graceUntil: "",
+    licenseVersion: 1,
     monthlyGroups: 4,
     studentsPerGroup: 5,
     outplacementCampaigns: 0,
@@ -222,7 +234,10 @@ const initialOrganizations: OrganizationRecord[] = [
     plan: "Outplacement anual + campanas",
     licenseStart: "2026-06-01",
     licenseEnd: "2027-06-01",
-    minimumTermMonths: 12,
+    contractTermMonths: 12,
+    gracePeriodDays: 15,
+    graceUntil: "2026-06-15",
+    licenseVersion: 1,
     monthlyGroups: 0,
     studentsPerGroup: 0,
     outplacementCampaigns: 3,
@@ -241,6 +256,8 @@ export function AdminOrganizationsClient() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [notice, setNotice] = useState("");
+  const [draftType, setDraftType] = useState<OrganizationType>("coach_partner");
+  const [auditEvents, setAuditEvents] = useState<OrganizationAuditEvent[]>([]);
 
   const filteredOrganizations = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -256,6 +273,7 @@ export function AdminOrganizationsClient() {
 
   function createNew() {
     setSelectedId("");
+    setDraftType("coach_partner");
     setNotice("");
   }
 
@@ -280,7 +298,10 @@ export function AdminOrganizationsClient() {
       plan: String(formData.get("plan") || "").trim(),
       licenseStart: String(formData.get("licenseStart") || ""),
       licenseEnd: String(formData.get("licenseEnd") || ""),
-      minimumTermMonths: Number(formData.get("minimumTermMonths") || 0),
+      contractTermMonths: Number(formData.get("contractTermMonths") || 6),
+      gracePeriodDays: Number(formData.get("gracePeriodDays") || 0),
+      graceUntil: String(formData.get("graceUntil") || ""),
+      licenseVersion: Number(formData.get("licenseVersion") || selectedOrganization?.licenseVersion || 1),
       monthlyGroups: Number(formData.get("monthlyGroups") || 0),
       studentsPerGroup: Number(formData.get("studentsPerGroup") || 0),
       outplacementCampaigns: Number(formData.get("outplacementCampaigns") || 0),
@@ -294,7 +315,59 @@ export function AdminOrganizationsClient() {
       return exists ? current.map((organization) => organization.id === id ? saved : organization) : [saved, ...current];
     });
     setSelectedId(id);
+    setDraftType(type);
     setNotice(t.saved);
+  }
+
+  function renewLicense() {
+    if (!selectedOrganization) return;
+    const nextStart = selectedOrganization.licenseEnd || todayInputValue();
+    const nextEnd = addMonths(nextStart, selectedOrganization.contractTermMonths);
+    const renewed: OrganizationRecord = {
+      ...selectedOrganization,
+      id: `${selectedOrganization.id}-renewal-${Date.now()}`,
+      status: "pendiente",
+      licenseStart: nextStart,
+      licenseEnd: nextEnd,
+      gracePeriodDays: 0,
+      graceUntil: "",
+      licenseVersion: selectedOrganization.licenseVersion + 1,
+      lastChange: new Date().toLocaleString(language === "es" ? "es-MX" : "en-US", { dateStyle: "short", timeStyle: "short" }),
+      notes: `${selectedOrganization.notes}\nRenovacion creada para nueva licencia.`,
+    };
+    setOrganizations((current) => [renewed, ...current]);
+    setSelectedId(renewed.id);
+    setDraftType(renewed.type);
+    addAuditEvent(renewed.name, "license.renewal", `Nueva licencia v${renewed.licenseVersion}: ${renewed.licenseStart} - ${renewed.licenseEnd}`);
+    setNotice(t.renewed);
+  }
+
+  function extendGracePeriod() {
+    if (!selectedOrganization) return;
+    const nextGraceDays = selectedOrganization.gracePeriodDays + 15;
+    const nextGraceUntil = addDays(selectedOrganization.graceUntil || todayInputValue(), 15);
+    setOrganizations((current) => current.map((organization) => organization.id === selectedOrganization.id ? {
+      ...organization,
+      gracePeriodDays: nextGraceDays,
+      graceUntil: nextGraceUntil,
+      lastChange: new Date().toLocaleString(language === "es" ? "es-MX" : "en-US", { dateStyle: "short", timeStyle: "short" }),
+    } : organization));
+    addAuditEvent(selectedOrganization.name, "license.grace.extend", `Extension de gracia: ${nextGraceDays} dias, vigente hasta ${nextGraceUntil}`);
+    setNotice(t.graceExtended);
+  }
+
+  function addAuditEvent(organizationName: string, action: string, detail: string) {
+    setAuditEvents((current) => [
+      {
+        id: `${Date.now()}-${action}`,
+        organizationName,
+        action,
+        detail,
+        actor: "Leo Galvez - Super Admin",
+        createdAt: new Date().toLocaleString(language === "es" ? "es-MX" : "en-US", { dateStyle: "short", timeStyle: "short" }),
+      },
+      ...current,
+    ]);
   }
 
   function logicalDelete() {
@@ -348,14 +421,14 @@ export function AdminOrganizationsClient() {
             <tbody>
               {filteredOrganizations.map((organization) => (
                 <tr key={organization.id} className={`border-b border-slate-100 last:border-0 ${selectedId === organization.id ? "bg-[var(--brand-primary-soft)]" : ""}`}>
-                  <Td><input type="radio" name="selected-organization" checked={selectedId === organization.id} onChange={() => setSelectedId(organization.id)} /></Td>
+                  <Td><input type="radio" name="selected-organization" checked={selectedId === organization.id} onChange={() => { setSelectedId(organization.id); setDraftType(organization.type); }} /></Td>
                   <Td><strong className="block text-slate-950">{organization.name}</strong><span className="text-xs text-slate-500">{organization.legalName || organization.taxId}</span></Td>
                   <Td><Pill>{t.types[organization.type]}</Pill></Td>
                   <Td>{organization.legalRepresentative}</Td>
                   <Td><strong className="block text-slate-700">{organization.contactName}</strong><span className="text-xs text-slate-500">{organization.contactEmail}</span></Td>
                   <Td>{organization.city}, {organization.state}</Td>
-                  <Td>{organization.plan}</Td>
-                  <Td>{organization.type === "coach_partner" ? `${organization.monthlyGroups} x ${organization.studentsPerGroup}` : organization.type === "outplacement_company" ? `${organization.outplacementCampaigns} campanas` : "Interna"}</Td>
+                  <Td>{organization.plan}<span className="block text-xs text-slate-500">v{organization.licenseVersion} · {organization.contractTermMonths} meses</span></Td>
+                  <Td>{organization.type === "coach_partner" ? `${organization.monthlyGroups} x ${organization.studentsPerGroup}` : `${organization.outplacementCampaigns} campanas`}</Td>
                   <Td>{organization.internalOwner}</Td>
                   <Td><Pill>{organization.status}</Pill></Td>
                   <Td>{organization.lastChange}</Td>
@@ -378,13 +451,15 @@ export function AdminOrganizationsClient() {
             <Button type="button" className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]" onClick={createNew}><UserPlus size={17} />{t.create}</Button>
             <Button type="button" disabled={!selectedOrganization} className="gap-2 bg-slate-950 text-white hover:bg-slate-800"><Edit3 size={17} />{t.edit}</Button>
             <Button type="submit" className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"><Save size={17} />{t.save}</Button>
+            <Button type="button" disabled={!selectedOrganization} className="gap-2 bg-blue-600 text-white hover:bg-blue-700" onClick={renewLicense}>{t.renew}</Button>
+            <Button type="button" disabled={!selectedOrganization} className="gap-2 bg-amber-500 text-white hover:bg-amber-600" onClick={extendGracePeriod}>{t.extendGrace}</Button>
             <Button type="button" disabled={!selectedOrganization} className="gap-2 bg-red-600 text-white hover:bg-red-700" onClick={logicalDelete}><Trash2 size={17} />{t.deleteLogical}</Button>
           </div>
         </div>
 
         <div className="grid gap-5 xl:grid-cols-3">
           <FormGroup title={t.identity} icon={<Building2 size={18} />}>
-            <Field label={t.type}><Select name="type" defaultValue={selectedOrganization?.type ?? "coach_partner"}>{Object.entries(t.types).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</Select></Field>
+            <Field label={t.type}><Select name="type" value={draftType} onChange={(event) => setDraftType(event.target.value as OrganizationType)}>{Object.entries(t.types).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</Select></Field>
             <Field label={t.commercialName}><Input name="name" defaultValue={selectedOrganization?.name ?? ""} /></Field>
             <Field label={t.legalName}><Input name="legalName" defaultValue={selectedOrganization?.legalName ?? ""} /></Field>
             <Field label={t.taxId}><Input name="taxId" defaultValue={selectedOrganization?.taxId ?? ""} /></Field>
@@ -411,20 +486,39 @@ export function AdminOrganizationsClient() {
         <div className="mt-5 grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
           <FormGroup title={t.license} icon={<Building2 size={18} />}>
             <div className="grid gap-3 md:grid-cols-2">
-              <Field label={t.plan}><Input name="plan" defaultValue={selectedOrganization?.plan ?? ""} /></Field>
-              <Field label={t.minimumTerm}><Input name="minimumTermMonths" type="number" min={0} defaultValue={selectedOrganization?.minimumTermMonths ?? 6} /></Field>
+              <Field label={draftType === "coach_partner" ? t.plan : t.outplacementService}>
+                <Select name="plan" defaultValue={selectedOrganization?.plan ?? (draftType === "coach_partner" ? coachPartnerPlans[0] : outplacementServices[0])}>
+                  {(draftType === "coach_partner" ? coachPartnerPlans : outplacementServices).map((plan) => <option key={plan}>{plan}</option>)}
+                </Select>
+              </Field>
+              <Field label={t.contractTerm}><Select name="contractTermMonths" defaultValue={String(selectedOrganization?.contractTermMonths ?? 6)}>{contractTermOptions.map((months) => <option key={months} value={months}>{months} meses</option>)}</Select></Field>
               <Field label={t.licenseStart}><Input name="licenseStart" type="date" defaultValue={selectedOrganization?.licenseStart ?? ""} /></Field>
               <Field label={t.licenseEnd}><Input name="licenseEnd" type="date" defaultValue={selectedOrganization?.licenseEnd ?? ""} /></Field>
-              <Field label={t.groups}><Input name="monthlyGroups" type="number" min={0} defaultValue={selectedOrganization?.monthlyGroups ?? 0} /></Field>
-              <Field label={t.students}><Input name="studentsPerGroup" type="number" min={0} defaultValue={selectedOrganization?.studentsPerGroup ?? 0} /></Field>
-              <Field label={t.campaigns}><Input name="outplacementCampaigns" type="number" min={0} defaultValue={selectedOrganization?.outplacementCampaigns ?? 0} /></Field>
+              <Field label={t.gracePeriod}><Input name="gracePeriodDays" type="number" min={0} defaultValue={selectedOrganization?.gracePeriodDays ?? 0} /></Field>
+              <Field label={t.graceUntil}><Input name="graceUntil" type="date" defaultValue={selectedOrganization?.graceUntil ?? ""} /></Field>
+              <Field label={t.licenseVersion}><Input name="licenseVersion" type="number" min={1} defaultValue={selectedOrganization?.licenseVersion ?? 1} readOnly /></Field>
+              {draftType === "coach_partner" ? (
+                <>
+                  <Field label={t.groups}><Input name="monthlyGroups" type="number" min={0} defaultValue={selectedOrganization?.monthlyGroups ?? 0} /></Field>
+                  <Field label={t.students}><Input name="studentsPerGroup" type="number" min={0} defaultValue={selectedOrganization?.studentsPerGroup ?? 0} /></Field>
+                  <input type="hidden" name="outplacementCampaigns" value={selectedOrganization?.outplacementCampaigns ?? 0} />
+                </>
+              ) : (
+                <>
+                  <Field label={t.campaigns}><Input name="outplacementCampaigns" type="number" min={0} defaultValue={selectedOrganization?.outplacementCampaigns ?? 0} /></Field>
+                  <input type="hidden" name="monthlyGroups" value={selectedOrganization?.monthlyGroups ?? 0} />
+                  <input type="hidden" name="studentsPerGroup" value={selectedOrganization?.studentsPerGroup ?? 0} />
+                </>
+              )}
             </div>
+            <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">{t.planHelp}</p>
           </FormGroup>
 
           <FormGroup title={t.notes} icon={<Building2 size={18} />}>
             <Textarea name="notes" className="min-h-52" defaultValue={selectedOrganization?.notes ?? ""} />
           </FormGroup>
         </div>
+        <LicenseAuditLog title={t.audit} empty={t.auditEmpty} events={auditEvents} />
       </form>
     </div>
   );
@@ -453,4 +547,56 @@ function Td({ children }: { children: ReactNode }) {
 
 function Pill({ children }: { children: ReactNode }) {
   return <span className="inline-flex whitespace-nowrap rounded-full bg-[var(--brand-primary-soft)] px-3 py-1 text-xs font-black text-[var(--brand-primary)]">{children}</span>;
+}
+
+function LicenseAuditLog({ title, empty, events }: { title: string; empty: string; events: OrganizationAuditEvent[] }) {
+  return (
+    <section className="mt-5 rounded-[1.25rem] border border-slate-200 bg-slate-50/70 p-4">
+      <h3 className="text-lg font-black text-slate-950">{title}</h3>
+      {events.length ? (
+        <div className="mt-3 max-h-44 overflow-auto rounded-2xl border border-slate-200 bg-white">
+          <table className="w-full min-w-[900px] text-left text-sm">
+            <thead>
+              <tr>
+                <Th>Organizacion</Th>
+                <Th>Accion</Th>
+                <Th>Detalle</Th>
+                <Th>Actor</Th>
+                <Th>Fecha</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {events.map((event) => (
+                <tr key={event.id} className="border-b border-slate-100 last:border-0">
+                  <Td>{event.organizationName}</Td>
+                  <Td><Pill>{event.action}</Pill></Td>
+                  <Td>{event.detail}</Td>
+                  <Td>{event.actor}</Td>
+                  <Td>{event.createdAt}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="mt-2 text-sm font-semibold text-slate-500">{empty}</p>
+      )}
+    </section>
+  );
+}
+
+function todayInputValue() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function addMonths(dateValue: string, months: number) {
+  const date = new Date(`${dateValue}T00:00:00`);
+  date.setMonth(date.getMonth() + months);
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(dateValue: string, days: number) {
+  const date = new Date(`${dateValue}T00:00:00`);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
 }
