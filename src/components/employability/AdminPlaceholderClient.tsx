@@ -44,9 +44,9 @@ const copy = {
         columns: ["Reporte", "Periodo", "Responsable", "Ultima ejecucion", "Estado"],
       },
       coaching: {
-        title: "Coaching 1o1 y cursos",
-        description: "Administra coaches internos, cursos, alumnos, grupos, sesiones, NPS, notas y testimonios autorizados.",
-        columns: ["Curso / Grupo", "Coach", "Alumnos", "NPS", "Estado"],
+        title: "Trainee & Coaching",
+        description: "Define plantillas de cursos, coaching o programas de outplacement con avatares y creditos preasignados. Luego se reutilizan al crear grupos internos, grupos Coach Partner o campanas de outplacement.",
+        columns: ["Plantilla / programa", "Uso", "Avatares", "Creditos por usuario", "Estado"],
       },
       groups: {
         title: "Grupos",
@@ -101,9 +101,9 @@ const copy = {
         columns: ["Report", "Period", "Owner", "Last run", "Status"],
       },
       coaching: {
-        title: "1:1 coaching and courses",
-        description: "Manage internal coaches, courses, students, groups, sessions, NPS, notes, and authorized testimonials.",
-        columns: ["Course / Group", "Coach", "Students", "NPS", "Status"],
+        title: "Trainee & Coaching",
+        description: "Define course, coaching, or outplacement program templates with preassigned avatars and credits. They can then be reused when creating internal groups, Coach Partner groups, or outplacement campaigns.",
+        columns: ["Template / program", "Use", "Avatars", "Credits per user", "Status"],
       },
       groups: {
         title: "Groups",
@@ -146,9 +146,9 @@ const rows: Record<AdminModuleKey, string[][]> = {
     ["Campanas outplacement", "Mensual", "Operaciones", "Pendiente", "pending"],
   ],
   coaching: [
-    ["Curso CV Estrategico", "Coach interno", "18", "72", "active"],
-    ["Coaching 1o1 Ejecutivo", "Pendiente asignar", "4", "-", "pending"],
-    ["Grupo Entrevistas", "Miss Quest Coach", "11", "86", "active"],
+    ["CV estrategico base", "Grupo Coach Partner", "ScoreX, Optim, Mr. Wow", "255", "active"],
+    ["Outplacement completo", "Campana empresa", "Todos los basicos + Optim", "1,545", "active"],
+    ["Coaching 1o1 ejecutivo", "Grupo interno Empleate YA", "ScoreX, Optim, Mr. Linked, Miss Quest", "515", "pending"],
   ],
   groups: [
     ["Grupo CV Estrategico Norte", "Franquicia Demo Norte", "Mariana Soto", "5", "20", "30,900", "active"],

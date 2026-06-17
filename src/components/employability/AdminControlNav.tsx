@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CircleDollarSign, FolderKanban, ListChecks, Settings2, UsersRound, Building2 } from "lucide-react";
+import { BookOpenCheck, CircleDollarSign, ClipboardCheck, FolderKanban, ListChecks, Settings2, UsersRound, Building2 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { cn } from "@/lib/utils/cn";
 
@@ -10,6 +10,8 @@ const tabs = [
   { href: "/admin/users", key: "users", icon: UsersRound },
   { href: "/admin/organizations", key: "organizations", icon: Building2 },
   { href: "/admin/campaigns", key: "campaigns", icon: FolderKanban },
+  { href: "/admin/groups", key: "groups", icon: ClipboardCheck },
+  { href: "/admin/coaching", key: "coaching", icon: BookOpenCheck },
   { href: "/admin/catalogs", key: "catalogs", icon: Settings2 },
   { href: "/admin/credits", key: "credits", icon: CircleDollarSign },
 ] as const;
@@ -20,6 +22,8 @@ const copy = {
     users: "Usuarios",
     organizations: "Organizaciones",
     campaigns: "Campañas",
+    groups: "Grupos",
+    coaching: "Trainee & Coaching",
     catalogs: "Catálogos",
     credits: "Créditos",
   },
@@ -28,6 +32,8 @@ const copy = {
     users: "Users",
     organizations: "Organizations",
     campaigns: "Campaigns",
+    groups: "Groups",
+    coaching: "Trainee & Coaching",
     catalogs: "Catalogs",
     credits: "Credits",
   },
@@ -44,7 +50,7 @@ export function AdminControlNav() {
         <ListChecks size={15} />
         {t.title}
       </div>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-7">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const active = pathname === tab.href || (pathname === "/admin" && tab.key === "users");

@@ -68,7 +68,7 @@ const kindConfig = {
       organizationPlaceholder: "Ej. Operaciones / cobranza / soporte",
       roleLabel: "Rol de apoyo",
       roles: ["Apoyo administrativo", "Apoyo cobranza", "Operativo outplacement", "Apoyo coach partner", "Supervisor delegado temporal"],
-      extraFields: ["Fecha fin delegacion", "Permisos permitidos", "Supervisor responsable"],
+      extraFields: ["Fecha de delegacion", "Fecha fin delegacion", "Supervisor responsable"],
     },
     "coach-partner": {
       title: "Coach Partner",
@@ -140,7 +140,7 @@ const kindConfig = {
       organizationPlaceholder: "Example: Operations / collections / support",
       roleLabel: "Support role",
       roles: ["Administrative support", "Collections support", "Outplacement operator", "Coach partner support", "Temporary delegated supervisor"],
-      extraFields: ["Delegation end date", "Allowed permissions", "Responsible supervisor"],
+      extraFields: ["Delegation start date", "Delegation end date", "Responsible supervisor"],
     },
     "coach-partner": {
       title: "Coach Partner",
@@ -245,6 +245,8 @@ const copy = {
     permissions: "Permisos",
     permissionsTitle: "Permisos y limites de acceso",
     permissionsHelp: "Configura avatares, opciones del menu lateral y submenus disponibles para este perfil. El consumo real se descuenta contra la bolsa de creditos correspondiente.",
+    supportRolePolicy: "Regla de rol",
+    supportRolePolicyHelp: "Los permisos iniciales se calculan por rol: cobranza opera creditos, pagos y reportes; outplacement opera empresas, campanas y ex-empleados; coach partner opera organizaciones, grupos y alumnos; supervisor delegado opera casi como Super Admin durante su vigencia, excepto crear, sustituir o borrar al Super Admin.",
     savePermissions: "Guardar permisos",
     backToCapture: "Regresar",
     avatars: "Avatares",
@@ -316,6 +318,8 @@ const copy = {
     permissions: "Permissions",
     permissionsTitle: "Access permissions and limits",
     permissionsHelp: "Configure avatars, left-side menu options, and user submenus available for this profile. Actual usage is deducted from the corresponding credit pool.",
+    supportRolePolicy: "Role rule",
+    supportRolePolicyHelp: "Initial permissions are calculated by role: collections manages credits, payments, and reports; outplacement manages companies, campaigns, and former employees; coach partner support manages organizations, groups, and students; delegated supervisor operates almost like Super Admin during the delegation window, except creating, replacing, or deleting the Super Admin.",
     savePermissions: "Save permissions",
     backToCapture: "Back",
     avatars: "Avatars",
@@ -353,7 +357,7 @@ const adminMenuLabels = {
     credits: "Creditos",
     payments: "Pagos",
     reports: "Reportes",
-    coaching: "Coaching",
+    coaching: "Trainee & Coaching",
     testimonials: "Testimonios",
     audit: "Bitacora",
   },
@@ -369,7 +373,7 @@ const adminMenuLabels = {
     credits: "Credits",
     payments: "Payments",
     reports: "Reports",
-    coaching: "Coaching",
+    coaching: "Trainee & Coaching",
     testimonials: "Testimonials",
     audit: "Audit log",
   },
@@ -386,11 +390,11 @@ const allAvatarIds = Object.keys(skillRegistry) as SkillId[];
 const userSubmenuPermissions = [
   "/admin/users/online",
   "/admin/users/super-admin-support",
+  "/admin/users/internal-coach",
   "/admin/users/coach-partner",
   "/admin/users/students",
   "/admin/users/outplacement-rh",
   "/admin/users/outplacement-employees",
-  "/admin/users/internal-coach",
 ] as const;
 
 const coachPartnerPlans = {
@@ -669,7 +673,16 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
               )}
             </Field>
             {userKind === "online" ? <p className="text-xs font-semibold leading-5 text-slate-500">{t.creditsHelp}</p> : null}
-            {kind.extraFields.map((field) => <Field key={field} label={field}><Input name={`extra-${field}`} placeholder={field} /></Field>)}
+            {kind.extraFields.map((field) => (
+              <Field key={field} label={field}>
+                <Input name={`extra-${field}`} placeholder={field} type={isDateLikeField(field) ? "date" : "text"} />
+              </Field>
+            ))}
+            {userKind === "super-admin-support" ? (
+              <p className="rounded-2xl border border-purple-100 bg-purple-50 px-4 py-3 text-xs font-semibold leading-5 text-purple-900">
+                <strong>{t.supportRolePolicy}:</strong> {t.supportRolePolicyHelp}
+              </p>
+            ) : null}
             {userKind === "online" ? (
               <label className="flex items-start gap-3 rounded-2xl bg-white p-3 text-sm font-bold text-slate-700">
                 <input name="privacyAccepted" type="checkbox" className="mt-1" defaultChecked disabled={!canCurrentUserEditPrivacyAcceptance} />
@@ -853,8 +866,8 @@ function PermissionsPanel({
 function defaultPermissionsFor(userKind: AdminUserKind, userRole: string, coachPlanKey: CoachPartnerPlanKey): UserPermissions {
   return {
     avatarIds: allowedAvatarsFor(userKind, userRole, coachPlanKey),
-    adminMenuHrefs: adminSections.filter((section) => menuAllowedFor(userKind, section.href)).map((section) => section.href),
-    userSubmenuHrefs: userSubmenuPermissions.filter((href) => userSubmenuAllowedFor(userKind, href)),
+    adminMenuHrefs: adminSections.filter((section) => menuAllowedFor(userKind, userRole, section.href)).map((section) => section.href),
+    userSubmenuHrefs: userSubmenuPermissions.filter((href) => userSubmenuAllowedFor(userKind, userRole, href)),
     coachPlanKey,
   };
 }
@@ -877,22 +890,45 @@ function calculateCoachPartnerPool(avatarIds: readonly SkillId[], groups: number
   return creditsPerStudentCycle * groups * studentsPerGroup * cycles;
 }
 
-function menuAllowedFor(userKind: AdminUserKind, href: string) {
+function menuAllowedFor(userKind: AdminUserKind, userRole: string, href: string) {
   if (userKind === "online") return false;
   if (userKind === "coach-partner") return ["/admin/users", "/admin/groups", "/admin/credits", "/admin/reports", "/admin/coaching"].includes(href);
   if (userKind === "student") return false;
   if (userKind === "outplacement-rh") return ["/admin/users", "/admin/organizations", "/admin/campaigns", "/admin/reports"].includes(href);
   if (userKind === "outplacement-employee") return false;
   if (userKind === "internal-coach") return ["/admin/users", "/admin/groups", "/admin/coaching", "/admin/testimonials", "/admin/reports"].includes(href);
+  if (userKind === "super-admin-support") return supportRoleMenuAllowed(userRole, href);
   return true;
 }
 
-function userSubmenuAllowedFor(userKind: AdminUserKind, href: string) {
-  if (userKind === "super-admin-support") return true;
+function userSubmenuAllowedFor(userKind: AdminUserKind, userRole: string, href: string) {
+  if (userKind === "super-admin-support") return supportRoleUserSubmenuAllowed(userRole, href);
   if (userKind === "coach-partner") return href === "/admin/users/coach-partner" || href === "/admin/users/students";
   if (userKind === "outplacement-rh") return href === "/admin/users/outplacement-rh" || href === "/admin/users/outplacement-employees";
   if (userKind === "internal-coach") return href === "/admin/users/internal-coach" || href === "/admin/users/students";
   return href === "/admin/users/online";
+}
+
+function supportRoleMenuAllowed(userRole: string, href: string) {
+  const role = normalizeRole(userRole);
+  if (role.includes("supervisor delegado") || role.includes("temporary delegated")) return true;
+  if (role.includes("cobranza") || role.includes("collections")) return ["/admin", "/admin/credits", "/admin/payments", "/admin/reports", "/admin/audit"].includes(href);
+  if (role.includes("outplacement")) return ["/admin", "/admin/users", "/admin/organizations", "/admin/campaigns", "/admin/permissions", "/admin/reports", "/admin/audit"].includes(href);
+  if (role.includes("coach partner")) return ["/admin", "/admin/users", "/admin/organizations", "/admin/groups", "/admin/coaching", "/admin/permissions", "/admin/reports", "/admin/audit"].includes(href);
+  return ["/admin", "/admin/users", "/admin/organizations", "/admin/permissions", "/admin/reports"].includes(href);
+}
+
+function supportRoleUserSubmenuAllowed(userRole: string, href: string) {
+  const role = normalizeRole(userRole);
+  if (role.includes("supervisor delegado") || role.includes("temporary delegated")) return true;
+  if (role.includes("cobranza") || role.includes("collections")) return false;
+  if (role.includes("outplacement")) return href === "/admin/users/outplacement-rh" || href === "/admin/users/outplacement-employees";
+  if (role.includes("coach partner")) return href === "/admin/users/coach-partner" || href === "/admin/users/students";
+  return ["/admin/users/online", "/admin/users/coach-partner", "/admin/users/students", "/admin/users/outplacement-rh", "/admin/users/outplacement-employees"].includes(href);
+}
+
+function normalizeRole(role: string) {
+  return role.toLowerCase();
 }
 
 function usesOrganizationCatalog(userKind: AdminUserKind): userKind is "coach-partner" | "student" | "outplacement-rh" | "outplacement-employee" {
@@ -909,6 +945,11 @@ function hasUnlimitedCredits(userKind: AdminUserKind) {
 
 function usesCareerDataFields(userKind: AdminUserKind) {
   return userKind === "online" || userKind === "student" || userKind === "outplacement-employee";
+}
+
+function isDateLikeField(field: string) {
+  const normalized = field.toLowerCase();
+  return normalized.includes("fecha") || normalized.includes("date");
 }
 
 function ownerOptionFor(owner: string) {
