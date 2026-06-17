@@ -8,7 +8,7 @@ import { skillRegistry, type SkillId } from "@/ai/skillRegistry";
 import { adminSections } from "./AdminSuperShell";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
-export type AdminUserKind = "online" | "super-admin-support" | "coach-partner" | "outplacement-rh" | "internal-coach";
+export type AdminUserKind = "online" | "super-admin-support" | "coach-partner" | "student" | "outplacement-rh" | "outplacement-employee" | "internal-coach";
 type CoachPartnerPlanKey = "starter" | "pro" | "business";
 type UserPermissions = {
   avatarIds: SkillId[];
@@ -85,6 +85,26 @@ const kindConfig = {
       roles: ["Administrador RH", "Apoyo administrativo RH", "Apoyo seguimiento outplacement", "Lectura ejecutiva", "Aprobador de campana"],
       extraFields: ["Campana asignada", "Permiso para ver avance", "Puede aprobar participantes"],
     },
+    student: {
+      title: "Alumnos",
+      description: "Alta de alumnos asignados a grupos de Coach Partner o coaching interno 1o1. Primero debe existir la organizacion y el coach responsable.",
+      profile: "Alumno",
+      organizationLabel: "Organizacion del coach",
+      organizationPlaceholder: "Ej. Franquicia Demo Norte / Empleate YA",
+      roleLabel: "Tipo de alumno",
+      roles: ["Alumno Coach Partner", "Alumno coaching 1o1", "Alumno curso online"],
+      extraFields: ["Grupo asignado", "Coach responsable", "Fecha inicio grupo"],
+    },
+    "outplacement-employee": {
+      title: "Ex-empleados outplacement",
+      description: "Alta de ex-empleados autorizados por una empresa cliente y asignados a una campana de outplacement.",
+      profile: "Ex-empleado outplacement",
+      organizationLabel: "Empresa outplacement",
+      organizationPlaceholder: "Ej. Empresa Demo Outplacement",
+      roleLabel: "Estatus participante",
+      roles: ["Participante autorizado", "Participante en seguimiento", "Participante cerrado"],
+      extraFields: ["Campana asignada", "Administrador RH representante", "Fecha autorizacion"],
+    },
     "internal-coach": {
       title: "Coach interno 1o1 de Empleate YA",
       description: "Alta de coaches internos para sesiones 1o1, cursos, notas, NPS y seguimiento de testimonios.",
@@ -136,6 +156,26 @@ const kindConfig = {
       roleLabel: "Company role",
       roles: ["HR Administrator", "HR administrative support", "Outplacement follow-up support", "Executive read-only", "Campaign approver"],
       extraFields: ["Assigned campaign", "Can view progress", "Can approve participants"],
+    },
+    student: {
+      title: "Students",
+      description: "Create students assigned to Coach Partner groups or internal 1:1 coaching. The organization and responsible coach must exist first.",
+      profile: "Student",
+      organizationLabel: "Coach organization",
+      organizationPlaceholder: "Example: Demo North Franchise / Empleate YA",
+      roleLabel: "Student type",
+      roles: ["Coach Partner student", "1:1 coaching student", "Online course student"],
+      extraFields: ["Assigned group", "Responsible coach", "Group start date"],
+    },
+    "outplacement-employee": {
+      title: "Outplacement former employees",
+      description: "Create former employees authorized by a client company and assigned to an outplacement campaign.",
+      profile: "Outplacement former employee",
+      organizationLabel: "Outplacement company",
+      organizationPlaceholder: "Example: Demo Outplacement Company",
+      roleLabel: "Participant status",
+      roles: ["Authorized participant", "Participant in follow-up", "Closed participant"],
+      extraFields: ["Assigned campaign", "HR admin representative", "Authorization date"],
     },
     "internal-coach": {
       title: "Internal 1:1 coach",
@@ -275,6 +315,7 @@ const adminMenuLabels = {
     users: "Usuarios",
     organizations: "Organizaciones",
     campaigns: "Campanas",
+    groups: "Grupos",
     avatars: "Avatares",
     catalogs: "Catalogos",
     permissions: "Permisos",
@@ -290,6 +331,7 @@ const adminMenuLabels = {
     users: "Users",
     organizations: "Organizations",
     campaigns: "Campaigns",
+    groups: "Groups",
     avatars: "Avatars",
     catalogs: "Catalogs",
     permissions: "Permissions",
@@ -314,7 +356,9 @@ const userSubmenuPermissions = [
   "/admin/users/online",
   "/admin/users/super-admin-support",
   "/admin/users/coach-partner",
+  "/admin/users/students",
   "/admin/users/outplacement-rh",
+  "/admin/users/outplacement-employees",
   "/admin/users/internal-coach",
 ] as const;
 
@@ -326,7 +370,9 @@ const coachPartnerPlans = {
 
 const organizationCatalog = {
   "coach-partner": ["Franquicia Demo Norte", "Franquicia Demo Bajio", "Partner Ejecutivo CDMX", "Partner Carrera Global"],
+  student: ["Empleate YA", "Franquicia Demo Norte", "Franquicia Demo Bajio", "Partner Ejecutivo CDMX", "Partner Carrera Global"],
   "outplacement-rh": ["Empresa Demo Outplacement", "Grupo Industrial Norte", "Servicios Financieros Delta", "Retail Nacional"],
+  "outplacement-employee": ["Empresa Demo Outplacement", "Grupo Industrial Norte", "Servicios Financieros Delta", "Retail Nacional"],
 } as const;
 
 const demoUsers: DemoUser[] = [
@@ -336,8 +382,12 @@ const demoUsers: DemoUser[] = [
   { kind: "super-admin-support", name: "Ricardo Vega", email: "ricardo@empleateya.mx", organization: "Operaciones", role: "Operativo outplacement", phone: "+52 55 1000 0007", status: "invitado", credits: 0, owner: "Leo Galvez", lastChange: "12/06/2026 07:52", notes: "Apoya altas masivas y seguimiento operativo de campanas." },
   { kind: "coach-partner", name: "Mariana Soto", email: "mariana@franquicia-demo.mx", organization: "Franquicia Demo Norte", role: "Responsable franquicia", phone: "+52 55 1000 0003", status: "activo", credits: 600, owner: "Leo Galvez", lastChange: "11/06/2026 17:20", notes: "Licencia minima 6 meses. Administra clientes propios." },
   { kind: "coach-partner", name: "Hector Ramos", email: "hector@partner-demo.mx", organization: "Franquicia Demo Bajio", role: "Coach partner colaborador", phone: "+52 55 1000 0008", status: "pendiente", credits: 300, owner: "Mariana Soto", lastChange: "11/06/2026 12:35", notes: "Pendiente completar curso online de metodologia." },
+  { kind: "student", name: "Fernanda Rios", email: "fernanda@alumno-demo.mx", organization: "Franquicia Demo Norte", role: "Alumno Coach Partner", phone: "+52 55 1000 0011", status: "activo", credits: 1545, owner: "Mariana Soto", lastChange: "12/06/2026 11:05", notes: "Asignada al grupo CV Estrategico Norte. Descuenta de bolsa del Coach Partner responsable." },
+  { kind: "student", name: "Roberto Salas", email: "roberto@coaching-demo.mx", organization: "Empleate YA", role: "Alumno coaching 1o1", phone: "+52 55 1000 0012", status: "pendiente", credits: 1545, owner: "Sofia Rivera", lastChange: "12/06/2026 11:12", notes: "Pendiente asignar calendario de sesiones 1o1." },
   { kind: "outplacement-rh", name: "Ana Torres", email: "ana@empresa-demo.mx", organization: "Empresa Demo Outplacement", role: "Administrador RH", phone: "+52 55 1000 0004", status: "activo", credits: 0, owner: "Leo Galvez", lastChange: "12/06/2026 09:15", notes: "Puede crear campanas y revisar avance de ex-colaboradores autorizados." },
   { kind: "outplacement-rh", name: "Carlos Ibarra", email: "carlos@empresa-demo.mx", organization: "Empresa Demo Outplacement", role: "Apoyo seguimiento outplacement", phone: "+52 55 1000 0009", status: "activo", credits: 0, owner: "Ana Torres", lastChange: "10/06/2026 18:02", notes: "Puede revisar avance pero no aprobar participantes." },
+  { kind: "outplacement-employee", name: "Miguel Herrera", email: "miguel@exempleado-demo.mx", organization: "Empresa Demo Outplacement", role: "Participante autorizado", phone: "+52 55 1000 0013", status: "activo", credits: 1545, owner: "Ana Torres", lastChange: "12/06/2026 11:18", notes: "Asignado a campana Outplacement Junio 2026. Representante legal: Administrador RH de la empresa." },
+  { kind: "outplacement-employee", name: "Paola Castillo", email: "paola@exempleada-demo.mx", organization: "Grupo Industrial Norte", role: "Participante en seguimiento", phone: "+52 55 1000 0014", status: "invitado", credits: 1545, owner: "Ricardo Vega", lastChange: "12/06/2026 11:25", notes: "Pendiente aceptar invitacion de acceso a plataforma." },
   { kind: "internal-coach", name: "Sofia Rivera", email: "sofia@empleateya.mx", organization: "Coaching 1o1", role: "Coach ejecutivo", phone: "+52 55 1000 0005", status: "invitado", credits: 0, owner: "Leo Galvez", lastChange: "10/06/2026 13:02", notes: "Asignable a sesiones 1o1, NPS, notas y testimonios." },
   { kind: "internal-coach", name: "Patricia Mora", email: "patricia@empleateya.mx", organization: "Cursos online", role: "Coach entrevistas", phone: "+52 55 1000 0010", status: "activo", credits: 0, owner: "Leo Galvez", lastChange: "09/06/2026 15:45", notes: "Disponible para cursos grupales y sesiones remotas." },
 ];
@@ -722,22 +772,24 @@ function calculateCoachPartnerPool(avatarIds: readonly SkillId[], groups: number
 
 function menuAllowedFor(userKind: AdminUserKind, href: string) {
   if (userKind === "online") return false;
-  if (userKind === "coach-partner") return ["/admin/users", "/admin/campaigns", "/admin/credits", "/admin/reports", "/admin/coaching"].includes(href);
+  if (userKind === "coach-partner") return ["/admin/users", "/admin/groups", "/admin/credits", "/admin/reports", "/admin/coaching"].includes(href);
+  if (userKind === "student") return false;
   if (userKind === "outplacement-rh") return ["/admin/users", "/admin/organizations", "/admin/campaigns", "/admin/reports"].includes(href);
-  if (userKind === "internal-coach") return ["/admin/users", "/admin/coaching", "/admin/testimonials", "/admin/reports"].includes(href);
+  if (userKind === "outplacement-employee") return false;
+  if (userKind === "internal-coach") return ["/admin/users", "/admin/groups", "/admin/coaching", "/admin/testimonials", "/admin/reports"].includes(href);
   return true;
 }
 
 function userSubmenuAllowedFor(userKind: AdminUserKind, href: string) {
   if (userKind === "super-admin-support") return true;
-  if (userKind === "coach-partner") return href === "/admin/users/coach-partner" || href === "/admin/users/online";
-  if (userKind === "outplacement-rh") return href === "/admin/users/outplacement-rh" || href === "/admin/users/online";
-  if (userKind === "internal-coach") return href === "/admin/users/internal-coach" || href === "/admin/users/online";
+  if (userKind === "coach-partner") return href === "/admin/users/coach-partner" || href === "/admin/users/students";
+  if (userKind === "outplacement-rh") return href === "/admin/users/outplacement-rh" || href === "/admin/users/outplacement-employees";
+  if (userKind === "internal-coach") return href === "/admin/users/internal-coach" || href === "/admin/users/students";
   return href === "/admin/users/online";
 }
 
-function usesOrganizationCatalog(userKind: AdminUserKind): userKind is "coach-partner" | "outplacement-rh" {
-  return userKind === "coach-partner" || userKind === "outplacement-rh";
+function usesOrganizationCatalog(userKind: AdminUserKind): userKind is "coach-partner" | "student" | "outplacement-rh" | "outplacement-employee" {
+  return userKind === "coach-partner" || userKind === "student" || userKind === "outplacement-rh" || userKind === "outplacement-employee";
 }
 
 function usesFixedEmpleateYaOrganization(userKind: AdminUserKind) {

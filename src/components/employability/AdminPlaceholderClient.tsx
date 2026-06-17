@@ -5,7 +5,7 @@ import { Search } from "lucide-react";
 import { Input, Label, Select } from "@/components/ui/Input";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
-type AdminModuleKey = "avatars" | "permissions" | "payments" | "reports" | "coaching" | "testimonials" | "audit";
+type AdminModuleKey = "avatars" | "permissions" | "payments" | "reports" | "coaching" | "groups" | "testimonials" | "audit";
 
 const copy = {
   es: {
@@ -47,6 +47,11 @@ const copy = {
         title: "Coaching 1o1 y cursos",
         description: "Administra coaches internos, cursos, alumnos, grupos, sesiones, NPS, notas y testimonios autorizados.",
         columns: ["Curso / Grupo", "Coach", "Alumnos", "NPS", "Estado"],
+      },
+      groups: {
+        title: "Grupos",
+        description: "Administra grupos de Coach Partner y coaching 1o1: organizacion, coach responsable, alumnos asignados, capacidad, bolsa de creditos y estado.",
+        columns: ["Grupo", "Organizacion", "Coach", "Alumnos", "Capacidad", "Bolsa creditos", "Estado"],
       },
       testimonials: {
         title: "Testimonios y autorizaciones",
@@ -100,6 +105,11 @@ const copy = {
         description: "Manage internal coaches, courses, students, groups, sessions, NPS, notes, and authorized testimonials.",
         columns: ["Course / Group", "Coach", "Students", "NPS", "Status"],
       },
+      groups: {
+        title: "Groups",
+        description: "Manage Coach Partner and 1:1 coaching groups: organization, responsible coach, assigned students, capacity, credit pool, and status.",
+        columns: ["Group", "Organization", "Coach", "Students", "Capacity", "Credit pool", "Status"],
+      },
       testimonials: {
         title: "Testimonials and authorizations",
         description: "Control testimonials, images, signed PDF, folio, location, validity, hash, and Home/FAQ publication.",
@@ -139,6 +149,11 @@ const rows: Record<AdminModuleKey, string[][]> = {
     ["Curso CV Estrategico", "Coach interno", "18", "72", "active"],
     ["Coaching 1o1 Ejecutivo", "Pendiente asignar", "4", "-", "pending"],
     ["Grupo Entrevistas", "Miss Quest Coach", "11", "86", "active"],
+  ],
+  groups: [
+    ["Grupo CV Estrategico Norte", "Franquicia Demo Norte", "Mariana Soto", "5", "20", "30,900", "active"],
+    ["Coaching 1o1 Ejecutivo", "Empleate YA", "Sofia Rivera", "4", "8", "Ilimitada", "active"],
+    ["Grupo Entrevistas Bajio", "Franquicia Demo Bajio", "Hector Ramos", "0", "10", "15,450", "pending"],
   ],
   testimonials: [
     ["Candidata area salud", "TES-2026-001", "31/12/2026", "PDF validado", "active"],

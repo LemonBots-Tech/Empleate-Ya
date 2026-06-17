@@ -15,6 +15,7 @@ type OrganizationRecord = {
   legalName: string;
   taxId: string;
   status: string;
+  legalRepresentative: string;
   contactName: string;
   contactEmail: string;
   contactPhone: string;
@@ -62,6 +63,8 @@ const copy = {
     legalName: "Razon social",
     taxId: "RFC / Tax ID",
     contact: "Contacto principal",
+    legalRepresentative: "Representante legal / responsable de cuenta",
+    legalRepresentativeHelp: "Coach Partner: Coach Partner principal. Outplacement: Administrador RH creado para esa empresa.",
     contactName: "Nombre contacto",
     contactEmail: "Correo contacto",
     contactPhone: "Telefono contacto",
@@ -80,7 +83,7 @@ const copy = {
     campaigns: "Campanas outplacement",
     internalOwner: "Responsable interno",
     notes: "Notas internas",
-    columns: ["Seleccion", "Organizacion", "Tipo", "Contacto", "Ubicacion", "Plan", "Capacidad", "Responsable", "Estado", "Ultimo cambio"],
+    columns: ["Seleccion", "Organizacion", "Tipo", "Representante", "Contacto", "Ubicacion", "Plan", "Capacidad", "Responsable", "Estado", "Ultimo cambio"],
     types: {
       empleate_ya: "Empleate YA",
       coach_partner: "Coach Partner",
@@ -115,6 +118,8 @@ const copy = {
     legalName: "Legal name",
     taxId: "Tax ID",
     contact: "Main contact",
+    legalRepresentative: "Legal representative / account owner",
+    legalRepresentativeHelp: "Coach Partner: main Coach Partner. Outplacement: HR Administrator created for that company.",
     contactName: "Contact name",
     contactEmail: "Contact email",
     contactPhone: "Contact phone",
@@ -133,7 +138,7 @@ const copy = {
     campaigns: "Outplacement campaigns",
     internalOwner: "Internal owner",
     notes: "Internal notes",
-    columns: ["Select", "Organization", "Type", "Contact", "Location", "Plan", "Capacity", "Owner", "Status", "Last change"],
+    columns: ["Select", "Organization", "Type", "Representative", "Contact", "Location", "Plan", "Capacity", "Owner", "Status", "Last change"],
     types: {
       empleate_ya: "Empleate YA",
       coach_partner: "Coach Partner",
@@ -144,6 +149,7 @@ const copy = {
 } as const;
 
 const internalOwners = ["Leo Galvez - Super Admin", "Valeria Nunez - Apoyo administrativo", "Ricardo Vega - Operativo outplacement", "Daniela Ponce - Apoyo cobranza"] as const;
+const legalRepresentatives = ["Leo Galvez - Super Admin", "Mariana Soto - Coach Partner principal", "Ana Torres - Administrador RH", "Sofia Rivera - Coach interno 1o1"] as const;
 
 const initialOrganizations: OrganizationRecord[] = [
   {
@@ -153,6 +159,7 @@ const initialOrganizations: OrganizationRecord[] = [
     legalName: "Empleate YA",
     taxId: "EYA-INTERNO",
     status: "activo",
+    legalRepresentative: "Leo Galvez - Super Admin",
     contactName: "Leo Galvez",
     contactEmail: "leo.galvez.medina@gmail.com",
     contactPhone: "+52 55 4588 1648",
@@ -178,6 +185,7 @@ const initialOrganizations: OrganizationRecord[] = [
     legalName: "Franquicia Demo Norte S.A. de C.V.",
     taxId: "FDN260601AB1",
     status: "activo",
+    legalRepresentative: "Mariana Soto - Coach Partner principal",
     contactName: "Mariana Soto",
     contactEmail: "mariana@franquicia-demo.mx",
     contactPhone: "+52 55 1000 0003",
@@ -203,6 +211,7 @@ const initialOrganizations: OrganizationRecord[] = [
     legalName: "Empresa Demo Outplacement S.A. de C.V.",
     taxId: "EDO260601CD2",
     status: "activo",
+    legalRepresentative: "Ana Torres - Administrador RH",
     contactName: "Ana Torres",
     contactEmail: "ana@empresa-demo.mx",
     contactPhone: "+52 55 1000 0004",
@@ -260,6 +269,7 @@ export function AdminOrganizationsClient() {
       legalName: String(formData.get("legalName") || "").trim(),
       taxId: String(formData.get("taxId") || "").trim(),
       status: String(formData.get("status") || t.statuses[0]),
+      legalRepresentative: String(formData.get("legalRepresentative") || legalRepresentatives[0]),
       contactName: String(formData.get("contactName") || "").trim(),
       contactEmail: String(formData.get("contactEmail") || "").trim(),
       contactPhone: String(formData.get("contactPhone") || "").trim(),
@@ -341,6 +351,7 @@ export function AdminOrganizationsClient() {
                   <Td><input type="radio" name="selected-organization" checked={selectedId === organization.id} onChange={() => setSelectedId(organization.id)} /></Td>
                   <Td><strong className="block text-slate-950">{organization.name}</strong><span className="text-xs text-slate-500">{organization.legalName || organization.taxId}</span></Td>
                   <Td><Pill>{t.types[organization.type]}</Pill></Td>
+                  <Td>{organization.legalRepresentative}</Td>
                   <Td><strong className="block text-slate-700">{organization.contactName}</strong><span className="text-xs text-slate-500">{organization.contactEmail}</span></Td>
                   <Td>{organization.city}, {organization.state}</Td>
                   <Td>{organization.plan}</Td>
@@ -384,6 +395,8 @@ export function AdminOrganizationsClient() {
             <Field label={t.contactName}><Input name="contactName" defaultValue={selectedOrganization?.contactName ?? ""} /></Field>
             <Field label={t.contactEmail}><Input name="contactEmail" type="email" defaultValue={selectedOrganization?.contactEmail ?? ""} /></Field>
             <Field label={t.contactPhone}><Input name="contactPhone" defaultValue={selectedOrganization?.contactPhone ?? ""} /></Field>
+            <Field label={t.legalRepresentative}><Select name="legalRepresentative" defaultValue={selectedOrganization?.legalRepresentative ?? legalRepresentatives[0]}>{legalRepresentatives.map((representative) => <option key={representative}>{representative}</option>)}</Select></Field>
+            <p className="text-xs font-semibold leading-5 text-slate-500">{t.legalRepresentativeHelp}</p>
             <Field label={t.internalOwner}><Select name="internalOwner" defaultValue={selectedOrganization?.internalOwner ?? internalOwners[0]}>{internalOwners.map((owner) => <option key={owner}>{owner}</option>)}</Select></Field>
           </FormGroup>
 
