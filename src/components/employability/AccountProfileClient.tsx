@@ -19,6 +19,7 @@ type ProfileForm = {
   jobSearchStatus: string;
   employmentType: string;
   desiredSalaryRange: string;
+  desiredSalaryAmount: string;
   preferredWorkMode: string;
   geographicAvailability: string;
 };
@@ -36,6 +37,7 @@ const emptyProfile: ProfileForm = {
   jobSearchStatus: "",
   employmentType: "",
   desiredSalaryRange: "",
+  desiredSalaryAmount: "",
   preferredWorkMode: "",
   geographicAvailability: "",
 };
@@ -64,6 +66,8 @@ const copy = {
     jobSearchStatus: "Estado de búsqueda",
     employmentType: "Tipo de empleo",
     desiredSalaryRange: "Rango salarial deseado",
+    desiredSalaryAmount: "Salario mensual deseado",
+    desiredSalaryAmountHelp: "Captura el valor puntual que deseas pedir con base en tu experiencia, aptitudes y mercado.",
     preferredWorkMode: "Modalidad preferida",
     geographicAvailability: "Disponibilidad geográfica",
     save: "Guardar perfil",
@@ -95,6 +99,14 @@ const copy = {
       ["internship", "Prácticas"],
       ["freelance", "Freelance / proyecto"],
     ],
+    salaryRangeOptions: [
+      ["mxn_min_1_5", "MXN $8,500 - $12,750 mensual"],
+      ["mxn_1_5_2_5", "MXN $12,751 - $21,250 mensual"],
+      ["mxn_2_5_4", "MXN $21,251 - $34,000 mensual"],
+      ["mxn_4_6", "MXN $34,001 - $51,000 mensual"],
+      ["mxn_6_10", "MXN $51,001 - $85,000 mensual"],
+      ["mxn_10_plus", "MXN $85,001+ mensual"],
+    ],
   },
   en: {
     title: "Professional profile",
@@ -119,6 +131,8 @@ const copy = {
     jobSearchStatus: "Job search status",
     employmentType: "Employment type",
     desiredSalaryRange: "Desired salary range",
+    desiredSalaryAmount: "Desired monthly salary",
+    desiredSalaryAmountHelp: "Enter the specific amount you want to request based on your experience, skills, and market.",
     preferredWorkMode: "Preferred work mode",
     geographicAvailability: "Geographic availability",
     save: "Save profile",
@@ -149,6 +163,14 @@ const copy = {
       ["temporary", "Temporary"],
       ["internship", "Internship"],
       ["freelance", "Freelance / project"],
+    ],
+    salaryRangeOptions: [
+      ["usd_min_1_5", "USD $1,260 - $1,890 monthly"],
+      ["usd_1_5_2_5", "USD $1,891 - $3,150 monthly"],
+      ["usd_2_5_4", "USD $3,151 - $5,040 monthly"],
+      ["usd_4_6", "USD $5,041 - $7,560 monthly"],
+      ["usd_6_10", "USD $7,561 - $12,600 monthly"],
+      ["usd_10_plus", "USD $12,601+ monthly"],
     ],
   },
 } as const;
@@ -187,6 +209,7 @@ export function AccountProfileClient() {
           jobSearchStatus: profile.jobSearchStatus ?? "",
           employmentType: profile.employmentType ?? "",
           desiredSalaryRange: profile.desiredSalaryRange ?? "",
+          desiredSalaryAmount: profile.desiredSalaryAmount ?? "",
           preferredWorkMode: profile.preferredWorkMode ?? "",
           geographicAvailability: profile.geographicAvailability ?? "",
         });
@@ -225,6 +248,7 @@ export function AccountProfileClient() {
         jobSearchStatus: form.jobSearchStatus || undefined,
         employmentType: form.employmentType || undefined,
         desiredSalaryRange: form.desiredSalaryRange || undefined,
+        desiredSalaryAmount: form.desiredSalaryAmount || undefined,
         preferredWorkMode: form.preferredWorkMode || undefined,
         geographicAvailability: form.geographicAvailability || undefined,
       }),
@@ -251,7 +275,8 @@ export function AccountProfileClient() {
     [t.educationLevel, form.educationLevel],
     [t.jobSearchStatus, form.jobSearchStatus],
     [t.employmentType, form.employmentType],
-    [t.preferredWorkMode, form.preferredWorkMode],
+    [t.desiredSalaryRange, form.desiredSalaryRange],
+    [t.desiredSalaryAmount, form.desiredSalaryAmount],
   ].filter(([, value]) => !value);
 
   return (
@@ -328,7 +353,18 @@ export function AccountProfileClient() {
               {t.searchStatusOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </Select>
           </div>
-          <div><Label>{t.desiredSalaryRange}</Label><Input value={form.desiredSalaryRange} onChange={(event) => updateField("desiredSalaryRange", event.target.value)} /></div>
+          <div>
+            <Label>{t.desiredSalaryRange}</Label>
+            <Select value={form.desiredSalaryRange} onChange={(event) => updateField("desiredSalaryRange", event.target.value)}>
+              <option value="">-</option>
+              {t.salaryRangeOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </Select>
+          </div>
+          <div>
+            <Label>{t.desiredSalaryAmount}</Label>
+            <Input value={form.desiredSalaryAmount} onChange={(event) => updateField("desiredSalaryAmount", event.target.value)} placeholder={language === "es" ? "Ej. MXN $45,000" : "Example: USD $5,500"} />
+            <p className="mt-1 text-xs font-semibold text-slate-500">{t.desiredSalaryAmountHelp}</p>
+          </div>
           <div>
             <Label>{t.employmentType}</Label>
             <Select value={form.employmentType} onChange={(event) => updateField("employmentType", event.target.value)}>

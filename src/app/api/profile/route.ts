@@ -16,6 +16,7 @@ const profileSchema = z.object({
   jobSearchStatus: z.string().optional(),
   employmentType: z.string().optional(),
   desiredSalaryRange: z.string().optional(),
+  desiredSalaryAmount: z.string().optional(),
   preferredWorkMode: z.string().optional(),
   geographicAvailability: z.string().optional(),
 });

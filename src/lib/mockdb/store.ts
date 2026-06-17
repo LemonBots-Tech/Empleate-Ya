@@ -34,6 +34,7 @@ export type ProfessionalProfile = {
   jobSearchStatus?: string;
   employmentType?: string;
   desiredSalaryRange?: string;
+  desiredSalaryAmount?: string;
   preferredWorkMode?: string;
   geographicAvailability?: string;
   createdAt: string;

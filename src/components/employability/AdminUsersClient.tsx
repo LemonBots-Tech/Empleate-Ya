@@ -29,6 +29,9 @@ type DemoUser = {
   owner: string;
   lastChange: string;
   notes: string;
+  linkedinUrl?: string;
+  salaryRange?: string;
+  desiredSalaryAmount?: string;
   permissions?: UserPermissions;
 };
 
@@ -217,6 +220,14 @@ const copy = {
     statusLabel: "Estado",
     credits: "Creditos / bolsa inicial",
     creditsHelp: "Solo Super Admin puede mover manualmente la bolsa de usuarios online. Cada aumento o disminucion queda en bitacora.",
+    careerData: "Datos profesionales",
+    linkedinUrl: "URL de LinkedIn",
+    noLinkedin: "No tengo perfil de LinkedIn",
+    salaryRange: "Rango salarial",
+    desiredSalaryAmount: "Salario mensual deseado",
+    desiredSalaryHelp: "Monto puntual que desea pedir segun experiencia y aptitudes.",
+    loginEligibility: "Regla de login",
+    loginEligibilityHelp: "Alumnos y ex-empleados primero deben existir en un grupo o campana autorizada. Despues pueden iniciar sesion con el usuario creado por RH, Coach Partner o coach responsable.",
     creditAuditTitle: "Bitacora de movimientos manuales de creditos",
     creditAuditEmpty: "Aun no hay ajustes manuales de creditos en esta sesion.",
     owner: "Responsable interno",
@@ -275,6 +286,14 @@ const copy = {
     statusLabel: "Status",
     credits: "Credits / initial pool",
     creditsHelp: "Only Super Admin can manually move the online user credit pool. Every increase or decrease is logged.",
+    careerData: "Professional data",
+    linkedinUrl: "LinkedIn URL",
+    noLinkedin: "I do not have a LinkedIn profile",
+    salaryRange: "Salary range",
+    desiredSalaryAmount: "Desired monthly salary",
+    desiredSalaryHelp: "Specific amount the user wants to request based on experience and skills.",
+    loginEligibility: "Login rule",
+    loginEligibilityHelp: "Students and former employees must first exist in an authorized group or campaign. Then they can sign in with the user created by HR, Coach Partner, or the responsible coach.",
     creditAuditTitle: "Manual credit movement audit log",
     creditAuditEmpty: "There are no manual credit adjustments in this session yet.",
     owner: "Internal owner",
@@ -375,6 +394,25 @@ const organizationCatalog = {
   "outplacement-employee": ["Empresa Demo Outplacement", "Grupo Industrial Norte", "Servicios Financieros Delta", "Retail Nacional"],
 } as const;
 
+const salaryRangeOptions = {
+  es: [
+    ["mxn_min_1_5", "MXN $8,500 - $12,750 mensual"],
+    ["mxn_1_5_2_5", "MXN $12,751 - $21,250 mensual"],
+    ["mxn_2_5_4", "MXN $21,251 - $34,000 mensual"],
+    ["mxn_4_6", "MXN $34,001 - $51,000 mensual"],
+    ["mxn_6_10", "MXN $51,001 - $85,000 mensual"],
+    ["mxn_10_plus", "MXN $85,001+ mensual"],
+  ],
+  en: [
+    ["usd_min_1_5", "USD $1,260 - $1,890 monthly"],
+    ["usd_1_5_2_5", "USD $1,891 - $3,150 monthly"],
+    ["usd_2_5_4", "USD $3,151 - $5,040 monthly"],
+    ["usd_4_6", "USD $5,041 - $7,560 monthly"],
+    ["usd_6_10", "USD $7,561 - $12,600 monthly"],
+    ["usd_10_plus", "USD $12,601+ monthly"],
+  ],
+} as const;
+
 const demoUsers: DemoUser[] = [
   { kind: "online", name: "Laura Mendez", email: "laura@email.com", organization: empleateYaOrganization, role: "Cliente Online Pagado", phone: "+52 55 1000 0001", status: "activo", credits: onlineBaselineCredits, owner: "Leo Galvez", lastChange: "12/06/2026 10:40", notes: "Compra individual Stripe. Puede ejecutar avatares segun saldo." },
   { kind: "online", name: "Jorge Luna", email: "jorge@email.com", organization: empleateYaOrganization, role: "Prospecto online", phone: "+52 55 1000 0006", status: "pendiente", credits: onlineBaselineCredits, owner: "Sistema", lastChange: "12/06/2026 08:20", notes: "Prueba limitada. Requiere registro para consumir mas avatares." },
@@ -438,6 +476,9 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       owner: String(formData.get("owner") || internalOwners[0]),
       lastChange: new Date().toLocaleString(language === "es" ? "es-MX" : "en-US", { dateStyle: "short", timeStyle: "short" }),
       notes: String(formData.get("notes") || "").trim(),
+      linkedinUrl: String(formData.get("linkedinUrl") || "").trim(),
+      salaryRange: String(formData.get("salaryRange") || "").trim(),
+      desiredSalaryAmount: String(formData.get("desiredSalaryAmount") || "").trim(),
       permissions: selectedUser?.permissions ?? pendingPermissions ?? defaultPermissionsFor(userKind, String(formData.get("role") || kind.roles[0]), coachPlanKey),
     };
     let creditAdjusted = false;
@@ -606,6 +647,41 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             ) : null}
           </FormGroup>
         </div>
+        {usesCareerDataFields(userKind) ? (
+          <section className="mt-5 rounded-[1.25rem] border border-slate-200 bg-slate-50/70 p-4">
+            <h3 className="mb-4 text-lg font-black text-slate-950">{t.careerData}</h3>
+            {(userKind === "student" || userKind === "outplacement-employee") ? (
+              <p className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-900">
+                <strong>{t.loginEligibility}:</strong> {t.loginEligibilityHelp}
+              </p>
+            ) : null}
+            <div className="grid gap-3 md:grid-cols-3">
+              <Field label={t.linkedinUrl}>
+                <Input name="linkedinUrl" placeholder="https://linkedin.com/in/... / No tengo perfil de LinkedIn" defaultValue={selectedUser?.linkedinUrl ?? ""} />
+              </Field>
+              <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 md:mt-6">
+                <input
+                  type="checkbox"
+                  onChange={(event) => {
+                    const input = event.currentTarget.form?.elements.namedItem("linkedinUrl") as HTMLInputElement | null;
+                    if (input) input.value = event.target.checked ? t.noLinkedin : "";
+                  }}
+                />
+                {t.noLinkedin}
+              </label>
+              <Field label={t.salaryRange}>
+                <Select name="salaryRange" defaultValue={selectedUser?.salaryRange ?? ""}>
+                  <option value="">-</option>
+                  {salaryRangeOptions[language].map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </Select>
+              </Field>
+              <Field label={t.desiredSalaryAmount}>
+                <Input name="desiredSalaryAmount" placeholder={language === "es" ? "Ej. MXN $45,000" : "Example: USD $5,500"} defaultValue={selectedUser?.desiredSalaryAmount ?? ""} />
+                <p className="mt-1 text-xs font-semibold text-slate-500">{t.desiredSalaryHelp}</p>
+              </Field>
+            </div>
+          </section>
+        ) : null}
         <div className="mt-5">
           <Label>{t.notes}</Label>
           <textarea name="notes" className="min-h-28 w-full rounded-2xl border border-[var(--brand-border)] bg-white px-4 py-3 text-sm text-[var(--brand-ink)] outline-none transition focus:border-[var(--brand-primary)] focus:ring-4 focus:ring-[var(--brand-primary-soft)]" defaultValue={selectedUser?.notes ?? ""} />
@@ -798,6 +874,10 @@ function usesFixedEmpleateYaOrganization(userKind: AdminUserKind) {
 
 function hasUnlimitedCredits(userKind: AdminUserKind) {
   return userKind === "super-admin-support" || userKind === "internal-coach";
+}
+
+function usesCareerDataFields(userKind: AdminUserKind) {
+  return userKind === "online" || userKind === "student" || userKind === "outplacement-employee";
 }
 
 function ownerOptionFor(owner: string) {
