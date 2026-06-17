@@ -32,6 +32,7 @@ export type ProfessionalProfile = {
   languages: string[];
   linkedinUrl?: string;
   jobSearchStatus?: string;
+  employmentType?: string;
   desiredSalaryRange?: string;
   preferredWorkMode?: string;
   geographicAvailability?: string;

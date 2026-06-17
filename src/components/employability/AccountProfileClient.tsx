@@ -17,6 +17,7 @@ type ProfileForm = {
   languagesText: string;
   linkedinUrl: string;
   jobSearchStatus: string;
+  employmentType: string;
   desiredSalaryRange: string;
   preferredWorkMode: string;
   geographicAvailability: string;
@@ -33,6 +34,7 @@ const emptyProfile: ProfileForm = {
   languagesText: "",
   linkedinUrl: "",
   jobSearchStatus: "",
+  employmentType: "",
   desiredSalaryRange: "",
   preferredWorkMode: "",
   geographicAvailability: "",
@@ -45,6 +47,8 @@ const copy = {
     loading: "Cargando perfil...",
     login: "Inicia sesión para editar tu perfil.",
     saved: "Perfil actualizado.",
+    monthlyReview: "Para darte mejores recomendaciones, completa la información faltante de tu perfil. Te lo recordaremos al inicio de cada mes si quedan campos importantes vacíos.",
+    missingFields: "Campos por completar",
     ownerHelp: "Este perfil lo llena el usuario dueno de los datos: usuario online, alumno, ex-empleado o cliente autorizado. El Super Admin solo apoya o audita cuando exista una relacion de servicio.",
     photo: "Foto de perfil",
     photoHelp: "Imagen visible para coaches, reportes internos y experiencia personalizada.",
@@ -58,12 +62,39 @@ const copy = {
     languages: "Idiomas",
     linkedinUrl: "LinkedIn",
     jobSearchStatus: "Estado de búsqueda",
+    employmentType: "Tipo de empleo",
     desiredSalaryRange: "Rango salarial deseado",
     preferredWorkMode: "Modalidad preferida",
     geographicAvailability: "Disponibilidad geográfica",
     save: "Guardar perfil",
     privacyTitle: "Privacidad y seguridad",
     privacy: ["Aviso de privacidad y términos aceptados en registro.", "Procesamiento con IA separado por consentimiento.", "Eliminación de datos mediante solicitud auditada.", "La información del usuario no se comparte sin permiso o relación de servicio."],
+    educationOptions: [
+      ["primary", "Primaria"],
+      ["secondary", "Secundaria"],
+      ["high_school", "Preparatoria / bachillerato"],
+      ["technical", "Carrera técnica"],
+      ["university", "Universidad / licenciatura"],
+      ["postgraduate", "Posgrado"],
+      ["master", "Maestría"],
+      ["doctorate", "Doctorado"],
+      ["certification", "Certificación profesional"],
+    ],
+    searchStatusOptions: [
+      ["active", "Búsqueda activa"],
+      ["flexible", "Búsqueda flexible"],
+      ["exploring", "Simplemente mirando"],
+      ["improving_profile", "Mejorando mi información"],
+      ["not_searching", "No estoy buscando por ahora"],
+    ],
+    employmentTypeOptions: [
+      ["full_time", "Jornada completa"],
+      ["part_time", "Jornada parcial"],
+      ["contract", "Contrato"],
+      ["temporary", "Temporal"],
+      ["internship", "Prácticas"],
+      ["freelance", "Freelance / proyecto"],
+    ],
   },
   en: {
     title: "Professional profile",
@@ -71,6 +102,8 @@ const copy = {
     loading: "Loading profile...",
     login: "Sign in to edit your profile.",
     saved: "Profile updated.",
+    monthlyReview: "To give you better recommendations, complete the missing profile information. We will remind you at the beginning of each month if important fields are still empty.",
+    missingFields: "Fields to complete",
     ownerHelp: "This profile is completed by the data owner: online user, student, former employee, or authorized client. The Super Admin only supports or audits when a service relationship exists.",
     photo: "Profile photo",
     photoHelp: "Image shown to coaches, internal reports, and the personalized experience.",
@@ -84,12 +117,39 @@ const copy = {
     languages: "Languages",
     linkedinUrl: "LinkedIn",
     jobSearchStatus: "Job search status",
+    employmentType: "Employment type",
     desiredSalaryRange: "Desired salary range",
     preferredWorkMode: "Preferred work mode",
     geographicAvailability: "Geographic availability",
     save: "Save profile",
     privacyTitle: "Privacy and security",
     privacy: ["Privacy notice and terms accepted during registration.", "AI processing handled through separate consent.", "Data deletion through audited request.", "User information is not shared without permission or a service relationship."],
+    educationOptions: [
+      ["primary", "Primary school"],
+      ["secondary", "Secondary school"],
+      ["high_school", "High school"],
+      ["technical", "Technical degree"],
+      ["university", "University / bachelor's degree"],
+      ["postgraduate", "Postgraduate"],
+      ["master", "Master's degree"],
+      ["doctorate", "Doctorate"],
+      ["certification", "Professional certification"],
+    ],
+    searchStatusOptions: [
+      ["active", "Active search"],
+      ["flexible", "Flexible search"],
+      ["exploring", "Just looking"],
+      ["improving_profile", "Improving my information"],
+      ["not_searching", "Not searching right now"],
+    ],
+    employmentTypeOptions: [
+      ["full_time", "Full-time"],
+      ["part_time", "Part-time"],
+      ["contract", "Contract"],
+      ["temporary", "Temporary"],
+      ["internship", "Internship"],
+      ["freelance", "Freelance / project"],
+    ],
   },
 } as const;
 
@@ -101,6 +161,7 @@ export function AccountProfileClient() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [showMonthlyReview, setShowMonthlyReview] = useState(false);
 
   useEffect(() => {
     async function loadProfile() {
@@ -124,10 +185,17 @@ export function AccountProfileClient() {
           languagesText: profile.languages?.join(", ") ?? "",
           linkedinUrl: profile.linkedinUrl ?? "",
           jobSearchStatus: profile.jobSearchStatus ?? "",
+          employmentType: profile.employmentType ?? "",
           desiredSalaryRange: profile.desiredSalaryRange ?? "",
           preferredWorkMode: profile.preferredWorkMode ?? "",
           geographicAvailability: profile.geographicAvailability ?? "",
         });
+      }
+      const monthKey = new Date().toISOString().slice(0, 7);
+      const reminderKey = `empleate-ya-profile-review-${monthKey}`;
+      if (typeof window !== "undefined" && window.localStorage.getItem(reminderKey) !== "seen") {
+        setShowMonthlyReview(true);
+        window.localStorage.setItem(reminderKey, "seen");
       }
       setLoading(false);
     }
@@ -155,6 +223,7 @@ export function AccountProfileClient() {
         languages: form.languagesText.split(",").map((item) => item.trim()).filter(Boolean),
         linkedinUrl: form.linkedinUrl || undefined,
         jobSearchStatus: form.jobSearchStatus || undefined,
+        employmentType: form.employmentType || undefined,
         desiredSalaryRange: form.desiredSalaryRange || undefined,
         preferredWorkMode: form.preferredWorkMode || undefined,
         geographicAvailability: form.geographicAvailability || undefined,
@@ -176,6 +245,14 @@ export function AccountProfileClient() {
   }
 
   if (loading) return <div className="rounded-[2rem] border border-slate-200 bg-white p-6 text-slate-600">{t.loading}</div>;
+  const missingFields = [
+    [t.targetRole, form.targetRole],
+    [t.seniority, form.seniority],
+    [t.educationLevel, form.educationLevel],
+    [t.jobSearchStatus, form.jobSearchStatus],
+    [t.employmentType, form.employmentType],
+    [t.preferredWorkMode, form.preferredWorkMode],
+  ].filter(([, value]) => !value);
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_0.42fr]">
@@ -188,6 +265,13 @@ export function AccountProfileClient() {
           </div>
         </div>
         <p className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold leading-6 text-slate-600">{t.ownerHelp}</p>
+        {showMonthlyReview && missingFields.length ? (
+          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-900">
+            <p>{t.monthlyReview}</p>
+            <p className="mt-2 text-xs uppercase tracking-[0.14em]">{t.missingFields}</p>
+            <p className="mt-1">{missingFields.map(([label]) => label).join(", ")}</p>
+          </div>
+        ) : null}
         {message ? <p className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{message}</p> : null}
         {error ? <p className="mt-5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{error}</p> : null}
 
@@ -228,11 +312,30 @@ export function AccountProfileClient() {
           <div><Label>{t.yearsExperience}</Label><Input type="number" min={0} max={60} value={form.yearsExperience} onChange={(event) => updateField("yearsExperience", event.target.value)} /></div>
           <div><Label>{t.lastRole}</Label><Input value={form.lastRole} onChange={(event) => updateField("lastRole", event.target.value)} /></div>
           <div><Label>{t.lastCompany}</Label><Input value={form.lastCompany} onChange={(event) => updateField("lastCompany", event.target.value)} /></div>
-          <div><Label>{t.educationLevel}</Label><Input value={form.educationLevel} onChange={(event) => updateField("educationLevel", event.target.value)} /></div>
+          <div>
+            <Label>{t.educationLevel}</Label>
+            <Select value={form.educationLevel} onChange={(event) => updateField("educationLevel", event.target.value)}>
+              <option value="">-</option>
+              {t.educationOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </Select>
+          </div>
           <div><Label>{t.languages}</Label><Input value={form.languagesText} onChange={(event) => updateField("languagesText", event.target.value)} placeholder="Español, Inglés" /></div>
           <div className="md:col-span-2"><Label>{t.linkedinUrl}</Label><Input value={form.linkedinUrl} onChange={(event) => updateField("linkedinUrl", event.target.value)} /></div>
-          <div><Label>{t.jobSearchStatus}</Label><Input value={form.jobSearchStatus} onChange={(event) => updateField("jobSearchStatus", event.target.value)} /></div>
+          <div>
+            <Label>{t.jobSearchStatus}</Label>
+            <Select value={form.jobSearchStatus} onChange={(event) => updateField("jobSearchStatus", event.target.value)}>
+              <option value="">-</option>
+              {t.searchStatusOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </Select>
+          </div>
           <div><Label>{t.desiredSalaryRange}</Label><Input value={form.desiredSalaryRange} onChange={(event) => updateField("desiredSalaryRange", event.target.value)} /></div>
+          <div>
+            <Label>{t.employmentType}</Label>
+            <Select value={form.employmentType} onChange={(event) => updateField("employmentType", event.target.value)}>
+              <option value="">-</option>
+              {t.employmentTypeOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </Select>
+          </div>
           <div><Label>{t.preferredWorkMode}</Label><Input value={form.preferredWorkMode} onChange={(event) => updateField("preferredWorkMode", event.target.value)} /></div>
           <div><Label>{t.geographicAvailability}</Label><Textarea value={form.geographicAvailability} onChange={(event) => updateField("geographicAvailability", event.target.value)} /></div>
         </div>

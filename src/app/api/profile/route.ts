@@ -14,6 +14,7 @@ const profileSchema = z.object({
   languages: z.array(z.string()).default([]),
   linkedinUrl: z.string().optional(),
   jobSearchStatus: z.string().optional(),
+  employmentType: z.string().optional(),
   desiredSalaryRange: z.string().optional(),
   preferredWorkMode: z.string().optional(),
   geographicAvailability: z.string().optional(),
