@@ -4,6 +4,7 @@ import { requireUser } from "@/services/authService";
 import { getStore, newId, now } from "@/lib/mockdb/store";
 
 const profileSchema = z.object({
+  birthDate: z.string().optional(),
   targetRole: z.string().optional(),
   seniority: z.string().optional(),
   industry: z.string().optional(),
@@ -17,7 +18,6 @@ const profileSchema = z.object({
   employmentType: z.string().optional(),
   desiredSalaryRange: z.string().optional(),
   desiredSalaryAmount: z.string().optional(),
-  preferredWorkMode: z.string().optional(),
   geographicAvailability: z.string().optional(),
 });
 

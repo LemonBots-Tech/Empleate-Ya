@@ -46,6 +46,8 @@ type CreditAuditEvent = {
   createdAt: string;
 };
 
+type UserSearchMode = "capture" | "edit" | "delete";
+
 const kindConfig = {
   es: {
     online: {
@@ -203,9 +205,14 @@ const copy = {
     all: "Todos",
     formTitle: "Captura y mantenimiento",
     create: "Crear",
-    edit: "Editar seleccionado",
+    edit: "Buscar para editar",
     saveData: "Guardar datos",
-    deleteLogical: "Borrado logico",
+    deleteLogical: "Buscar para borrar",
+    confirmDelete: "Confirmar borrado logico",
+    searchModeEditHelp: "Busca y selecciona un usuario. Al elegirlo regresaras a captura para editar y guardar cambios.",
+    searchModeDeleteHelp: "Busca y selecciona un usuario. Al elegirlo regresaras a captura para confirmar el borrado logico.",
+    selectedForEdit: "Usuario seleccionado. Edita lo necesario y presiona Guardar datos.",
+    selectedForDelete: "Usuario seleccionado. Revisa el registro y confirma el borrado logico si corresponde.",
     savedDataMessage: "Datos del usuario guardados en la tabla correspondiente.",
     savedPermissionsMessage: "Permisos guardados. Regresaste a captura y mantenimiento del usuario.",
     logicalDeleteMessage: "El usuario seleccionado paso a estado borrado_logico. No se elimino definitivamente.",
@@ -269,9 +276,14 @@ const copy = {
     all: "All",
     formTitle: "Capture and maintenance",
     create: "Create",
-    edit: "Edit selected",
+    edit: "Find to edit",
     saveData: "Save data",
-    deleteLogical: "Logical delete",
+    deleteLogical: "Find to delete",
+    confirmDelete: "Confirm logical delete",
+    searchModeEditHelp: "Search and select a user. After selecting, you will return to capture to edit and save changes.",
+    searchModeDeleteHelp: "Search and select a user. After selecting, you will return to capture to confirm logical deletion.",
+    selectedForEdit: "User selected. Edit what is needed and press Save data.",
+    selectedForDelete: "User selected. Review the record and confirm logical deletion if appropriate.",
     savedDataMessage: "User data saved in the corresponding table.",
     savedPermissionsMessage: "Permissions saved. You are back in user capture and maintenance.",
     logicalDeleteMessage: "The selected user was moved to logical_delete. It was not permanently deleted.",
@@ -443,6 +455,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const [notice, setNotice] = useState("");
   const [pendingPermissions, setPendingPermissions] = useState<UserPermissions | null>(null);
   const [creditAuditEvents, setCreditAuditEvents] = useState<CreditAuditEvent[]>([]);
+  const [searchMode, setSearchMode] = useState<UserSearchMode>("capture");
 
   const filteredUsers = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -454,12 +467,19 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     });
   }, [query, status, userKind, users]);
 
-  const selectedUser = filteredUsers.find((user) => user.email === selectedEmail);
+  const selectedUser = users.find((user) => user.kind === userKind && user.email === selectedEmail);
   const fixedEmpleateYaOrg = usesFixedEmpleateYaOrganization(userKind);
   const unlimitedCredits = hasUnlimitedCredits(userKind);
   const defaultStatus = selectedUser?.status ?? t.statuses[0];
   const activeRole = selectedUser?.role ?? kind.roles[0];
   const activePermissions = selectedUser?.permissions ?? pendingPermissions ?? defaultPermissionsFor(userKind, activeRole, coachPlanKey);
+
+  function selectUserForMaintenance(email: string) {
+    const nextMode = searchMode;
+    setSelectedEmail(email);
+    setSearchMode("capture");
+    setNotice(nextMode === "delete" ? t.selectedForDelete : t.selectedForEdit);
+  }
 
   function handleSaveUser(formData: FormData) {
     const email = String(formData.get("email") || "").trim();
@@ -549,50 +569,60 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
         <p className="mt-4 max-w-5xl text-lg leading-8 text-slate-600">{kind.description}</p>
       </header>
 
-      <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-xl font-black text-slate-950">{t.filterTitle}</h2>
-        <div className="grid gap-3 lg:grid-cols-[1.5fr_260px]">
-          <div>
-            <Label>{t.search}</Label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
-              <Input value={query} onChange={(event) => setQuery(event.target.value)} className="pl-10" placeholder={t.searchPlaceholder} />
+      {searchMode !== "capture" ? (
+        <>
+          <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <h2 className="text-xl font-black text-slate-950">{searchMode === "edit" ? t.edit : t.deleteLogical}</h2>
+                <p className="mt-1 text-sm font-semibold text-slate-500">{searchMode === "edit" ? t.searchModeEditHelp : t.searchModeDeleteHelp}</p>
+              </div>
+              <Button type="button" className="border border-[var(--brand-border)] bg-white text-slate-700 hover:bg-slate-50" onClick={() => setSearchMode("capture")}>{t.backToCapture}</Button>
             </div>
-          </div>
-          <Field label={t.status}><Select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">{t.all}</option>{t.statuses.map((item) => <option key={item}>{item}</option>)}</Select></Field>
-        </div>
-      </section>
+            <div className="grid gap-3 lg:grid-cols-[1.5fr_260px]">
+              <div>
+                <Label>{t.search}</Label>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+                  <Input value={query} onChange={(event) => setQuery(event.target.value)} className="pl-10" placeholder={t.searchPlaceholder} />
+                </div>
+              </div>
+              <Field label={t.status}><Select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">{t.all}</option>{t.statuses.map((item) => <option key={item}>{item}</option>)}</Select></Field>
+            </div>
+          </section>
 
-      <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-5 py-4">
-          <h2 className="text-xl font-black text-slate-950">{t.results}</h2>
-          <p className="mt-1 text-sm font-semibold text-slate-500">{t.resultHelp}</p>
-        </div>
-        <div className="max-h-[156px] overflow-auto">
-          <table className="w-full min-w-[1280px] text-left text-sm">
-            <thead className="sticky top-0 z-10">
-              <tr>{t.columns.map((column) => <Th key={column}>{column}</Th>)}</tr>
-            </thead>
-            <tbody>
-              {filteredUsers.map((user) => (
-                <tr key={user.email} className={`border-b border-slate-100 last:border-0 ${selectedEmail === user.email ? "bg-[var(--brand-primary-soft)]" : ""}`}>
-                  <Td><input type="radio" name="selected-user" checked={selectedEmail === user.email} onChange={() => setSelectedEmail(user.email)} /></Td>
-                  <Td><strong className="block text-slate-950">{user.name}</strong><span className="text-xs text-slate-500">{user.email}</span></Td>
-                  <Td><Pill>{kind.profile}</Pill></Td>
-                  <Td>{user.organization}</Td>
-                  <Td>{user.role}</Td>
-                  <Td>{user.phone}</Td>
-                  <Td>{hasUnlimitedCredits(user.kind) ? t.unlimitedCredits : user.credits}</Td>
-                  <Td><Pill>{user.status}</Pill></Td>
-                  <Td>{user.owner}</Td>
-                  <Td>{user.lastChange}</Td>
-                  <Td>{user.notes}</Td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+          <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-100 px-5 py-4">
+              <h2 className="text-xl font-black text-slate-950">{t.results}</h2>
+              <p className="mt-1 text-sm font-semibold text-slate-500">{t.resultHelp}</p>
+            </div>
+            <div className="max-h-[156px] overflow-auto">
+              <table className="w-full min-w-[1280px] text-left text-sm">
+                <thead className="sticky top-0 z-10">
+                  <tr>{t.columns.map((column) => <Th key={column}>{column}</Th>)}</tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user) => (
+                    <tr key={user.email} className={`border-b border-slate-100 last:border-0 ${selectedEmail === user.email ? "bg-[var(--brand-primary-soft)]" : ""}`}>
+                      <Td><input type="radio" name="selected-user" checked={selectedEmail === user.email} onChange={() => selectUserForMaintenance(user.email)} /></Td>
+                      <Td><strong className="block text-slate-950">{user.name}</strong><span className="text-xs text-slate-500">{user.email}</span></Td>
+                      <Td><Pill>{kind.profile}</Pill></Td>
+                      <Td>{user.organization}</Td>
+                      <Td>{user.role}</Td>
+                      <Td>{user.phone}</Td>
+                      <Td>{hasUnlimitedCredits(user.kind) ? t.unlimitedCredits : user.credits}</Td>
+                      <Td><Pill>{user.status}</Pill></Td>
+                      <Td>{user.owner}</Td>
+                      <Td>{user.lastChange}</Td>
+                      <Td>{user.notes}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      ) : null}
 
       {notice ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-800">{notice}</div> : null}
 
@@ -603,10 +633,11 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             <p className="mt-1 text-sm font-semibold text-slate-500">{selectedUser ? `${t.selected}: ${selectedUser.name}` : t.noSelected}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]" onClick={() => { setSelectedEmail(""); setNotice(""); }}><UserPlus size={17} />{t.create}</Button>
-            <Button type="button" disabled={!selectedUser} className="gap-2 bg-slate-950 text-white hover:bg-slate-800"><Edit3 size={17} />{t.edit}</Button>
+            <Button type="button" className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]" onClick={() => { setSelectedEmail(""); setNotice(""); setSearchMode("capture"); }}><UserPlus size={17} />{t.create}</Button>
+            <Button type="button" className="gap-2 bg-slate-950 text-white hover:bg-slate-800" onClick={() => { setSearchMode("edit"); setNotice(""); }}><Edit3 size={17} />{t.edit}</Button>
+            <Button type="button" className="gap-2 bg-amber-500 text-white hover:bg-amber-600" onClick={() => { setSearchMode("delete"); setNotice(""); }}><Trash2 size={17} />{t.deleteLogical}</Button>
             <Button type="submit" className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"><Save size={17} />{t.saveData}</Button>
-            <Button type="button" disabled={!selectedUser} className="gap-2 bg-red-600 text-white hover:bg-red-700" onClick={handleLogicalDelete}><Trash2 size={17} />{t.deleteLogical}</Button>
+            {selectedUser ? <Button type="button" className="gap-2 bg-red-600 text-white hover:bg-red-700" onClick={handleLogicalDelete}><Trash2 size={17} />{t.confirmDelete}</Button> : null}
             <Button type="button" className="gap-2 border border-[var(--brand-border)] bg-white text-[var(--brand-primary)] hover:bg-[var(--brand-primary-soft)]" onClick={() => { setPendingPermissions(activePermissions); setShowPermissions(true); }}><KeyRound size={17} />{t.permissions}</Button>
           </div>
         </div>

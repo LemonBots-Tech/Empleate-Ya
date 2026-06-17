@@ -7,6 +7,7 @@ import { Input, Label, Select, Textarea } from "@/components/ui/Input";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 type ProfileForm = {
+  birthDate: string;
   targetRole: string;
   seniority: string;
   industry: string;
@@ -20,11 +21,11 @@ type ProfileForm = {
   employmentType: string;
   desiredSalaryRange: string;
   desiredSalaryAmount: string;
-  preferredWorkMode: string;
   geographicAvailability: string;
 };
 
 const emptyProfile: ProfileForm = {
+  birthDate: "",
   targetRole: "",
   seniority: "",
   industry: "",
@@ -38,7 +39,6 @@ const emptyProfile: ProfileForm = {
   employmentType: "",
   desiredSalaryRange: "",
   desiredSalaryAmount: "",
-  preferredWorkMode: "",
   geographicAvailability: "",
 };
 
@@ -68,7 +68,8 @@ const copy = {
     desiredSalaryRange: "Rango salarial deseado",
     desiredSalaryAmount: "Salario mensual deseado",
     desiredSalaryAmountHelp: "Captura el valor puntual que deseas pedir con base en tu experiencia, aptitudes y mercado.",
-    preferredWorkMode: "Modalidad preferida",
+    birthDate: "Fecha de nacimiento",
+    birthDateHelp: "Dato privado para ajustar estrategia de CV, LinkedIn y foto, cuidando que no genere senales innecesarias de edadismo.",
     geographicAvailability: "Disponibilidad geográfica",
     save: "Guardar perfil",
     privacyTitle: "Privacidad y seguridad",
@@ -133,7 +134,8 @@ const copy = {
     desiredSalaryRange: "Desired salary range",
     desiredSalaryAmount: "Desired monthly salary",
     desiredSalaryAmountHelp: "Enter the specific amount you want to request based on your experience, skills, and market.",
-    preferredWorkMode: "Preferred work mode",
+    birthDate: "Date of birth",
+    birthDateHelp: "Private data used to adjust resume, LinkedIn, and photo strategy while avoiding unnecessary age-bias signals.",
     geographicAvailability: "Geographic availability",
     save: "Save profile",
     privacyTitle: "Privacy and security",
@@ -197,6 +199,7 @@ export function AccountProfileClient() {
       const profile = data.profile;
       if (profile) {
         setForm({
+          birthDate: profile.birthDate ?? "",
           targetRole: profile.targetRole ?? "",
           seniority: profile.seniority ?? "",
           industry: profile.industry ?? "",
@@ -210,7 +213,6 @@ export function AccountProfileClient() {
           employmentType: profile.employmentType ?? "",
           desiredSalaryRange: profile.desiredSalaryRange ?? "",
           desiredSalaryAmount: profile.desiredSalaryAmount ?? "",
-          preferredWorkMode: profile.preferredWorkMode ?? "",
           geographicAvailability: profile.geographicAvailability ?? "",
         });
       }
@@ -249,7 +251,7 @@ export function AccountProfileClient() {
         employmentType: form.employmentType || undefined,
         desiredSalaryRange: form.desiredSalaryRange || undefined,
         desiredSalaryAmount: form.desiredSalaryAmount || undefined,
-        preferredWorkMode: form.preferredWorkMode || undefined,
+        birthDate: form.birthDate || undefined,
         geographicAvailability: form.geographicAvailability || undefined,
       }),
     });
@@ -275,6 +277,7 @@ export function AccountProfileClient() {
     [t.educationLevel, form.educationLevel],
     [t.jobSearchStatus, form.jobSearchStatus],
     [t.employmentType, form.employmentType],
+    [t.birthDate, form.birthDate],
     [t.desiredSalaryRange, form.desiredSalaryRange],
     [t.desiredSalaryAmount, form.desiredSalaryAmount],
   ].filter(([, value]) => !value);
@@ -372,7 +375,11 @@ export function AccountProfileClient() {
               {t.employmentTypeOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </Select>
           </div>
-          <div><Label>{t.preferredWorkMode}</Label><Input value={form.preferredWorkMode} onChange={(event) => updateField("preferredWorkMode", event.target.value)} /></div>
+          <div>
+            <Label>{t.birthDate}</Label>
+            <Input type="date" value={form.birthDate} onChange={(event) => updateField("birthDate", event.target.value)} />
+            <p className="mt-1 text-xs font-semibold text-slate-500">{t.birthDateHelp}</p>
+          </div>
           <div><Label>{t.geographicAvailability}</Label><Textarea value={form.geographicAvailability} onChange={(event) => updateField("geographicAvailability", event.target.value)} /></div>
         </div>
         <Button type="button" onClick={saveProfile} className="mt-6 bg-[var(--brand-primary)] text-white"><Save size={16} /> {t.save}</Button>

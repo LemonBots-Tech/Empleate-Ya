@@ -22,6 +22,7 @@ export type User = {
 export type ProfessionalProfile = {
   id: string;
   userId: string;
+  birthDate?: string;
   targetRole?: string;
   seniority?: string;
   industry?: string;
@@ -35,7 +36,6 @@ export type ProfessionalProfile = {
   employmentType?: string;
   desiredSalaryRange?: string;
   desiredSalaryAmount?: string;
-  preferredWorkMode?: string;
   geographicAvailability?: string;
   createdAt: string;
   updatedAt: string;
