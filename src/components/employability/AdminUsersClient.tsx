@@ -396,9 +396,7 @@ const userSubmenuPermissions = [
   "/admin/users/super-admin-support",
   "/admin/users/internal-coach",
   "/admin/users/coach-partner",
-  "/admin/users/students",
   "/admin/users/outplacement-rh",
-  "/admin/users/outplacement-employees",
 ] as const;
 
 const coachPartnerPlans = {
@@ -907,9 +905,9 @@ function menuAllowedFor(userKind: AdminUserKind, userRole: string, href: string)
 
 function userSubmenuAllowedFor(userKind: AdminUserKind, userRole: string, href: string) {
   if (userKind === "super-admin-support") return supportRoleUserSubmenuAllowed(userRole, href);
-  if (userKind === "coach-partner") return href === "/admin/users/coach-partner" || href === "/admin/users/students";
-  if (userKind === "outplacement-rh") return href === "/admin/users/outplacement-rh" || href === "/admin/users/outplacement-employees";
-  if (userKind === "internal-coach") return href === "/admin/users/internal-coach" || href === "/admin/users/students";
+  if (userKind === "coach-partner") return href === "/admin/users/coach-partner";
+  if (userKind === "outplacement-rh") return href === "/admin/users/outplacement-rh";
+  if (userKind === "internal-coach") return href === "/admin/users/internal-coach";
   return href === "/admin/users/online";
 }
 
@@ -926,9 +924,9 @@ function supportRoleUserSubmenuAllowed(userRole: string, href: string) {
   const role = normalizeRole(userRole);
   if (role.includes("supervisor delegado") || role.includes("temporary delegated")) return true;
   if (role.includes("cobranza") || role.includes("collections")) return false;
-  if (role.includes("outplacement")) return href === "/admin/users/outplacement-rh" || href === "/admin/users/outplacement-employees";
-  if (role.includes("coach partner")) return href === "/admin/users/coach-partner" || href === "/admin/users/students";
-  return ["/admin/users/online", "/admin/users/coach-partner", "/admin/users/students", "/admin/users/outplacement-rh", "/admin/users/outplacement-employees"].includes(href);
+  if (role.includes("outplacement")) return href === "/admin/users/outplacement-rh";
+  if (role.includes("coach partner")) return href === "/admin/users/coach-partner";
+  return ["/admin/users/online", "/admin/users/coach-partner", "/admin/users/outplacement-rh"].includes(href);
 }
 
 function normalizeRole(role: string) {

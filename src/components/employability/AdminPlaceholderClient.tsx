@@ -45,13 +45,13 @@ const copy = {
       },
       coaching: {
         title: "Trainee & Coaching",
-        description: "Define plantillas de cursos, coaching o programas de outplacement con avatares y creditos preasignados. Luego se reutilizan al crear grupos internos, grupos Coach Partner o campanas de outplacement.",
-        columns: ["Plantilla / programa", "Uso", "Avatares", "Creditos por usuario", "Estado"],
+        description: "Define plantillas de cursos, coaching o programas de outplacement que pertenecen a una empresa interna o externa. Cada plantilla incluye avatares y creditos por usuario; al asignarla a un grupo o campana se calcula el costo previsto antes de autorizar participantes.",
+        columns: ["Plantilla / programa", "Empresa", "Uso", "Avatares", "Creditos por usuario", "Estado"],
       },
       groups: {
         title: "Grupos",
-        description: "Administra grupos activos asociados a una organizacion interna o externa, una plantilla Trainee & Coaching y uno o mas alumnos o ex-empleados autorizados. Cada empresa solo ve sus propios cursos; Super Admin ve todo.",
-        columns: ["Grupo / campana", "Organizacion", "Plantilla", "Participantes", "Bolsa creditos", "Alcance", "Estado"],
+        description: "Crea grupos o campanas desde una plantilla Trainee & Coaching. En el previo se indica el numero esperado de alumnos o ex-empleados, se calcula la bolsa total y los creditos disponibles por participante; una vez autorizado, el responsable asigna participantes reales.",
+        columns: ["Grupo / campana", "Organizacion", "Plantilla", "Previo participantes", "Bolsa creditos", "Creditos por persona", "Estado"],
       },
       testimonials: {
         title: "Testimonios y autorizaciones",
@@ -102,13 +102,13 @@ const copy = {
       },
       coaching: {
         title: "Trainee & Coaching",
-        description: "Define course, coaching, or outplacement program templates with preassigned avatars and credits. They can then be reused when creating internal groups, Coach Partner groups, or outplacement campaigns.",
-        columns: ["Template / program", "Use", "Avatars", "Credits per user", "Status"],
+        description: "Define course, coaching, or outplacement templates owned by an internal or external company. Each template includes avatars and credits per user; when assigned to a group or campaign, the expected cost is calculated before participants are authorized.",
+        columns: ["Template / program", "Company", "Use", "Avatars", "Credits per user", "Status"],
       },
       groups: {
         title: "Groups",
-        description: "Manage active groups tied to an internal or external organization, a Trainee & Coaching template, and one or more authorized students or former employees. Each company sees only its own courses; Super Admin sees everything.",
-        columns: ["Group / campaign", "Organization", "Template", "Participants", "Credit pool", "Scope", "Status"],
+        description: "Create groups or campaigns from a Trainee & Coaching template. The preview captures the expected number of students or former employees, calculates the total pool and credits per participant; once authorized, the owner assigns real participants.",
+        columns: ["Group / campaign", "Organization", "Template", "Preview participants", "Credit pool", "Credits per person", "Status"],
       },
       testimonials: {
         title: "Testimonials and authorizations",
@@ -146,14 +146,14 @@ const rows: Record<AdminModuleKey, string[][]> = {
     ["Campanas outplacement", "Mensual", "Operaciones", "Pendiente", "pending"],
   ],
   coaching: [
-    ["CV estrategico base", "Grupo Coach Partner", "ScoreX, Optim, Mr. Wow", "255", "active"],
-    ["Outplacement completo", "Campana empresa", "Todos los basicos + Optim", "1,545", "active"],
-    ["Coaching 1o1 ejecutivo", "Grupo interno Empleate YA", "ScoreX, Optim, Mr. Linked, Miss Quest", "515", "pending"],
+    ["CV estrategico base", "Franquicia Demo Norte", "Grupo Coach Partner", "ScoreX, Optim, Mr. Wow", "255", "active"],
+    ["Outplacement completo", "Empresa Demo Outplacement", "Campana empresa", "Todos los basicos + Optim", "1,545", "active"],
+    ["Coaching 1o1 ejecutivo", "Empleate YA", "Grupo interno", "ScoreX, Optim, Mr. Linked, Miss Quest", "515", "pending"],
   ],
   groups: [
-    ["Grupo CV Estrategico Norte", "Franquicia Demo Norte", "CV estrategico base", "5 alumnos", "30,900", "Solo organizacion", "active"],
-    ["Coaching 1o1 Ejecutivo", "Empleate YA", "Coaching 1o1 ejecutivo", "4 alumnos", "Ilimitada", "Interno", "active"],
-    ["Outplacement Junio 2026", "Empresa Demo Outplacement", "Outplacement completo", "18 ex-empleados", "27,810", "Solo empresa", "pending"],
+    ["Grupo CV Estrategico Norte", "Franquicia Demo Norte", "CV estrategico base", "20 alumnos", "5,100", "255", "active"],
+    ["Coaching 1o1 Ejecutivo", "Empleate YA", "Coaching 1o1 ejecutivo", "4 alumnos", "Ilimitada", "515", "active"],
+    ["Outplacement Junio 2026", "Empresa Demo Outplacement", "Outplacement completo", "18 ex-empleados", "27,810", "1,545", "pending"],
   ],
   testimonials: [
     ["Candidata area salud", "TES-2026-001", "31/12/2026", "PDF validado", "active"],
