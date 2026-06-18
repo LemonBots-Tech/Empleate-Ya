@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Building2, Edit3, FileText, KeyRound, Mail, Printer, Save, Search, ShieldCheck, Trash2, UserPlus, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Select } from "@/components/ui/Input";
@@ -233,6 +233,7 @@ const copy = {
     selectedForEdit: "Usuario seleccionado. Edita lo necesario y presiona Guardar datos.",
     selectedForDelete: "Usuario seleccionado. Revisa el registro y confirma el borrado logico si corresponde.",
     savedDataMessage: "Datos del usuario guardados en la tabla correspondiente.",
+    permissionsAssignedMessage: "Permisos recalculados y asignados segun la especialidad seleccionada.",
     savedPermissionsMessage: "Permisos guardados. Regresaste a captura y mantenimiento del usuario.",
     logicalDeleteMessage: "El usuario seleccionado paso a estado borrado_logico. No se elimino definitivamente.",
     creditAdjustmentMessage: "Movimiento manual de creditos registrado en bitacora.",
@@ -282,6 +283,9 @@ const copy = {
     privacyAccepted: "Acepto privacidad",
     privacyReadonly: "Solo Super Admin puede modificar este registro.",
     permissions: "Permisos",
+    currentPermissions: "Permisos actuales",
+    assignedAvatars: "Avatares asignados",
+    assignedMenu: "Menu asignado",
     permissionsTitle: "Permisos y limites de acceso",
     permissionsHelp: "Configura avatares, opciones del menu lateral y submenus disponibles para este perfil. El consumo real se descuenta contra la bolsa de creditos correspondiente.",
     supportRolePolicy: "Regla de rol",
@@ -339,6 +343,7 @@ const copy = {
     selectedForEdit: "User selected. Edit what is needed and press Save data.",
     selectedForDelete: "User selected. Review the record and confirm logical deletion if appropriate.",
     savedDataMessage: "User data saved in the corresponding table.",
+    permissionsAssignedMessage: "Permissions were recalculated and assigned according to the selected specialty.",
     savedPermissionsMessage: "Permissions saved. You are back in user capture and maintenance.",
     logicalDeleteMessage: "The selected user was moved to logical_delete. It was not permanently deleted.",
     creditAdjustmentMessage: "Manual credit movement recorded in the audit log.",
@@ -388,6 +393,9 @@ const copy = {
     privacyAccepted: "Privacy accepted",
     privacyReadonly: "Only Super Admin can modify this record.",
     permissions: "Permissions",
+    currentPermissions: "Current permissions",
+    assignedAvatars: "Assigned avatars",
+    assignedMenu: "Assigned menu",
     permissionsTitle: "Access permissions and limits",
     permissionsHelp: "Configure avatars, left-side menu options, and user submenus available for this profile. Actual usage is deducted from the corresponding credit pool.",
     supportRolePolicy: "Role rule",
@@ -470,6 +478,8 @@ const adminMenuLabels = {
 
 const internalOwners = ["Leo Galvez - Super Admin", "Daniela Ponce - Apoyo cobranza", "Ricardo Vega - Operativo outplacement", "Valeria Nunez - Apoyo administrativo", "Monica Reyes - Supervisor delegado temporal"] as const;
 const empleateYaOrganization = "Empleate YA";
+const adminUsersStorageKey = "empleate-ya-admin-users-v2";
+const adminCreditAuditStorageKey = "empleate-ya-admin-credit-audit-v1";
 const onlineBaselineCredits = 150;
 const canCurrentUserEditPrivacyAcceptance = true;
 const canCurrentUserEditOnlineCredits = true;
@@ -561,6 +571,25 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const [creditAuditEvents, setCreditAuditEvents] = useState<CreditAuditEvent[]>([]);
   const [searchMode, setSearchMode] = useState<UserSearchMode>("capture");
   const [showBalance, setShowBalance] = useState(false);
+  const [storageLoaded, setStorageLoaded] = useState(false);
+
+  useEffect(() => {
+    const storedUsers = readStoredJson<DemoUser[]>(adminUsersStorageKey);
+    const storedAuditEvents = readStoredJson<CreditAuditEvent[]>(adminCreditAuditStorageKey);
+    if (storedUsers?.length) setUsers(storedUsers);
+    if (storedAuditEvents?.length) setCreditAuditEvents(storedAuditEvents);
+    setStorageLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!storageLoaded) return;
+    window.localStorage.setItem(adminUsersStorageKey, JSON.stringify(users));
+  }, [storageLoaded, users]);
+
+  useEffect(() => {
+    if (!storageLoaded) return;
+    window.localStorage.setItem(adminCreditAuditStorageKey, JSON.stringify(creditAuditEvents));
+  }, [creditAuditEvents, storageLoaded]);
 
   const filteredUsers = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -589,12 +618,17 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   function handleSaveUser(formData: FormData) {
     const email = String(formData.get("email") || "").trim();
     const nextCredits = unlimitedCredits ? 0 : Number(formData.get("credits") || 0);
+    const nextRole = String(formData.get("role") || kind.roles[0]);
+    const roleChanged = selectedUser ? selectedUser.role !== nextRole : true;
+    const cascadedPermissions = shouldCascadePermissionsForRole(userKind, roleChanged)
+      ? defaultPermissionsFor(userKind, nextRole, coachPlanKey)
+      : pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, nextRole, coachPlanKey);
     const savedUser: DemoUser = {
       kind: userKind,
       name: String(formData.get("name") || "").trim() || "Usuario sin nombre",
       email: email || `usuario-${Date.now()}@empleateya.local`,
       organization: fixedEmpleateYaOrg ? empleateYaOrganization : String(formData.get("organization") || "").trim(),
-      role: String(formData.get("role") || kind.roles[0]),
+      role: nextRole,
       phone: String(formData.get("phone") || "").trim(),
       status: String(formData.get("status") || defaultStatus),
       credits: nextCredits,
@@ -605,7 +639,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       salaryRange: String(formData.get("salaryRange") || "").trim(),
       desiredSalaryAmount: String(formData.get("desiredSalaryAmount") || "").trim(),
       age: Number(formData.get("age") || 0) || undefined,
-      permissions: selectedUser?.permissions ?? pendingPermissions ?? defaultPermissionsFor(userKind, String(formData.get("role") || kind.roles[0]), coachPlanKey),
+      permissions: cascadedPermissions,
     };
     let creditAdjusted = false;
 
@@ -637,7 +671,8 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     }
     setSelectedEmail(savedUser.email);
     setPendingPermissions(null);
-    setNotice(creditAdjusted ? `${t.savedDataMessage} ${t.creditAdjustmentMessage}` : t.savedDataMessage);
+    const cascadedMessage = shouldCascadePermissionsForRole(userKind, roleChanged) ? ` ${t.permissionsAssignedMessage}` : "";
+    setNotice(creditAdjusted ? `${t.savedDataMessage} ${t.creditAdjustmentMessage}${cascadedMessage}` : `${t.savedDataMessage}${cascadedMessage}`);
   }
 
   function handleLogicalDelete() {
@@ -810,6 +845,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             ) : null}
           </FormGroup>
         </div>
+        <PermissionsSummary permissions={activePermissions} language={language} />
         {usesCareerDataFields(userKind) ? (
           <section className="mt-5 rounded-[1.25rem] border border-slate-200 bg-slate-50/70 p-4">
             <h3 className="mb-4 text-lg font-black text-slate-950">{t.careerData}</h3>
@@ -1000,6 +1036,34 @@ function ReadOnlyMetric({ label, value, tone = "slate" }: { label: string; value
       <p className="text-[11px] font-black uppercase tracking-[0.12em] opacity-70">{label}</p>
       <p className="mt-1 text-sm font-black">{value}</p>
     </div>
+  );
+}
+
+function PermissionsSummary({ permissions, language }: { permissions: UserPermissions; language: "es" | "en" }) {
+  const t = copy[language];
+  const avatarNames = permissions.avatarIds.map((avatarId) => skillRegistry[avatarId]?.name).filter(Boolean);
+  const menuNames = permissions.adminMenuHrefs
+    .map((href) => adminSections.find((section) => section.href === href))
+    .filter((section): section is (typeof adminSections)[number] => Boolean(section))
+    .map((section) => adminMenuLabels[language][section.key]);
+  return (
+    <section className="mt-5 rounded-[1.25rem] border border-purple-100 bg-purple-50/70 p-4">
+      <h3 className="text-lg font-black text-slate-950">{t.currentPermissions}</h3>
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--brand-primary)]">{t.assignedAvatars}</p>
+          <div className="mt-2 flex max-h-24 flex-wrap gap-2 overflow-auto pr-1">
+            {avatarNames.map((name) => <Pill key={name}>{name}</Pill>)}
+          </div>
+        </div>
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--brand-primary)]">{t.assignedMenu}</p>
+          <div className="mt-2 flex max-h-24 flex-wrap gap-2 overflow-auto pr-1">
+            {menuNames.length ? menuNames.map((name) => <Pill key={name}>{name}</Pill>) : <span className="text-sm font-semibold text-slate-500">-</span>}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -1230,6 +1294,10 @@ function internalCoachAvatarsFor(userRole: string) {
   return profile.avatarIds;
 }
 
+function shouldCascadePermissionsForRole(userKind: AdminUserKind, roleChanged: boolean) {
+  return roleChanged && (userKind === "internal-coach" || userKind === "online" || userKind === "super-admin-support");
+}
+
 function supportRoleMenuAllowed(userRole: string, href: string) {
   const role = normalizeRole(userRole);
   if (role.includes("supervisor delegado") || role.includes("temporary delegated")) return true;
@@ -1302,6 +1370,16 @@ function formatShortDate(value: string, language: "es" | "en") {
 function isDateLikeField(field: string) {
   const normalized = field.toLowerCase();
   return normalized.includes("fecha") || normalized.includes("date");
+}
+
+function readStoredJson<T>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = window.localStorage.getItem(key);
+    return stored ? (JSON.parse(stored) as T) : null;
+  } catch {
+    return null;
+  }
 }
 
 function ownerOptionFor(owner: string) {
