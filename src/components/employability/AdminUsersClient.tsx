@@ -89,12 +89,12 @@ const kindConfig = {
     },
     "coach-partner": {
       title: "Coach Partner",
-      description: "Alta de emprendedores o franquiciatarios que atenderan clientes propios con la metodologia de Empleate YA.",
+      description: "Alta de Coach Partners que atenderan clientes propios con la metodologia de Empleate YA. Cada Partner opera solo usuarios, grupos y alumnos de su propia organizacion.",
       profile: "Coach Partner",
-      organizationLabel: "Franquicia / organizacion partner",
-      organizationPlaceholder: "Ej. Franquicia Demo Norte",
+      organizationLabel: "Organizacion partner",
+      organizationPlaceholder: "Ej. Partner Ejecutivo Norte",
       roleLabel: "Rol partner",
-      roles: ["Responsable franquicia", "Coach partner principal", "Coach partner colaborador"],
+      roles: ["Coach partner principal", "Coach partner colaborador"],
       extraFields: ["Licencia minima 6 meses", "Fecha inicio licencia", "Clientes autorizados"],
     },
     "outplacement-rh": {
@@ -112,7 +112,7 @@ const kindConfig = {
       description: "Alta de alumnos asignados a grupos de Coach Partner o coaching interno 1o1. Primero debe existir la organizacion y el coach responsable.",
       profile: "Alumno",
       organizationLabel: "Organizacion del coach",
-      organizationPlaceholder: "Ej. Franquicia Demo Norte / Empleate YA",
+      organizationPlaceholder: "Ej. Partner Ejecutivo Norte / Empleate YA",
       roleLabel: "Tipo de alumno",
       roles: ["Alumno Coach Partner", "Alumno coaching 1o1", "Alumno curso online"],
       extraFields: ["Grupo asignado", "Coach responsable", "Fecha inicio grupo"],
@@ -161,12 +161,12 @@ const kindConfig = {
     },
     "coach-partner": {
       title: "Coach Partner",
-      description: "Create entrepreneurs or franchisees who will serve their own clients with the Empleate YA methodology.",
+      description: "Create Coach Partners who will serve their own clients with the Empleate YA methodology. Each Partner operates only users, groups, and students from their own organization.",
       profile: "Coach Partner",
-      organizationLabel: "Franchise / partner organization",
-      organizationPlaceholder: "Example: Demo North Franchise",
+      organizationLabel: "Partner organization",
+      organizationPlaceholder: "Example: Executive North Partner",
       roleLabel: "Partner role",
-      roles: ["Franchise owner", "Main coach partner", "Coach partner collaborator"],
+      roles: ["Main coach partner", "Coach partner collaborator"],
       extraFields: ["Minimum 6-month license", "License start date", "Authorized clients"],
     },
     "outplacement-rh": {
@@ -184,7 +184,7 @@ const kindConfig = {
       description: "Create students assigned to Coach Partner groups or internal 1:1 coaching. The organization and responsible coach must exist first.",
       profile: "Student",
       organizationLabel: "Coach organization",
-      organizationPlaceholder: "Example: Demo North Franchise / Empleate YA",
+      organizationPlaceholder: "Example: Executive North Partner / Empleate YA",
       roleLabel: "Student type",
       roles: ["Coach Partner student", "1:1 coaching student", "Online course student"],
       extraFields: ["Assigned group", "Responsible coach", "Group start date"],
@@ -311,8 +311,10 @@ const copy = {
     onlineRule: "Regla online",
     onlineProspectRule: "Prospecto online: solo avatares basicos una vez por avatar. Cliente Online Pagado: acceso a todos los avatares, sujeto a saldo suficiente.",
     partnerPlan: "Plan Coach Partner",
-    partnerCreditPool: "Bolsa maxima mensual de franquicia",
-    partnerRule: "El responsable de franquicia concentra la bolsa. Apoyos del partner y alumnos descuentan de esa bolsa principal.",
+    partnerCreditPool: "Bolsa maxima mensual del Coach Partner",
+    partnerStudentCredits: "Creditos por alumno del plan",
+    partnerScopeRule: "El Coach Partner solo ve su organizacion. Super Admin y apoyos autorizados pueden apoyar y ver todas las organizaciones.",
+    partnerRule: "El Coach Partner principal concentra la bolsa. Colaboradores y alumnos descuentan de esa bolsa principal.",
     groups: "Grupos",
     students: "Alumnos por grupo",
     cycles: "Ciclos de uso",
@@ -421,8 +423,10 @@ const copy = {
     onlineRule: "Online rule",
     onlineProspectRule: "Online prospect: basic avatars only, once per avatar. Paid online client: all avatars, subject to enough credit balance.",
     partnerPlan: "Coach Partner plan",
-    partnerCreditPool: "Monthly franchise credit pool",
-    partnerRule: "The franchise owner holds the main pool. Partner support users and students deduct from that main pool.",
+    partnerCreditPool: "Monthly Coach Partner credit pool",
+    partnerStudentCredits: "Student credits in this plan",
+    partnerScopeRule: "The Coach Partner only sees their own organization. Super Admin and authorized support users can help and view all organizations.",
+    partnerRule: "The main Coach Partner holds the main pool. Collaborators and students deduct from that main pool.",
     groups: "Groups",
     students: "Students per group",
     cycles: "Usage cycles",
@@ -478,13 +482,15 @@ const adminMenuLabels = {
 
 const internalOwners = ["Leo Galvez - Super Admin", "Daniela Ponce - Apoyo cobranza", "Ricardo Vega - Operativo outplacement", "Valeria Nunez - Apoyo administrativo", "Monica Reyes - Supervisor delegado temporal"] as const;
 const empleateYaOrganization = "Empleate YA";
-const adminUsersStorageKey = "empleate-ya-admin-users-v2";
+const adminUsersStorageKey = "empleate-ya-admin-users-v3";
 const adminCreditAuditStorageKey = "empleate-ya-admin-credit-audit-v1";
 const onlineBaselineCredits = 150;
 const canCurrentUserEditPrivacyAcceptance = true;
 const canCurrentUserEditOnlineCredits = true;
 const onlineBasicAvatarIds: SkillId[] = ["lumo", "recharge", "scorex", "mr_ikigai", "new_job_challenge", "mr_wow"];
-const coachStarterAvatarIds: SkillId[] = ["scorex", "optim", "mr_wow", "tommy_lee_picture"];
+const linkedInVisualAvatarIds: SkillId[] = ["mr_boost_linked", "tommy_lee_picture"];
+const coachStarterAvatarIds: SkillId[] = ["scorex", "optim", "mr_wow", ...linkedInVisualAvatarIds];
+const coachProAvatarIds: SkillId[] = [...coachStarterAvatarIds, "lumo", "boost_me", "new_job_challenge", "miss_quest"];
 const internalCoachAvatarProfiles: Array<{ match: string[]; avatarIds: SkillId[] }> = [
   { match: ["linkedin"], avatarIds: ["mr_boost_linked", "tommy_lee_picture"] },
   { match: ["entrevista", "interview"], avatarIds: ["new_job_challenge", "indiana_jobs", "miss_quest", "mr_wow"] },
@@ -502,14 +508,14 @@ const userSubmenuPermissions = [
 ] as const;
 
 const coachPartnerPlans = {
-  starter: { label: "Coach Starter", avatarIds: coachStarterAvatarIds, groups: 4, studentsPerGroup: 5, cycles: 3 },
-  pro: { label: "Coach Pro", avatarIds: [...coachStarterAvatarIds, "mr_boost_linked", "miss_quest"] as SkillId[], groups: 8, studentsPerGroup: 8, cycles: 3 },
-  business: { label: "Coach Business", avatarIds: allAvatarIds, groups: 12, studentsPerGroup: 10, cycles: 3 },
+  starter: { label: "Coach Starter", avatarIds: coachStarterAvatarIds, groups: 4, studentsPerGroup: 5, cycles: 3, studentCycles: 2, unlimited: false },
+  pro: { label: "Coach Pro", avatarIds: coachProAvatarIds, groups: 12, studentsPerGroup: 5, cycles: 3, studentCycles: 2, unlimited: false },
+  business: { label: "Coach Business", avatarIds: allAvatarIds, groups: Infinity, studentsPerGroup: Infinity, cycles: Infinity, studentCycles: Infinity, unlimited: true },
 } as const;
 
 const organizationCatalog = {
-  "coach-partner": ["Franquicia Demo Norte", "Franquicia Demo Bajio", "Partner Ejecutivo CDMX", "Partner Carrera Global"],
-  student: ["Empleate YA", "Franquicia Demo Norte", "Franquicia Demo Bajio", "Partner Ejecutivo CDMX", "Partner Carrera Global"],
+  "coach-partner": ["Partner Ejecutivo Norte", "Partner Bajio", "Partner Ejecutivo CDMX", "Partner Carrera Global"],
+  student: ["Empleate YA", "Partner Ejecutivo Norte", "Partner Bajio", "Partner Ejecutivo CDMX", "Partner Carrera Global"],
   "outplacement-rh": ["Empresa Demo Outplacement", "Grupo Industrial Norte", "Servicios Financieros Delta", "Retail Nacional"],
   "outplacement-employee": ["Empresa Demo Outplacement", "Grupo Industrial Norte", "Servicios Financieros Delta", "Retail Nacional"],
 } as const;
@@ -538,9 +544,9 @@ const demoUsers: DemoUser[] = [
   { kind: "online", name: "Jorge Luna", email: "jorge@email.com", organization: empleateYaOrganization, role: "Prospecto online", phone: "+52 55 1000 0006", status: "pendiente", credits: onlineBaselineCredits, owner: "Sistema", lastChange: "12/06/2026 08:20", notes: "Prueba limitada. Requiere registro para consumir mas avatares.", age: 42 },
   { kind: "super-admin-support", name: "Daniela Ponce", email: "daniela@empleateya.mx", organization: "Cobranza", role: "Apoyo cobranza", phone: "+52 55 1000 0002", status: "activo", credits: 0, owner: "Leo Galvez", lastChange: "12/06/2026 10:10", notes: "Acceso a pagos, estados de cuenta y comentarios internos." },
   { kind: "super-admin-support", name: "Ricardo Vega", email: "ricardo@empleateya.mx", organization: "Operaciones", role: "Operativo outplacement", phone: "+52 55 1000 0007", status: "invitado", credits: 0, owner: "Leo Galvez", lastChange: "12/06/2026 07:52", notes: "Apoya altas masivas y seguimiento operativo de campanas." },
-  { kind: "coach-partner", name: "Mariana Soto", email: "mariana@franquicia-demo.mx", organization: "Franquicia Demo Norte", role: "Responsable franquicia", phone: "+52 55 1000 0003", status: "activo", credits: 600, owner: "Leo Galvez", lastChange: "11/06/2026 17:20", notes: "Licencia minima 6 meses. Administra clientes propios." },
-  { kind: "coach-partner", name: "Hector Ramos", email: "hector@partner-demo.mx", organization: "Franquicia Demo Bajio", role: "Coach partner colaborador", phone: "+52 55 1000 0008", status: "pendiente", credits: 300, owner: "Mariana Soto", lastChange: "11/06/2026 12:35", notes: "Pendiente completar curso online de metodologia." },
-  { kind: "student", name: "Fernanda Rios", email: "fernanda@alumno-demo.mx", organization: "Franquicia Demo Norte", role: "Alumno Coach Partner", phone: "+52 55 1000 0011", status: "activo", credits: 1545, owner: "Mariana Soto", lastChange: "12/06/2026 11:05", notes: "Asignada al grupo CV Estrategico Norte. Descuenta de bolsa del Coach Partner responsable." },
+  { kind: "coach-partner", name: "Mariana Soto", email: "mariana@partner-demo.mx", organization: "Partner Ejecutivo Norte", role: "Coach partner principal", phone: "+52 55 1000 0003", status: "activo", credits: calculateCoachPartnerPool(coachPartnerPlans.starter), owner: "Leo Galvez", lastChange: "11/06/2026 17:20", notes: "Licencia minima 6 meses. Administra clientes propios.", permissions: defaultPermissionsFor("coach-partner", "Coach partner principal", "starter") },
+  { kind: "coach-partner", name: "Hector Ramos", email: "hector@partner-demo.mx", organization: "Partner Bajio", role: "Coach partner colaborador", phone: "+52 55 1000 0008", status: "pendiente", credits: calculateCoachPartnerPool(coachPartnerPlans.pro), owner: "Mariana Soto", lastChange: "11/06/2026 12:35", notes: "Pendiente completar curso online de metodologia.", permissions: defaultPermissionsFor("coach-partner", "Coach partner colaborador", "pro") },
+  { kind: "student", name: "Fernanda Rios", email: "fernanda@alumno-demo.mx", organization: "Partner Ejecutivo Norte", role: "Alumno Coach Partner", phone: "+52 55 1000 0011", status: "activo", credits: calculateCoachPartnerStudentCredits(coachPartnerPlans.starter), owner: "Mariana Soto", lastChange: "12/06/2026 11:05", notes: "Asignada al grupo CV Estrategico Norte. Descuenta de bolsa del Coach Partner responsable." },
   { kind: "student", name: "Roberto Salas", email: "roberto@coaching-demo.mx", organization: "Empleate YA", role: "Alumno coaching 1o1", phone: "+52 55 1000 0012", status: "pendiente", credits: 1545, owner: "Sofia Rivera", lastChange: "12/06/2026 11:12", notes: "Pendiente asignar calendario de sesiones 1o1." },
   { kind: "outplacement-rh", name: "Ana Torres", email: "ana@empresa-demo.mx", organization: "Empresa Demo Outplacement", role: "Administrador RH", phone: "+52 55 1000 0004", status: "activo", credits: 0, owner: "Leo Galvez", lastChange: "12/06/2026 09:15", notes: "Puede crear campanas y revisar avance de ex-colaboradores autorizados." },
   { kind: "outplacement-rh", name: "Carlos Ibarra", email: "carlos@empresa-demo.mx", organization: "Empresa Demo Outplacement", role: "Apoyo seguimiento outplacement", phone: "+52 55 1000 0009", status: "activo", credits: 0, owner: "Ana Torres", lastChange: "10/06/2026 18:02", notes: "Puede revisar avance pero no aprobar participantes." },
@@ -606,7 +612,8 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const unlimitedCredits = hasUnlimitedCredits(userKind);
   const defaultStatus = selectedUser?.status ?? t.statuses[0];
   const activeRole = selectedUser?.role ?? kind.roles[0];
-  const activePermissions = selectedUser?.permissions ?? pendingPermissions ?? defaultPermissionsFor(userKind, activeRole, coachPlanKey);
+  const activeCoachPlanKey = selectedUser?.permissions?.coachPlanKey ?? pendingPermissions?.coachPlanKey ?? coachPlanKey;
+  const activePermissions = selectedUser?.permissions ?? pendingPermissions ?? defaultPermissionsFor(userKind, activeRole, activeCoachPlanKey);
 
   function selectUserForMaintenance(email: string) {
     const nextMode = searchMode;
@@ -617,12 +624,15 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
 
   function handleSaveUser(formData: FormData) {
     const email = String(formData.get("email") || "").trim();
-    const nextCredits = unlimitedCredits ? 0 : Number(formData.get("credits") || 0);
     const nextRole = String(formData.get("role") || kind.roles[0]);
+    const nextCoachPlanKey = String(formData.get("coachPlanKey") || coachPlanKey) as CoachPartnerPlanKey;
+    const nextCoachPlan = coachPartnerPlans[nextCoachPlanKey];
+    const nextCredits = userKind === "coach-partner" ? (nextCoachPlan.unlimited ? 0 : calculateCoachPartnerPool(nextCoachPlan)) : unlimitedCredits ? 0 : Number(formData.get("credits") || 0);
     const roleChanged = selectedUser ? selectedUser.role !== nextRole : true;
-    const cascadedPermissions = shouldCascadePermissionsForRole(userKind, roleChanged)
-      ? defaultPermissionsFor(userKind, nextRole, coachPlanKey)
-      : pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, nextRole, coachPlanKey);
+    const planChanged = selectedUser?.permissions?.coachPlanKey !== nextCoachPlanKey;
+    const cascadedPermissions = shouldCascadePermissionsForRole(userKind, roleChanged, planChanged)
+      ? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey)
+      : pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey);
     const savedUser: DemoUser = {
       kind: userKind,
       name: String(formData.get("name") || "").trim() || "Usuario sin nombre",
@@ -670,8 +680,9 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       }
     }
     setSelectedEmail(savedUser.email);
+    if (userKind === "coach-partner") setCoachPlanKey(nextCoachPlanKey);
     setPendingPermissions(null);
-    const cascadedMessage = shouldCascadePermissionsForRole(userKind, roleChanged) ? ` ${t.permissionsAssignedMessage}` : "";
+    const cascadedMessage = shouldCascadePermissionsForRole(userKind, roleChanged, planChanged) ? ` ${t.permissionsAssignedMessage}` : "";
     setNotice(creditAdjusted ? `${t.savedDataMessage} ${t.creditAdjustmentMessage}${cascadedMessage}` : `${t.savedDataMessage}${cascadedMessage}`);
   }
 
@@ -809,13 +820,29 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             <Field label={t.organization}>{fixedEmpleateYaOrg ? <Input name="organization" value={empleateYaOrganization} readOnly /> : usesOrganizationCatalog(userKind) ? <Select name="organization" defaultValue={selectedUser?.organization}>{organizationCatalog[userKind].map((item) => <option key={item}>{item}</option>)}</Select> : <Input name="organization" placeholder={kind.organizationPlaceholder} defaultValue={selectedUser?.organization ?? ""} />}</Field>
             {usesOrganizationCatalog(userKind) ? <p className="text-xs font-semibold leading-5 text-slate-500">{t.orgHelp}</p> : null}
             <Field label={kind.roleLabel}><Select name="role" defaultValue={selectedUser?.role}>{kind.roles.map((item) => <option key={item}>{item}</option>)}</Select></Field>
+            {userKind === "coach-partner" ? (
+              <>
+                <Field label={t.partnerPlan}>
+                  <Select name="coachPlanKey" defaultValue={activeCoachPlanKey}>
+                    {Object.entries(coachPartnerPlans).map(([key, plan]) => <option key={key} value={key}>{plan.label}</option>)}
+                  </Select>
+                </Field>
+                <PartnerPlanSummary plan={coachPartnerPlans[activeCoachPlanKey]} language={language} />
+              </>
+            ) : null}
             <Field label={t.owner}><Select name="owner" defaultValue={selectedUser?.owner ? ownerOptionFor(selectedUser.owner) : internalOwners[0]}>{internalOwners.map((item) => <option key={item}>{item}</option>)}</Select></Field>
             <p className="text-xs font-semibold leading-5 text-slate-500">{t.ownerHelp}</p>
           </FormGroup>
           <FormGroup title={t.extra} icon={<ShieldCheck size={18} />}>
             <Field label={t.statusLabel}><Select name="status" defaultValue={defaultStatus}>{t.statuses.map((item) => <option key={item}>{item}</option>)}</Select></Field>
             <Field label={t.credits}>
-              {unlimitedCredits ? (
+              {userKind === "coach-partner" ? (
+                <div className="rounded-2xl border border-purple-200 bg-purple-50 px-4 py-3 text-sm font-black text-purple-900">
+                  {formatPlanNumber(calculateCoachPartnerPool(coachPartnerPlans[activeCoachPlanKey]), language)}
+                  <small className="mt-1 block font-semibold text-purple-700">{t.partnerCreditPool}</small>
+                  <input type="hidden" name="credits" value={Number.isFinite(calculateCoachPartnerPool(coachPartnerPlans[activeCoachPlanKey])) ? calculateCoachPartnerPool(coachPartnerPlans[activeCoachPlanKey]) : 0} />
+                </div>
+              ) : unlimitedCredits ? (
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-800">
                   {t.unlimitedCredits}
                   <small className="mt-1 block font-semibold text-emerald-700">{t.unlimitedCreditsHelp}</small>
@@ -1012,7 +1039,7 @@ function InternalCoachAvailabilityPanel({ user, language }: { user?: DemoUser; l
               <div key={`${assignment.coachEmail}-${assignment.name}`} className="border-b border-slate-100 px-3 py-2 text-xs last:border-0">
                 <strong className="block text-slate-950">{assignment.name}</strong>
                 <span className="text-slate-500">
-                  {assignment.kind === "campaign" ? (language === "es" ? "Campana" : "Campaign") : (language === "es" ? "Grupo" : "Group")} · {formatShortDate(assignment.startDate, language)} - {formatShortDate(assignment.endDate, language)} · {modalityLabel(assignment.modality, language)} · NPS {assignment.nps}
+                  {assignment.kind === "campaign" ? (language === "es" ? "Campana" : "Campaign") : (language === "es" ? "Grupo" : "Group")} Â· {formatShortDate(assignment.startDate, language)} - {formatShortDate(assignment.endDate, language)} Â· {modalityLabel(assignment.modality, language)} Â· NPS {assignment.nps}
                 </span>
               </div>
             ))}
@@ -1067,6 +1094,23 @@ function PermissionsSummary({ permissions, language }: { permissions: UserPermis
   );
 }
 
+function PartnerPlanSummary({ plan, language }: { plan: (typeof coachPartnerPlans)[CoachPartnerPlanKey]; language: "es" | "en" }) {
+  const t = copy[language];
+  const groupLabel = plan.unlimited ? (language === "es" ? "Ilimitados" : "Unlimited") : `${plan.groups}`;
+  const studentsLabel = plan.unlimited ? (language === "es" ? "Ilimitados" : "Unlimited") : `${plan.studentsPerGroup}`;
+  const poolLabel = plan.unlimited ? (language === "es" ? "Ilimitada" : "Unlimited") : calculateCoachPartnerPool(plan).toLocaleString(language === "es" ? "es-MX" : "en-US");
+  const studentCreditsLabel = plan.unlimited ? (language === "es" ? "Ilimitados" : "Unlimited") : calculateCoachPartnerStudentCredits(plan).toLocaleString(language === "es" ? "es-MX" : "en-US");
+  return (
+    <div className="rounded-2xl border border-purple-100 bg-purple-50 px-4 py-3 text-xs font-semibold leading-5 text-purple-900">
+      <strong className="block text-sm text-slate-950">{plan.label}</strong>
+      <span>{t.groups}: {groupLabel} Â· {t.students}: {studentsLabel}</span>
+      <span className="block">{t.partnerCreditPool}: {poolLabel}</span>
+      <span className="block">{t.partnerStudentCredits}: {studentCreditsLabel}</span>
+      <span className="mt-2 block text-slate-600">{t.partnerScopeRule}</span>
+    </div>
+  );
+}
+
 function PermissionsPanel({
   userKind,
   userRole,
@@ -1089,7 +1133,8 @@ function PermissionsPanel({
   const [userSubmenuHrefs, setUserSubmenuHrefs] = useState<string[]>(permissions.userSubmenuHrefs);
   const [localCoachPlanKey, setLocalCoachPlanKey] = useState<CoachPartnerPlanKey>(permissions.coachPlanKey);
   const partnerPlan = coachPartnerPlans[localCoachPlanKey];
-  const partnerCreditPool = calculateCoachPartnerPool(partnerPlan.avatarIds, partnerPlan.groups, partnerPlan.studentsPerGroup, partnerPlan.cycles);
+  const partnerCreditPool = calculateCoachPartnerPool(partnerPlan);
+  const partnerStudentCredits = calculateCoachPartnerStudentCredits(partnerPlan);
   const showAdminPermissionSections = userKind === "super-admin-support" || userKind === "internal-coach";
   const savePermissions = () => onSave({ avatarIds, adminMenuHrefs, userSubmenuHrefs, coachPlanKey: localCoachPlanKey });
 
@@ -1125,8 +1170,9 @@ function PermissionsPanel({
               {Object.entries(coachPartnerPlans).map(([key, plan]) => <option key={key} value={key}>{plan.label}</option>)}
             </Select>
             <div className="mt-3 rounded-xl bg-slate-950 p-3 text-sm font-bold text-white">
-              <p>{t.partnerCreditPool}: {partnerCreditPool.toLocaleString(language === "es" ? "es-MX" : "en-US")}</p>
-              <p className="mt-1 text-xs text-slate-300">{t.groups}: {partnerPlan.groups} · {t.students}: {partnerPlan.studentsPerGroup} · {t.cycles}: {partnerPlan.cycles}</p>
+              <p>{t.partnerCreditPool}: {formatPlanNumber(partnerCreditPool, language)}</p>
+              <p>{t.partnerStudentCredits}: {formatPlanNumber(partnerStudentCredits, language)}</p>
+              <p className="mt-1 text-xs text-slate-300">{t.groups}: {formatPlanNumber(partnerPlan.groups, language)} · {t.students}: {formatPlanNumber(partnerPlan.studentsPerGroup, language)} · {t.cycles}: {formatPlanNumber(partnerPlan.cycles, language)}</p>
             </div>
           </div>
         ) : null}
@@ -1219,9 +1265,24 @@ function toggleItem<T>(items: T[], item: T, checked: boolean) {
   return items.filter((currentItem) => currentItem !== item);
 }
 
-function calculateCoachPartnerPool(avatarIds: readonly SkillId[], groups: number, studentsPerGroup: number, cycles: number) {
-  const creditsPerStudentCycle = avatarIds.reduce((total, avatarId) => total + skillRegistry[avatarId].baseCredits, 0);
-  return creditsPerStudentCycle * groups * studentsPerGroup * cycles;
+function calculateCoachPartnerPool(plan: (typeof coachPartnerPlans)[CoachPartnerPlanKey]) {
+  if (plan.unlimited) return Infinity;
+  const creditsPerStudentCycle = creditsForAvatars(plan.avatarIds);
+  return creditsPerStudentCycle * plan.groups * plan.studentsPerGroup * plan.cycles;
+}
+
+function calculateCoachPartnerStudentCredits(plan: (typeof coachPartnerPlans)[CoachPartnerPlanKey]) {
+  if (plan.unlimited) return Infinity;
+  return creditsForAvatars(plan.avatarIds) * plan.studentCycles;
+}
+
+function creditsForAvatars(avatarIds: readonly SkillId[]) {
+  return avatarIds.reduce((total, avatarId) => total + skillRegistry[avatarId].baseCredits, 0);
+}
+
+function formatPlanNumber(value: number, language: "es" | "en") {
+  if (!Number.isFinite(value)) return language === "es" ? "Ilimitado" : "Unlimited";
+  return value.toLocaleString(language === "es" ? "es-MX" : "en-US");
 }
 
 function buildBalanceMovements(user: DemoUser, creditAuditEvents: CreditAuditEvent[], language: "es" | "en"): BalanceMovement[] {
@@ -1270,7 +1331,7 @@ function formatSignedCredits(value: number) {
 
 function menuAllowedFor(userKind: AdminUserKind, userRole: string, href: string) {
   if (userKind === "online") return false;
-  if (userKind === "coach-partner") return ["/admin/users", "/admin/users/students", "/admin/groups", "/admin/credits", "/admin/reports", "/admin/coaching"].includes(href);
+  if (userKind === "coach-partner") return ["/admin/users", "/admin/users/students", "/admin/groups", "/admin/reports", "/admin/coaching"].includes(href);
   if (userKind === "student") return false;
   if (userKind === "outplacement-rh") return ["/admin/users", "/admin/users/outplacement-employees", "/admin/organizations", "/admin/campaigns", "/admin/reports", "/admin/coaching"].includes(href);
   if (userKind === "outplacement-employee") return false;
@@ -1294,8 +1355,8 @@ function internalCoachAvatarsFor(userRole: string) {
   return profile.avatarIds;
 }
 
-function shouldCascadePermissionsForRole(userKind: AdminUserKind, roleChanged: boolean) {
-  return roleChanged && (userKind === "internal-coach" || userKind === "online" || userKind === "super-admin-support");
+function shouldCascadePermissionsForRole(userKind: AdminUserKind, roleChanged: boolean, planChanged: boolean) {
+  return (roleChanged || planChanged) && (userKind === "internal-coach" || userKind === "online" || userKind === "super-admin-support" || userKind === "coach-partner");
 }
 
 function supportRoleMenuAllowed(userRole: string, href: string) {
@@ -1467,3 +1528,4 @@ function PermissionCheck({ checked, title, detail, onChange }: { checked: boolea
     </label>
   );
 }
+
