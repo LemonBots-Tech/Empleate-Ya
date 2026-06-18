@@ -55,6 +55,15 @@ type BalanceMovement = {
   credits: number;
   consumption: number;
 };
+type CoachAssignment = {
+  coachEmail: string;
+  kind: "group" | "campaign";
+  name: string;
+  startDate: string;
+  endDate: string;
+  modality: "online" | "presential" | "hybrid";
+  nps: number;
+};
 
 const kindConfig = {
   es: {
@@ -126,7 +135,7 @@ const kindConfig = {
       organizationPlaceholder: "Ej. Coaching 1o1 / cursos online",
       roleLabel: "Especialidad del coach",
       roles: ["Coach empleabilidad", "Coach ejecutivo", "Coach entrevistas", "Coach CV estrategico", "Coach LinkedIn"],
-      extraFields: ["Disponibilidad", "Modalidad", "NPS minimo esperado", "Disponible como mentor outplacement"],
+      extraFields: [],
     },
   },
   en: {
@@ -198,7 +207,7 @@ const kindConfig = {
       organizationPlaceholder: "Example: 1:1 Coaching / online courses",
       roleLabel: "Coach specialty",
       roles: ["Employability coach", "Executive coach", "Interview coach", "Strategic resume coach", "LinkedIn coach"],
-      extraFields: ["Availability", "Modality", "Minimum expected NPS", "Available as outplacement mentor"],
+      extraFields: [],
     },
   },
 } as const;
@@ -284,6 +293,17 @@ const copy = {
     submenu: "Submenus de usuarios",
     unlimitedCredits: "Creditos ilimitados",
     unlimitedCreditsHelp: "Este perfil no descuenta de una bolsa individual de creditos para operar.",
+    coachAvailabilityTitle: "Disponibilidad operativa del coach",
+    coachAvailabilityHelp: "Datos calculados desde grupos, campanas y evaluaciones. Solo Super Admin podra intervenirlos manualmente cuando exista una excepcion.",
+    coachAvailability: "Disponibilidad",
+    coachAssigned: "Asignado",
+    coachAvailable: "Disponible",
+    coachDateRange: "Periodo consolidado",
+    coachModality: "Modalidad",
+    coachAverageNps: "NPS promedio",
+    coachOutplacementMentor: "Mentor outplacement",
+    coachAssignmentList: "Asignaciones activas",
+    coachNoAssignments: "Sin asignaciones activas.",
     onlineRule: "Regla online",
     onlineProspectRule: "Prospecto online: solo avatares basicos una vez por avatar. Cliente Online Pagado: acceso a todos los avatares, sujeto a saldo suficiente.",
     partnerPlan: "Plan Coach Partner",
@@ -379,6 +399,17 @@ const copy = {
     submenu: "User submenus",
     unlimitedCredits: "Unlimited credits",
     unlimitedCreditsHelp: "This profile does not deduct from an individual credit pool to operate.",
+    coachAvailabilityTitle: "Coach operating availability",
+    coachAvailabilityHelp: "Calculated from groups, campaigns, and evaluations. Only the Super Admin may manually intervene when an exception exists.",
+    coachAvailability: "Availability",
+    coachAssigned: "Assigned",
+    coachAvailable: "Available",
+    coachDateRange: "Consolidated period",
+    coachModality: "Modality",
+    coachAverageNps: "Average NPS",
+    coachOutplacementMentor: "Outplacement mentor",
+    coachAssignmentList: "Active assignments",
+    coachNoAssignments: "No active assignments.",
     onlineRule: "Online rule",
     onlineProspectRule: "Online prospect: basic avatars only, once per avatar. Paid online client: all avatars, subject to enough credit balance.",
     partnerPlan: "Coach Partner plan",
@@ -507,6 +538,12 @@ const demoUsers: DemoUser[] = [
   { kind: "outplacement-employee", name: "Paola Castillo", email: "paola@exempleada-demo.mx", organization: "Grupo Industrial Norte", role: "Participante en seguimiento", phone: "+52 55 1000 0014", status: "invitado", credits: 1545, owner: "Ricardo Vega", lastChange: "12/06/2026 11:25", notes: "Pendiente aceptar invitacion de acceso a plataforma." },
   { kind: "internal-coach", name: "Sofia Rivera", email: "sofia@empleateya.mx", organization: "Coaching 1o1", role: "Coach ejecutivo", phone: "+52 55 1000 0005", status: "invitado", credits: 0, owner: "Leo Galvez", lastChange: "10/06/2026 13:02", notes: "Asignable a sesiones 1o1, NPS, notas y testimonios." },
   { kind: "internal-coach", name: "Patricia Mora", email: "patricia@empleateya.mx", organization: "Cursos online", role: "Coach entrevistas", phone: "+52 55 1000 0010", status: "activo", credits: 0, owner: "Leo Galvez", lastChange: "09/06/2026 15:45", notes: "Disponible para cursos grupales y sesiones remotas." },
+];
+
+const internalCoachAssignments: CoachAssignment[] = [
+  { coachEmail: "sofia@empleateya.mx", kind: "group", name: "Coaching 1o1 Ejecutivo", startDate: "2026-06-10", endDate: "2026-07-10", modality: "online", nps: 92 },
+  { coachEmail: "sofia@empleateya.mx", kind: "campaign", name: "Outplacement Junio 2026", startDate: "2026-06-18", endDate: "2026-08-15", modality: "hybrid", nps: 88 },
+  { coachEmail: "patricia@empleateya.mx", kind: "group", name: "Preparacion entrevistas remoto", startDate: "2026-06-20", endDate: "2026-07-20", modality: "online", nps: 95 },
 ];
 
 export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUserKind }) {
@@ -759,6 +796,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
                 <Input name={`extra-${field}`} placeholder={field} type={isDateLikeField(field) ? "date" : "text"} />
               </Field>
             ))}
+            {userKind === "internal-coach" ? <InternalCoachAvailabilityPanel user={selectedUser} language={language} /> : null}
             {userKind === "super-admin-support" ? (
               <p className="rounded-2xl border border-purple-100 bg-purple-50 px-4 py-3 text-xs font-semibold leading-5 text-purple-900">
                 <strong>{t.supportRolePolicy}:</strong> {t.supportRolePolicyHelp}
@@ -912,6 +950,56 @@ function OnlineBalancePanel({
         </div>
       </article>
     </section>
+  );
+}
+
+function InternalCoachAvailabilityPanel({ user, language }: { user?: DemoUser; language: "es" | "en" }) {
+  const t = copy[language];
+  const assignments = internalCoachAssignments.filter((assignment) => assignment.coachEmail === user?.email);
+  const summary = summarizeCoachAssignments(assignments, language);
+  return (
+    <section className="rounded-[1.25rem] border border-indigo-100 bg-indigo-50/70 p-4">
+      <h3 className="text-base font-black text-slate-950">{t.coachAvailabilityTitle}</h3>
+      <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">{t.coachAvailabilityHelp}</p>
+      <div className="mt-4 grid gap-3">
+        <ReadOnlyMetric label={t.coachAvailability} value={assignments.length ? t.coachAssigned : t.coachAvailable} tone={assignments.length ? "amber" : "emerald"} />
+        <ReadOnlyMetric label={t.coachDateRange} value={summary.dateRange} />
+        <ReadOnlyMetric label={t.coachModality} value={summary.modality} />
+        <ReadOnlyMetric label={t.coachAverageNps} value={summary.averageNps} />
+        <ReadOnlyMetric label={t.coachOutplacementMentor} value={assignments.some((assignment) => assignment.kind === "campaign") ? t.coachAssigned : t.coachAvailable} tone={assignments.some((assignment) => assignment.kind === "campaign") ? "amber" : "emerald"} />
+      </div>
+      <div className="mt-4">
+        <p className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-[var(--brand-primary)]">{t.coachAssignmentList}</p>
+        {assignments.length ? (
+          <div className="max-h-36 overflow-auto rounded-2xl border border-indigo-100 bg-white">
+            {assignments.map((assignment) => (
+              <div key={`${assignment.coachEmail}-${assignment.name}`} className="border-b border-slate-100 px-3 py-2 text-xs last:border-0">
+                <strong className="block text-slate-950">{assignment.name}</strong>
+                <span className="text-slate-500">
+                  {assignment.kind === "campaign" ? (language === "es" ? "Campana" : "Campaign") : (language === "es" ? "Grupo" : "Group")} · {formatShortDate(assignment.startDate, language)} - {formatShortDate(assignment.endDate, language)} · {modalityLabel(assignment.modality, language)} · NPS {assignment.nps}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500">{t.coachNoAssignments}</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function ReadOnlyMetric({ label, value, tone = "slate" }: { label: string; value: string; tone?: "slate" | "amber" | "emerald" }) {
+  const toneClass = {
+    slate: "border-slate-200 bg-white text-slate-950",
+    amber: "border-amber-200 bg-amber-50 text-amber-900",
+    emerald: "border-emerald-200 bg-emerald-50 text-emerald-900",
+  }[tone];
+  return (
+    <div className={`rounded-2xl border px-3 py-2 ${toneClass}`}>
+      <p className="text-[11px] font-black uppercase tracking-[0.12em] opacity-70">{label}</p>
+      <p className="mt-1 text-sm font-black">{value}</p>
+    </div>
   );
 }
 
@@ -1178,6 +1266,37 @@ function hasUnlimitedCredits(userKind: AdminUserKind) {
 
 function usesCareerDataFields(userKind: AdminUserKind) {
   return userKind === "online" || userKind === "student" || userKind === "outplacement-employee";
+}
+
+function summarizeCoachAssignments(assignments: CoachAssignment[], language: "es" | "en") {
+  if (!assignments.length) {
+    return {
+      dateRange: "-",
+      modality: "-",
+      averageNps: "-",
+    };
+  }
+  const startDate = assignments.map((assignment) => assignment.startDate).sort()[0];
+  const endDate = assignments.map((assignment) => assignment.endDate).sort().at(-1) ?? startDate;
+  const modalities = Array.from(new Set(assignments.map((assignment) => modalityLabel(assignment.modality, language))));
+  const averageNps = Math.round(assignments.reduce((total, assignment) => total + assignment.nps, 0) / assignments.length);
+  return {
+    dateRange: `${formatShortDate(startDate, language)} - ${formatShortDate(endDate, language)}`,
+    modality: modalities.join(" / "),
+    averageNps: `${averageNps}`,
+  };
+}
+
+function modalityLabel(modality: CoachAssignment["modality"], language: "es" | "en") {
+  const labels = {
+    es: { online: "En linea", presential: "Presencial", hybrid: "Mixta" },
+    en: { online: "Online", presential: "In person", hybrid: "Hybrid" },
+  } as const;
+  return labels[language][modality];
+}
+
+function formatShortDate(value: string, language: "es" | "en") {
+  return new Date(`${value}T12:00:00`).toLocaleDateString(language === "es" ? "es-MX" : "en-US", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 function isDateLikeField(field: string) {
