@@ -313,6 +313,8 @@ const copy = {
     partnerPlan: "Plan Coach Partner",
     partnerCreditPool: "Bolsa maxima mensual del Coach Partner",
     partnerStudentCredits: "Creditos por alumno del plan",
+    partnerBaseCredits: "Base de creditos por ciclo",
+    partnerCapacity: "Capacidad maxima",
     partnerScopeRule: "El Coach Partner solo ve su organizacion. Super Admin y apoyos autorizados pueden apoyar y ver todas las organizaciones.",
     partnerRule: "El Coach Partner principal concentra la bolsa. Colaboradores y alumnos descuentan de esa bolsa principal.",
     groups: "Grupos",
@@ -425,6 +427,8 @@ const copy = {
     partnerPlan: "Coach Partner plan",
     partnerCreditPool: "Monthly Coach Partner credit pool",
     partnerStudentCredits: "Student credits in this plan",
+    partnerBaseCredits: "Base credits per cycle",
+    partnerCapacity: "Maximum capacity",
     partnerScopeRule: "The Coach Partner only sees their own organization. Super Admin and authorized support users can help and view all organizations.",
     partnerRule: "The main Coach Partner holds the main pool. Collaborators and students deduct from that main pool.",
     groups: "Groups",
@@ -508,9 +512,9 @@ const userSubmenuPermissions = [
 ] as const;
 
 const coachPartnerPlans = {
-  starter: { label: "Coach Starter", avatarIds: coachStarterAvatarIds, groups: 4, studentsPerGroup: 5, cycles: 3, studentCycles: 2, unlimited: false },
-  pro: { label: "Coach Pro", avatarIds: coachProAvatarIds, groups: 12, studentsPerGroup: 5, cycles: 3, studentCycles: 2, unlimited: false },
-  business: { label: "Coach Business", avatarIds: allAvatarIds, groups: Infinity, studentsPerGroup: Infinity, cycles: Infinity, studentCycles: Infinity, unlimited: true },
+  starter: { label: "Coach Starter", avatarIds: coachStarterAvatarIds, baseCreditsPerCycle: 1890, groups: 4, studentsPerGroup: 5, cycles: 3, studentCycles: 2, unlimited: false },
+  pro: { label: "Coach Pro", avatarIds: coachProAvatarIds, baseCreditsPerCycle: 2300, groups: 12, studentsPerGroup: 5, cycles: 3, studentCycles: 2, unlimited: false },
+  business: { label: "Coach Business", avatarIds: allAvatarIds, baseCreditsPerCycle: Infinity, groups: Infinity, studentsPerGroup: Infinity, cycles: Infinity, studentCycles: Infinity, unlimited: true },
 } as const;
 
 const organizationCatalog = {
@@ -1098,12 +1102,15 @@ function PartnerPlanSummary({ plan, language }: { plan: (typeof coachPartnerPlan
   const t = copy[language];
   const groupLabel = plan.unlimited ? (language === "es" ? "Ilimitados" : "Unlimited") : `${plan.groups}`;
   const studentsLabel = plan.unlimited ? (language === "es" ? "Ilimitados" : "Unlimited") : `${plan.studentsPerGroup}`;
-  const poolLabel = plan.unlimited ? (language === "es" ? "Ilimitada" : "Unlimited") : calculateCoachPartnerPool(plan).toLocaleString(language === "es" ? "es-MX" : "en-US");
-  const studentCreditsLabel = plan.unlimited ? (language === "es" ? "Ilimitados" : "Unlimited") : calculateCoachPartnerStudentCredits(plan).toLocaleString(language === "es" ? "es-MX" : "en-US");
+  const maxStudents = plan.unlimited ? Infinity : plan.groups * plan.studentsPerGroup;
+  const poolLabel = formatPlanNumber(calculateCoachPartnerPool(plan), language);
+  const studentCreditsLabel = formatPlanNumber(calculateCoachPartnerStudentCredits(plan), language);
   return (
     <div className="rounded-2xl border border-purple-100 bg-purple-50 px-4 py-3 text-xs font-semibold leading-5 text-purple-900">
       <strong className="block text-sm text-slate-950">{plan.label}</strong>
-      <span>{t.groups}: {groupLabel} Â· {t.students}: {studentsLabel}</span>
+      <span>{t.groups}: {groupLabel} - {t.students}: {studentsLabel}</span>
+      <span className="block">{t.partnerCapacity}: {formatPlanNumber(maxStudents, language)}</span>
+      <span className="block">{t.partnerBaseCredits}: {formatPlanNumber(plan.baseCreditsPerCycle, language)} x {formatPlanNumber(plan.cycles, language)}</span>
       <span className="block">{t.partnerCreditPool}: {poolLabel}</span>
       <span className="block">{t.partnerStudentCredits}: {studentCreditsLabel}</span>
       <span className="mt-2 block text-slate-600">{t.partnerScopeRule}</span>
@@ -1267,17 +1274,12 @@ function toggleItem<T>(items: T[], item: T, checked: boolean) {
 
 function calculateCoachPartnerPool(plan: (typeof coachPartnerPlans)[CoachPartnerPlanKey]) {
   if (plan.unlimited) return Infinity;
-  const creditsPerStudentCycle = creditsForAvatars(plan.avatarIds);
-  return creditsPerStudentCycle * plan.groups * plan.studentsPerGroup * plan.cycles;
+  return plan.baseCreditsPerCycle * plan.groups * plan.studentsPerGroup * plan.cycles;
 }
 
 function calculateCoachPartnerStudentCredits(plan: (typeof coachPartnerPlans)[CoachPartnerPlanKey]) {
   if (plan.unlimited) return Infinity;
-  return creditsForAvatars(plan.avatarIds) * plan.studentCycles;
-}
-
-function creditsForAvatars(avatarIds: readonly SkillId[]) {
-  return avatarIds.reduce((total, avatarId) => total + skillRegistry[avatarId].baseCredits, 0);
+  return plan.baseCreditsPerCycle * plan.studentCycles;
 }
 
 function formatPlanNumber(value: number, language: "es" | "en") {
