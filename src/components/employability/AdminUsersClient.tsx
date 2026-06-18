@@ -32,6 +32,7 @@ type DemoUser = {
   linkedinUrl?: string;
   salaryRange?: string;
   desiredSalaryAmount?: string;
+  age?: number;
   permissions?: UserPermissions;
 };
 
@@ -119,13 +120,13 @@ const kindConfig = {
     },
     "internal-coach": {
       title: "Coach interno 1o1 de Empleate YA",
-      description: "Alta de coaches internos para sesiones 1o1, cursos, notas, NPS y seguimiento de testimonios.",
+      description: "Alta de coaches internos para sesiones 1o1, cursos, notas, NPS, feedback y mentorias asignables a campanas de outplacement.",
       profile: "Coach interno 1o1",
       organizationLabel: "Unidad de servicio",
       organizationPlaceholder: "Ej. Coaching 1o1 / cursos online",
       roleLabel: "Especialidad del coach",
       roles: ["Coach empleabilidad", "Coach ejecutivo", "Coach entrevistas", "Coach CV estrategico", "Coach LinkedIn"],
-      extraFields: ["Disponibilidad", "Modalidad", "NPS minimo esperado"],
+      extraFields: ["Disponibilidad", "Modalidad", "NPS minimo esperado", "Disponible como mentor outplacement"],
     },
   },
   en: {
@@ -191,13 +192,13 @@ const kindConfig = {
     },
     "internal-coach": {
       title: "Internal 1:1 coach",
-      description: "Create internal coaches for 1:1 sessions, courses, notes, NPS, and testimonial follow-up.",
+      description: "Create internal coaches for 1:1 sessions, courses, notes, NPS, feedback, and mentorship assignments in outplacement campaigns.",
       profile: "Internal 1:1 Coach",
       organizationLabel: "Service unit",
       organizationPlaceholder: "Example: 1:1 Coaching / online courses",
       roleLabel: "Coach specialty",
       roles: ["Employability coach", "Executive coach", "Interview coach", "Strategic resume coach", "LinkedIn coach"],
-      extraFields: ["Availability", "Modality", "Minimum expected NPS"],
+      extraFields: ["Availability", "Modality", "Minimum expected NPS", "Available as outplacement mentor"],
     },
   },
 } as const;
@@ -255,6 +256,8 @@ const copy = {
     credits: "Creditos / bolsa inicial",
     creditsHelp: "Solo Super Admin puede mover manualmente la bolsa de usuarios online. Cada aumento o disminucion queda en bitacora.",
     careerData: "Datos profesionales",
+    age: "Edad",
+    ageHelp: "Dato profesional visible para administracion y reportes internos; ayuda a personalizar recomendaciones sin fomentar sesgos.",
     linkedinUrl: "URL de LinkedIn",
     noLinkedin: "No tengo perfil de LinkedIn",
     salaryRange: "Rango salarial",
@@ -348,6 +351,8 @@ const copy = {
     credits: "Credits / initial pool",
     creditsHelp: "Only Super Admin can manually move the online user credit pool. Every increase or decrease is logged.",
     careerData: "Professional data",
+    age: "Age",
+    ageHelp: "Professional data visible for administration and internal reports; helps personalize recommendations without encouraging bias.",
     linkedinUrl: "LinkedIn URL",
     noLinkedin: "I do not have a LinkedIn profile",
     salaryRange: "Salary range",
@@ -406,6 +411,7 @@ const adminMenuLabels = {
     credits: "Creditos",
     payments: "Pagos",
     reports: "Reportes",
+    feedback: "Feedback",
     coaching: "Trainee & Coaching",
     testimonials: "Testimonios",
     audit: "Bitacora",
@@ -424,6 +430,7 @@ const adminMenuLabels = {
     credits: "Credits",
     payments: "Payments",
     reports: "Reports",
+    feedback: "Feedback",
     coaching: "Trainee & Coaching",
     testimonials: "Testimonials",
     audit: "Audit log",
@@ -437,6 +444,13 @@ const canCurrentUserEditPrivacyAcceptance = true;
 const canCurrentUserEditOnlineCredits = true;
 const onlineBasicAvatarIds: SkillId[] = ["lumo", "recharge", "scorex", "mr_ikigai", "new_job_challenge", "mr_wow"];
 const coachStarterAvatarIds: SkillId[] = ["scorex", "optim", "mr_wow", "tommy_lee_picture"];
+const internalCoachAvatarProfiles: Array<{ match: string[]; avatarIds: SkillId[] }> = [
+  { match: ["linkedin"], avatarIds: ["mr_boost_linked", "tommy_lee_picture"] },
+  { match: ["entrevista", "interview"], avatarIds: ["new_job_challenge", "indiana_jobs", "miss_quest", "mr_wow"] },
+  { match: ["cv estrategico", "strategic resume"], avatarIds: ["scorex", "scorex_360", "optim"] },
+  { match: ["ejecutivo", "executive"], avatarIds: ["recharge", "boost_me", "clio", "mr_ikigai", "lumo"] },
+  { match: ["empleabilidad", "employability"], avatarIds: [] },
+];
 const allAvatarIds = Object.keys(skillRegistry) as SkillId[];
 const userSubmenuPermissions = [
   "/admin/users/online",
@@ -479,8 +493,8 @@ const salaryRangeOptions = {
 } as const;
 
 const demoUsers: DemoUser[] = [
-  { kind: "online", name: "Laura Mendez", email: "laura@email.com", organization: empleateYaOrganization, role: "Cliente Online Pagado", phone: "+52 55 1000 0001", status: "activo", credits: onlineBaselineCredits, owner: "Leo Galvez", lastChange: "12/06/2026 10:40", notes: "Compra individual Stripe. Puede ejecutar avatares segun saldo." },
-  { kind: "online", name: "Jorge Luna", email: "jorge@email.com", organization: empleateYaOrganization, role: "Prospecto online", phone: "+52 55 1000 0006", status: "pendiente", credits: onlineBaselineCredits, owner: "Sistema", lastChange: "12/06/2026 08:20", notes: "Prueba limitada. Requiere registro para consumir mas avatares." },
+  { kind: "online", name: "Laura Mendez", email: "laura@email.com", organization: empleateYaOrganization, role: "Cliente Online Pagado", phone: "+52 55 1000 0001", status: "activo", credits: onlineBaselineCredits, owner: "Leo Galvez", lastChange: "12/06/2026 10:40", notes: "Compra individual Stripe. Puede ejecutar avatares segun saldo.", age: 34 },
+  { kind: "online", name: "Jorge Luna", email: "jorge@email.com", organization: empleateYaOrganization, role: "Prospecto online", phone: "+52 55 1000 0006", status: "pendiente", credits: onlineBaselineCredits, owner: "Sistema", lastChange: "12/06/2026 08:20", notes: "Prueba limitada. Requiere registro para consumir mas avatares.", age: 42 },
   { kind: "super-admin-support", name: "Daniela Ponce", email: "daniela@empleateya.mx", organization: "Cobranza", role: "Apoyo cobranza", phone: "+52 55 1000 0002", status: "activo", credits: 0, owner: "Leo Galvez", lastChange: "12/06/2026 10:10", notes: "Acceso a pagos, estados de cuenta y comentarios internos." },
   { kind: "super-admin-support", name: "Ricardo Vega", email: "ricardo@empleateya.mx", organization: "Operaciones", role: "Operativo outplacement", phone: "+52 55 1000 0007", status: "invitado", credits: 0, owner: "Leo Galvez", lastChange: "12/06/2026 07:52", notes: "Apoya altas masivas y seguimiento operativo de campanas." },
   { kind: "coach-partner", name: "Mariana Soto", email: "mariana@franquicia-demo.mx", organization: "Franquicia Demo Norte", role: "Responsable franquicia", phone: "+52 55 1000 0003", status: "activo", credits: 600, owner: "Leo Galvez", lastChange: "11/06/2026 17:20", notes: "Licencia minima 6 meses. Administra clientes propios." },
@@ -553,6 +567,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       linkedinUrl: String(formData.get("linkedinUrl") || "").trim(),
       salaryRange: String(formData.get("salaryRange") || "").trim(),
       desiredSalaryAmount: String(formData.get("desiredSalaryAmount") || "").trim(),
+      age: Number(formData.get("age") || 0) || undefined,
       permissions: selectedUser?.permissions ?? pendingPermissions ?? defaultPermissionsFor(userKind, String(formData.get("role") || kind.roles[0]), coachPlanKey),
     };
     let creditAdjusted = false;
@@ -766,6 +781,12 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
               </p>
             ) : null}
             <div className="grid gap-3 md:grid-cols-3">
+              {userKind === "online" ? (
+                <Field label={t.age}>
+                  <Input name="age" type="number" min="16" max="90" placeholder="Ej. 38" defaultValue={selectedUser?.age ?? ""} />
+                  <p className="mt-1 text-xs font-semibold text-slate-500">{t.ageHelp}</p>
+                </Field>
+              ) : null}
               <Field label={t.linkedinUrl}>
                 <Input name="linkedinUrl" placeholder="https://linkedin.com/in/... / No tengo perfil de LinkedIn" defaultValue={selectedUser?.linkedinUrl ?? ""} />
               </Field>
@@ -917,7 +938,7 @@ function PermissionsPanel({
   const [localCoachPlanKey, setLocalCoachPlanKey] = useState<CoachPartnerPlanKey>(permissions.coachPlanKey);
   const partnerPlan = coachPartnerPlans[localCoachPlanKey];
   const partnerCreditPool = calculateCoachPartnerPool(partnerPlan.avatarIds, partnerPlan.groups, partnerPlan.studentsPerGroup, partnerPlan.cycles);
-  const showAdminPermissionSections = userKind === "super-admin-support";
+  const showAdminPermissionSections = userKind === "super-admin-support" || userKind === "internal-coach";
   const savePermissions = () => onSave({ avatarIds, adminMenuHrefs, userSubmenuHrefs, coachPlanKey: localCoachPlanKey });
 
   return (
@@ -1001,19 +1022,21 @@ function PermissionsPanel({
                 ))}
               </div>
             </ChecklistCard>
-            <ChecklistCard title={t.submenu}>
-              <div className="grid max-h-80 gap-2 overflow-auto pr-1">
-                {userSubmenuPermissions.map((href) => (
-                  <PermissionCheck
-                    key={href}
-                    checked={userSubmenuHrefs.includes(href)}
-                    title={href.split("/").at(-1)?.replaceAll("-", " ") ?? href}
-                    detail={href}
-                    onChange={(nextChecked) => setUserSubmenuHrefs((currentHrefs) => toggleItem(currentHrefs, href, nextChecked))}
-                  />
-                ))}
-              </div>
-            </ChecklistCard>
+            {userKind === "super-admin-support" ? (
+              <ChecklistCard title={t.submenu}>
+                <div className="grid max-h-80 gap-2 overflow-auto pr-1">
+                  {userSubmenuPermissions.map((href) => (
+                    <PermissionCheck
+                      key={href}
+                      checked={userSubmenuHrefs.includes(href)}
+                      title={href.split("/").at(-1)?.replaceAll("-", " ") ?? href}
+                      detail={href}
+                      onChange={(nextChecked) => setUserSubmenuHrefs((currentHrefs) => toggleItem(currentHrefs, href, nextChecked))}
+                    />
+                  ))}
+                </div>
+              </ChecklistCard>
+            ) : null}
           </>
         ) : null}
       </div>
@@ -1035,6 +1058,7 @@ function allowedAvatarsFor(userKind: AdminUserKind, userRole: string, coachPlanK
     return userRole === "Cliente Online Pagado" || userRole === "Paid online client" ? allAvatarIds : onlineBasicAvatarIds;
   }
   if (userKind === "coach-partner") return coachPartnerPlans[coachPlanKey].avatarIds;
+  if (userKind === "internal-coach") return internalCoachAvatarsFor(userRole);
   return allAvatarIds;
 }
 
@@ -1098,7 +1122,7 @@ function menuAllowedFor(userKind: AdminUserKind, userRole: string, href: string)
   if (userKind === "student") return false;
   if (userKind === "outplacement-rh") return ["/admin/users", "/admin/users/outplacement-employees", "/admin/organizations", "/admin/campaigns", "/admin/reports", "/admin/coaching"].includes(href);
   if (userKind === "outplacement-employee") return false;
-  if (userKind === "internal-coach") return ["/admin/users", "/admin/users/students", "/admin/groups", "/admin/coaching", "/admin/testimonials", "/admin/reports"].includes(href);
+  if (userKind === "internal-coach") return ["/admin/coaching", "/admin/groups", "/admin/users/students", "/admin/reports", "/admin/feedback"].includes(href);
   if (userKind === "super-admin-support") return supportRoleMenuAllowed(userRole, href);
   return true;
 }
@@ -1107,8 +1131,15 @@ function userSubmenuAllowedFor(userKind: AdminUserKind, userRole: string, href: 
   if (userKind === "super-admin-support") return supportRoleUserSubmenuAllowed(userRole, href);
   if (userKind === "coach-partner") return href === "/admin/users/coach-partner";
   if (userKind === "outplacement-rh") return href === "/admin/users/outplacement-rh";
-  if (userKind === "internal-coach") return href === "/admin/users/internal-coach";
+  if (userKind === "internal-coach") return false;
   return href === "/admin/users/online";
+}
+
+function internalCoachAvatarsFor(userRole: string) {
+  const role = normalizeRole(userRole);
+  const profile = internalCoachAvatarProfiles.find((item) => item.match.some((keyword) => role.includes(keyword)));
+  if (!profile || profile.avatarIds.length === 0) return allAvatarIds;
+  return profile.avatarIds;
 }
 
 function supportRoleMenuAllowed(userRole: string, href: string) {

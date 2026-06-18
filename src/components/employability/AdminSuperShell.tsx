@@ -37,6 +37,7 @@ export const adminSections = [
   { href: "/admin/credits", key: "credits", icon: CircleDollarSign, group: "money" },
   { href: "/admin/payments", key: "payments", icon: BadgeDollarSign, group: "money" },
   { href: "/admin/reports", key: "reports", icon: FileBarChart, group: "operations" },
+  { href: "/admin/feedback", key: "feedback", icon: MessageSquareQuote, group: "operations" },
   { href: "/admin/testimonials", key: "testimonials", icon: MessageSquareQuote, group: "operations" },
   { href: "/admin/audit", key: "audit", icon: Activity, group: "security" },
 ] as const;
@@ -64,6 +65,7 @@ const copy = {
     credits: "Creditos",
     payments: "Pagos",
     reports: "Reportes",
+    feedback: "Feedback",
     coaching: "Trainee & Coaching",
     testimonials: "Testimonios",
     audit: "Bitacora",
@@ -97,6 +99,7 @@ const copy = {
     credits: "Credits",
     payments: "Payments",
     reports: "Reports",
+    feedback: "Feedback",
     coaching: "Trainee & Coaching",
     testimonials: "Testimonials",
     audit: "Audit log",

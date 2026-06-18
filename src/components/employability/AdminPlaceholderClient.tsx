@@ -5,7 +5,7 @@ import { Search } from "lucide-react";
 import { Input, Label, Select } from "@/components/ui/Input";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
-type AdminModuleKey = "avatars" | "permissions" | "payments" | "reports" | "coaching" | "groups" | "testimonials" | "audit";
+type AdminModuleKey = "avatars" | "permissions" | "payments" | "reports" | "feedback" | "coaching" | "groups" | "testimonials" | "audit";
 
 const copy = {
   es: {
@@ -42,6 +42,11 @@ const copy = {
         title: "Reportes ejecutivos",
         description: "Reportes de consumo, usuarios activos, rentabilidad, campanas, partners, NPS, coaching y auditoria.",
         columns: ["Reporte", "Periodo", "Responsable", "Ultima ejecucion", "Estado"],
+      },
+      feedback: {
+        title: "Feedback de coaching",
+        description: "Notas y observaciones del Coach 1o1 sobre avance, riesgos, compromisos, calidad percibida y siguientes acciones del alumno o ex-empleado asignado como mentor.",
+        columns: ["Alumno / ex-empleado", "Coach", "Programa", "Observacion", "Fecha", "Estado"],
       },
       coaching: {
         title: "Trainee & Coaching",
@@ -100,6 +105,11 @@ const copy = {
         description: "Consumption, active users, profitability, campaigns, partners, NPS, coaching, and audit reports.",
         columns: ["Report", "Period", "Owner", "Last run", "Status"],
       },
+      feedback: {
+        title: "Coaching feedback",
+        description: "1:1 Coach notes and observations about progress, risks, commitments, perceived quality, and next actions for the assigned student or mentored former employee.",
+        columns: ["Student / former employee", "Coach", "Program", "Observation", "Date", "Status"],
+      },
       coaching: {
         title: "Trainee & Coaching",
         description: "Define course, coaching, or outplacement templates owned by an internal or external company. Each template includes avatars and credits per user; when assigned to a group or campaign, the expected cost is calculated before participants are authorized.",
@@ -144,6 +154,11 @@ const rows: Record<AdminModuleKey, string[][]> = {
     ["Consumo de creditos", "Mes actual", "Super Admin", "Hoy", "ready"],
     ["Rentabilidad por avatar", "Semanal", "Super Admin", "Ayer", "ready"],
     ["Campanas outplacement", "Mensual", "Operaciones", "Pendiente", "pending"],
+  ],
+  feedback: [
+    ["Roberto Salas", "Sofia Rivera", "Coaching 1o1 Ejecutivo", "Reforzar narrativa de liderazgo antes de Optim.", "17/06/2026", "active"],
+    ["Miguel Herrera", "Sofia Rivera", "Outplacement Junio 2026", "Mentoria asignada para preparar entrevista final.", "16/06/2026", "pending"],
+    ["Fernanda Rios", "Patricia Mora", "CV Estrategico Norte", "Buen avance; falta evidencia STAR en dos logros.", "15/06/2026", "active"],
   ],
   coaching: [
     ["CV estrategico base", "Franquicia Demo Norte", "Grupo Coach Partner", "ScoreX, Optim, Mr. Wow", "255", "active"],
