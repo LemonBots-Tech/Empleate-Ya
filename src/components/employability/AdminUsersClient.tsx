@@ -237,7 +237,9 @@ const copy = {
     permissionsAssignedMessage: "Permisos recalculados y asignados segun la especialidad seleccionada.",
     savedPermissionsMessage: "Permisos guardados. Regresaste a captura y mantenimiento del usuario.",
     logicalDeleteMessage: "El usuario seleccionado paso a estado borrado lógico. No se elimino definitivamente.",
-    protectedHrAdminMessage: "No se puede borrar logicamente al Administrador RH principal mientras no exista otro Administrador RH activo para esta organizacion. Solo Super Admin puede hacer este relevo.",
+    protectedPrincipalDeleteMessage: "Solo Super Admin puede dar de baja logica al rol principal de una organizacion.",
+    duplicatePrincipalMessage: "Ya existe un rol principal activo para esta organizacion. Primero debe darse de baja logica el principal activo y despues crear el nuevo.",
+    unauthorizedPrincipalCreateMessage: "Solo Super Admin o apoyos autorizados pueden dar de alta un Coach partner principal o Administrador RH.",
     creditAdjustmentMessage: "Movimiento manual de creditos registrado en bitacora.",
     balanceEmailMessage: "Balance preparado para enviarse al correo del cliente con PDF adjunto.",
     balanceTitle: "Estado de cuenta de creditos",
@@ -352,7 +354,9 @@ const copy = {
     permissionsAssignedMessage: "Permissions were recalculated and assigned according to the selected specialty.",
     savedPermissionsMessage: "Permissions saved. You are back in user capture and maintenance.",
     logicalDeleteMessage: "The selected user was moved to logical_delete. It was not permanently deleted.",
-    protectedHrAdminMessage: "The main HR Administrator cannot be logically deleted until another active HR Administrator exists for this organization. Only Super Admin can perform this handoff.",
+    protectedPrincipalDeleteMessage: "Only Super Admin can logically delete the main role of an organization.",
+    duplicatePrincipalMessage: "An active main role already exists for this organization. Logically delete the active main user first, then create the new one.",
+    unauthorizedPrincipalCreateMessage: "Only Super Admin or authorized support users can create a main Coach Partner or HR Administrator.",
     creditAdjustmentMessage: "Manual credit movement recorded in the audit log.",
     balanceEmailMessage: "Balance prepared to be emailed to the client with the PDF attached.",
     balanceTitle: "Credit statement",
@@ -494,6 +498,7 @@ const adminCreditAuditStorageKey = "empleate-ya-admin-credit-audit-v1";
 const onlineBaselineCredits = 150;
 const canCurrentUserEditPrivacyAcceptance = true;
 const canCurrentUserEditOnlineCredits = true;
+const currentAdminOperator = { name: "Leo Galvez", role: "Super Admin" } as const;
 const onlineBasicAvatarIds: SkillId[] = ["lumo", "recharge", "scorex", "mr_ikigai", "new_job_challenge", "mr_wow"];
 const linkedInVisualAvatarIds: SkillId[] = ["mr_boost_linked", "tommy_lee_picture"];
 const coachStarterAvatarIds: SkillId[] = ["scorex", "optim", "mr_wow", ...linkedInVisualAvatarIds];
@@ -639,6 +644,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   function handleSaveUser(formData: FormData) {
     const email = String(formData.get("email") || "").trim();
     const nextRole = String(formData.get("role") || kind.roles[0]);
+    const nextOrganization = fixedEmpleateYaOrg ? empleateYaOrganization : String(formData.get("organization") || "").trim();
     const nextCoachPlanKey = String(formData.get("coachPlanKey") || coachPlanKey) as CoachPartnerPlanKey;
     const nextCoachPlan = coachPartnerPlans[nextCoachPlanKey];
     const roleChanged = selectedUser ? selectedUser.role !== nextRole : true;
@@ -647,11 +653,19 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       ? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey)
       : pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey);
     const nextCredits = creditsForUserRole(userKind, nextRole, nextCoachPlan, formData);
+    if (isMainOrganizationRole(userKind, nextRole) && !canCurrentOperatorCreateMainOrganizationRole()) {
+      setNotice(t.unauthorizedPrincipalCreateMessage);
+      return;
+    }
+    if (isMainOrganizationRole(userKind, nextRole) && hasActivePrincipalForOrganization(users, userKind, nextRole, nextOrganization, selectedUser?.email)) {
+      setNotice(t.duplicatePrincipalMessage);
+      return;
+    }
     const savedUser: DemoUser = {
       kind: userKind,
       name: String(formData.get("name") || "").trim() || "Usuario sin nombre",
       email: email || `usuario-${Date.now()}@empleateya.local`,
-      organization: fixedEmpleateYaOrg ? empleateYaOrganization : String(formData.get("organization") || "").trim(),
+      organization: nextOrganization,
       role: nextRole,
       phone: String(formData.get("phone") || "").trim(),
       status: String(formData.get("status") || defaultStatus),
@@ -704,8 +718,8 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
 
   function handleLogicalDelete() {
     if (!selectedUser) return;
-    if (isProtectedLastHrAdmin(selectedUser, users)) {
-      setNotice(t.protectedHrAdminMessage);
+    if (isMainOrganizationRole(selectedUser.kind, selectedUser.role) && !canCurrentOperatorDeleteMainOrganizationRole()) {
+      setNotice(t.protectedPrincipalDeleteMessage);
       return;
     }
     setUsers((currentUsers) => currentUsers.map((user) => (user.email === selectedUser.email ? { ...user, status: "borrado_logico", lastChange: new Date().toLocaleString(language === "es" ? "es-MX" : "en-US", { dateStyle: "short", timeStyle: "short" }) } : user)));
@@ -1405,22 +1419,47 @@ function isDefaultCampaignApproverRole(userRole: string) {
   return role.includes("administrador rh") || role.includes("hr administrator") || role.includes("aprobador de campa") || role.includes("campaign approver");
 }
 
-function isProtectedLastHrAdmin(selectedUser: DemoUser, users: DemoUser[]) {
-  if (selectedUser.kind !== "outplacement-rh") return false;
-  if (!isHrAdminRole(selectedUser.role)) return false;
-  return users.filter((user) => (
-    user.kind === "outplacement-rh"
-    && user.organization === selectedUser.organization
-    && user.email !== selectedUser.email
-    && user.status !== "borrado_logico"
-    && user.status !== "logical_delete"
-    && isHrAdminRole(user.role)
-  )).length === 0;
-}
-
 function isHrAdminRole(userRole: string) {
   const role = normalizeRole(userRole);
   return role.includes("administrador rh") || role.includes("hr administrator");
+}
+
+function isCoachPartnerPrincipalRole(userRole: string) {
+  const role = normalizeRole(userRole);
+  return role.includes("coach partner principal") || role.includes("main coach partner");
+}
+
+function isMainOrganizationRole(userKind: AdminUserKind, userRole: string) {
+  return (userKind === "outplacement-rh" && isHrAdminRole(userRole)) || (userKind === "coach-partner" && isCoachPartnerPrincipalRole(userRole));
+}
+
+function hasActivePrincipalForOrganization(users: DemoUser[], userKind: AdminUserKind, userRole: string, organization: string, currentEmail?: string) {
+  return users.some((user) => (
+    user.kind === userKind
+    && user.organization === organization
+    && user.email !== currentEmail
+    && user.status !== "borrado_logico"
+    && user.status !== "logical_delete"
+    && isMainOrganizationRole(user.kind, user.role)
+    && samePrincipalFamily(userRole, user.role)
+  ));
+}
+
+function samePrincipalFamily(leftRole: string, rightRole: string) {
+  return (isHrAdminRole(leftRole) && isHrAdminRole(rightRole)) || (isCoachPartnerPrincipalRole(leftRole) && isCoachPartnerPrincipalRole(rightRole));
+}
+
+function canCurrentOperatorCreateMainOrganizationRole() {
+  return currentAdminOperator.role === "Super Admin" || [
+    "Apoyo coach partner",
+    "Apoyo administrativo",
+    "Operativo outplacement",
+    "Supervisor delegado temporal",
+  ].includes(currentAdminOperator.role);
+}
+
+function canCurrentOperatorDeleteMainOrganizationRole() {
+  return currentAdminOperator.role === "Super Admin";
 }
 
 function buildBalanceMovements(user: DemoUser, creditAuditEvents: CreditAuditEvent[], language: "es" | "en"): BalanceMovement[] {
