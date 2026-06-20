@@ -34,6 +34,7 @@ type DemoUser = {
   desiredSalaryAmount?: string;
   age?: number;
   permissions?: UserPermissions;
+  extraData?: Record<string, string | boolean>;
 };
 
 type CreditAuditEvent = {
@@ -104,8 +105,8 @@ const kindConfig = {
       organizationLabel: "Empresa cliente",
       organizationPlaceholder: "Ej. Empresa Demo Outplacement",
       roleLabel: "Rol en empresa",
-      roles: ["Administrador RH", "Apoyo administrativo RH", "Coach de outplacement", "Aprobador de campana"],
-      extraFields: ["Campana asignada", "Permiso para ver avance", "Puede aprobar participantes", "Inicio vigencia aprobador", "Fin vigencia aprobador"],
+      roles: ["Administrador RH", "Apoyo administrativo RH", "Coach de outplacement", "Aprobador de Campaña"],
+      extraFields: ["Campana asignada", "Puede aprobar campañas", "Inicio vigencia aprobador", "Fin vigencia aprobador"],
     },
     student: {
       title: "Alumnos",
@@ -176,8 +177,8 @@ const kindConfig = {
       organizationLabel: "Client company",
       organizationPlaceholder: "Example: Demo Outplacement Company",
       roleLabel: "Company role",
-      roles: ["HR Administrator", "HR administrative support", "Outplacement coach", "Campaign approver"],
-      extraFields: ["Assigned campaign", "Can view progress", "Can approve participants", "Approver assignment start", "Approver assignment end"],
+      roles: ["HR Administrator", "HR administrative support", "Outplacement coach", "Campaign Approver"],
+      extraFields: ["Assigned campaign", "Can approve campaigns", "Approver assignment start", "Approver assignment end"],
     },
     student: {
       title: "Students",
@@ -582,6 +583,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const [searchMode, setSearchMode] = useState<UserSearchMode>("capture");
   const [showBalance, setShowBalance] = useState(false);
   const [storageLoaded, setStorageLoaded] = useState(false);
+  const [draftRole, setDraftRole] = useState("");
 
   useEffect(() => {
     const storedUsers = readStoredJson<DemoUser[]>(adminUsersStorageKey);
@@ -614,14 +616,20 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const selectedUser = users.find((user) => user.kind === userKind && user.email === selectedEmail);
   const fixedEmpleateYaOrg = usesFixedEmpleateYaOrganization(userKind);
   const defaultStatus = selectedUser?.status ?? t.statuses[0];
-  const activeRole = selectedUser?.role ?? kind.roles[0];
+  const activeRole = draftRole || selectedUser?.role || kind.roles[0];
   const unlimitedCredits = hasUnlimitedCredits(userKind, activeRole);
-  const activeCoachPlanKey = selectedUser?.permissions?.coachPlanKey ?? pendingPermissions?.coachPlanKey ?? coachPlanKey;
-  const activePermissions = selectedUser?.permissions ?? pendingPermissions ?? defaultPermissionsFor(userKind, activeRole, activeCoachPlanKey);
+  const activeCoachPlanKey = pendingPermissions?.coachPlanKey ?? selectedUser?.permissions?.coachPlanKey ?? coachPlanKey;
+  const activePermissions = pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, activeRole, activeCoachPlanKey);
+
+  useEffect(() => {
+    setDraftRole(selectedUser?.role ?? kind.roles[0]);
+  }, [kind.roles, selectedUser?.role, userKind]);
 
   function selectUserForMaintenance(email: string) {
     const nextMode = searchMode;
+    const user = users.find((currentUser) => currentUser.kind === userKind && currentUser.email === email);
     setSelectedEmail(email);
+    setDraftRole(user?.role ?? kind.roles[0]);
     setSearchMode("capture");
     setNotice(nextMode === "delete" ? t.selectedForDelete : t.selectedForEdit);
   }
@@ -654,6 +662,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       desiredSalaryAmount: String(formData.get("desiredSalaryAmount") || "").trim(),
       age: Number(formData.get("age") || 0) || undefined,
       permissions: cascadedPermissions,
+      extraData: buildExtraData(kind.extraFields, formData),
     };
     let creditAdjusted = false;
 
@@ -685,6 +694,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     }
     setSelectedEmail(savedUser.email);
     if (userKind === "coach-partner") setCoachPlanKey(nextCoachPlanKey);
+    setDraftRole(nextRole);
     setPendingPermissions(null);
     const cascadedMessage = shouldCascadePermissionsForRole(userKind, roleChanged, planChanged) ? ` ${t.permissionsAssignedMessage}` : "";
     setNotice(creditAdjusted ? `${t.savedDataMessage} ${t.creditAdjustmentMessage}${cascadedMessage}` : `${t.savedDataMessage}${cascadedMessage}`);
@@ -804,7 +814,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             <p className="mt-1 text-sm font-semibold text-slate-500">{selectedUser ? `${t.selected}: ${selectedUser.name}` : t.noSelected}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]" onClick={() => { setSelectedEmail(""); setNotice(""); setSearchMode("capture"); }}><UserPlus size={17} />{t.create}</Button>
+            <Button type="button" className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]" onClick={() => { setSelectedEmail(""); setDraftRole(kind.roles[0]); setPendingPermissions(null); setNotice(""); setSearchMode("capture"); }}><UserPlus size={17} />{t.create}</Button>
             <Button type="button" className="gap-2 bg-slate-950 text-white hover:bg-slate-800" onClick={() => { setSearchMode("edit"); setNotice(""); }}><Edit3 size={17} />{t.edit}</Button>
             <Button type="button" className="gap-2 bg-amber-500 text-white hover:bg-amber-600" onClick={() => { setSearchMode("delete"); setNotice(""); }}><Trash2 size={17} />{t.deleteLogical}</Button>
             {userKind === "online" ? <Button type="button" disabled={!selectedUser} title={!selectedUser ? t.balanceDisabledHelp : undefined} className="gap-2 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50" onClick={() => setShowBalance(true)}><FileText size={17} />{t.balance}</Button> : null}
@@ -823,7 +833,19 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
           <FormGroup title={kind.organizationLabel} icon={<Building2 size={18} />}>
             <Field label={t.organization}>{fixedEmpleateYaOrg ? <Input name="organization" value={empleateYaOrganization} readOnly /> : usesOrganizationCatalog(userKind) ? <Select name="organization" defaultValue={selectedUser?.organization}>{organizationCatalog[userKind].map((item) => <option key={item}>{item}</option>)}</Select> : <Input name="organization" placeholder={kind.organizationPlaceholder} defaultValue={selectedUser?.organization ?? ""} />}</Field>
             {usesOrganizationCatalog(userKind) ? <p className="text-xs font-semibold leading-5 text-slate-500">{t.orgHelp}</p> : null}
-            <Field label={kind.roleLabel}><Select name="role" defaultValue={selectedUser?.role}>{kind.roles.map((item) => <option key={item}>{item}</option>)}</Select></Field>
+            <Field label={kind.roleLabel}>
+              <Select
+                name="role"
+                value={activeRole}
+                onChange={(event) => {
+                  const nextRole = event.target.value;
+                  setDraftRole(nextRole);
+                  setPendingPermissions(defaultPermissionsFor(userKind, nextRole, activeCoachPlanKey));
+                }}
+              >
+                {kind.roles.map((item) => <option key={item}>{item}</option>)}
+              </Select>
+            </Field>
             {userKind === "coach-partner" ? (
               <>
                 <Field label={t.partnerPlan}>
@@ -865,11 +887,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
               )}
             </Field>
             {userKind === "online" ? <p className="text-xs font-semibold leading-5 text-slate-500">{t.creditsHelp}</p> : null}
-            {kind.extraFields.map((field) => (
-              <Field key={field} label={field}>
-                <Input name={`extra-${field}`} placeholder={field} type={isDateLikeField(field) ? "date" : "text"} />
-              </Field>
-            ))}
+            <ExtraFields fields={kind.extraFields} selectedUser={selectedUser} />
             {userKind === "internal-coach" ? <InternalCoachAvailabilityPanel user={selectedUser} language={language} /> : null}
             {userKind === "super-admin-support" ? (
               <p className="rounded-2xl border border-purple-100 bg-purple-50 px-4 py-3 text-xs font-semibold leading-5 text-purple-900">
@@ -1123,6 +1141,31 @@ function PartnerPlanSummary({ plan, language }: { plan: (typeof coachPartnerPlan
       <span className="block">{t.partnerStudentCredits}: {studentCreditsLabel}</span>
       <span className="mt-2 block text-slate-600">{t.partnerScopeRule}</span>
     </div>
+  );
+}
+
+function ExtraFields({ fields, selectedUser }: { fields: readonly string[]; selectedUser?: DemoUser }) {
+  return (
+    <>
+      {fields.map((field) => {
+        const key = extraFieldKey(field);
+        const savedValue = selectedUser?.extraData?.[key];
+        if (isBooleanExtraField(field)) {
+          return (
+            <label key={field} className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700">
+              <input name={`extra-${key}`} type="checkbox" className="mt-1" defaultChecked={savedValue === true || savedValue === "true"} />
+              <span>{field}</span>
+            </label>
+          );
+        }
+
+        return (
+          <Field key={field} label={field}>
+            <Input name={`extra-${key}`} placeholder={field} type={isDateLikeField(field) ? "date" : "text"} defaultValue={typeof savedValue === "string" ? savedValue : ""} />
+          </Field>
+        );
+      })}
+    </>
   );
 }
 
@@ -1471,6 +1514,23 @@ function modalityLabel(modality: CoachAssignment["modality"], language: "es" | "
 
 function formatShortDate(value: string, language: "es" | "en") {
   return new Date(`${value}T12:00:00`).toLocaleDateString(language === "es" ? "es-MX" : "en-US", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function buildExtraData(fields: readonly string[], formData: FormData) {
+  return fields.reduce<Record<string, string | boolean>>((extraData, field) => {
+    const key = extraFieldKey(field);
+    extraData[key] = isBooleanExtraField(field) ? formData.get(`extra-${key}`) === "on" : String(formData.get(`extra-${key}`) || "").trim();
+    return extraData;
+  }, {});
+}
+
+function extraFieldKey(field: string) {
+  return field.toLowerCase().replaceAll(" ", "_").replace(/[^a-z0-9_]/g, "");
+}
+
+function isBooleanExtraField(field: string) {
+  const normalized = field.toLowerCase();
+  return normalized.includes("puede aprobar") || normalized.includes("can approve");
 }
 
 function isDateLikeField(field: string) {
