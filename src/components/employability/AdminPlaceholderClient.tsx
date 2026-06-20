@@ -49,13 +49,13 @@ const copy = {
         columns: ["Alumno / ex-empleado", "Coach", "Programa", "Observacion", "Fecha", "Estado"],
       },
       coaching: {
-        title: "Trainee & Coaching",
+        title: "Cursos de Coaching & Outplacement",
         description: "Define plantillas de cursos, coaching o programas de outplacement que pertenecen a una empresa interna o externa. Cada plantilla incluye avatares y creditos por usuario; al asignarla a un grupo o campana se calcula el costo previsto antes de autorizar participantes.",
         columns: ["Plantilla / programa", "Empresa", "Uso", "Avatares", "Creditos por usuario", "Estado"],
       },
       groups: {
         title: "Grupos",
-        description: "Crea grupos o campanas desde una plantilla Trainee & Coaching. En el previo se indica el numero esperado de alumnos o ex-empleados, se calcula la bolsa total y los creditos disponibles por participante; una vez autorizado, el responsable asigna participantes reales.",
+        description: "Crea grupos o campanas desde una plantilla de Cursos de Coaching & Outplacement. En el previo se indica el numero esperado de alumnos o ex-empleados, se calcula la bolsa total y los creditos disponibles por participante; una vez autorizado, el responsable asigna participantes reales.",
         columns: ["Grupo / campana", "Organizacion", "Plantilla", "Previo participantes", "Bolsa creditos", "Creditos por persona", "Estado"],
       },
       testimonials: {
@@ -111,13 +111,13 @@ const copy = {
         columns: ["Student / former employee", "Coach", "Program", "Observation", "Date", "Status"],
       },
       coaching: {
-        title: "Trainee & Coaching",
+        title: "Coaching & Outplacement Courses",
         description: "Define course, coaching, or outplacement templates owned by an internal or external company. Each template includes avatars and credits per user; when assigned to a group or campaign, the expected cost is calculated before participants are authorized.",
         columns: ["Template / program", "Company", "Use", "Avatars", "Credits per user", "Status"],
       },
       groups: {
         title: "Groups",
-        description: "Create groups or campaigns from a Trainee & Coaching template. The preview captures the expected number of students or former employees, calculates the total pool and credits per participant; once authorized, the owner assigns real participants.",
+        description: "Create groups or campaigns from a Coaching & Outplacement Courses template. The preview captures the expected number of students or former employees, calculates the total pool and credits per participant; once authorized, the owner assigns real participants.",
         columns: ["Group / campaign", "Organization", "Template", "Preview participants", "Credit pool", "Credits per person", "Status"],
       },
       testimonials: {

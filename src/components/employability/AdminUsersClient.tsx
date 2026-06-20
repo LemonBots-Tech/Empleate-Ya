@@ -99,13 +99,13 @@ const kindConfig = {
     },
     "outplacement-rh": {
       title: "Outplacement",
-      description: "Administradores RH y apoyos de empresas cliente. Solo operan usuarios de outplacement, ex-empleados, campanas y reportes de su propia organizacion.",
+      description: "Administradores RH y apoyos de empresas cliente. Solo operan usuarios de outplacement, cursos, ex-empleados, campanas y reportes de su propia organizacion.",
       profile: "Outplacement",
       organizationLabel: "Empresa cliente",
       organizationPlaceholder: "Ej. Empresa Demo Outplacement",
       roleLabel: "Rol en empresa",
-      roles: ["Administrador RH", "Apoyo administrativo RH", "Apoyo seguimiento outplacement", "Aprobador de campana"],
-      extraFields: ["Campana asignada", "Permiso para ver avance", "Puede aprobar participantes"],
+      roles: ["Administrador RH", "Apoyo administrativo RH", "Coach de outplacement", "Aprobador de campana"],
+      extraFields: ["Campana asignada", "Permiso para ver avance", "Puede aprobar participantes", "Inicio vigencia aprobador", "Fin vigencia aprobador"],
     },
     student: {
       title: "Alumnos",
@@ -171,13 +171,13 @@ const kindConfig = {
     },
     "outplacement-rh": {
       title: "Outplacement",
-      description: "HR admins and support users from client companies. They only manage outplacement users, former employees, campaigns, and reports for their own organization.",
+      description: "HR admins and support users from client companies. They only manage outplacement users, courses, former employees, campaigns, and reports for their own organization.",
       profile: "Outplacement",
       organizationLabel: "Client company",
       organizationPlaceholder: "Example: Demo Outplacement Company",
       roleLabel: "Company role",
-      roles: ["HR Administrator", "HR administrative support", "Outplacement follow-up support", "Campaign approver"],
-      extraFields: ["Assigned campaign", "Can view progress", "Can approve participants"],
+      roles: ["HR Administrator", "HR administrative support", "Outplacement coach", "Campaign approver"],
+      extraFields: ["Assigned campaign", "Can view progress", "Can approve participants", "Approver assignment start", "Approver assignment end"],
     },
     student: {
       title: "Students",
@@ -459,7 +459,7 @@ const adminMenuLabels = {
     payments: "Pagos",
     reports: "Reportes",
     feedback: "Feedback",
-    coaching: "Trainee & Coaching",
+    coaching: "Cursos de Coaching & Outplacement",
     testimonials: "Testimonios",
     audit: "Bitacora",
   },
@@ -478,7 +478,7 @@ const adminMenuLabels = {
     payments: "Payments",
     reports: "Reports",
     feedback: "Feedback",
-    coaching: "Trainee & Coaching",
+    coaching: "Coaching & Outplacement Courses",
     testimonials: "Testimonials",
     audit: "Audit log",
   },
@@ -552,8 +552,8 @@ const demoUsers: DemoUser[] = [
   { kind: "coach-partner", name: "Hector Ramos", email: "hector@partner-demo.mx", organization: "Partner Bajio", role: "Coach partner colaborador", phone: "+52 55 1000 0008", status: "pendiente", credits: calculateCoachPartnerPool(coachPartnerPlans.pro), owner: "Mariana Soto", lastChange: "11/06/2026 12:35", notes: "Pendiente completar curso online de metodologia.", permissions: defaultPermissionsFor("coach-partner", "Coach partner colaborador", "pro") },
   { kind: "student", name: "Fernanda Rios", email: "fernanda@alumno-demo.mx", organization: "Partner Ejecutivo Norte", role: "Alumno Coach Partner", phone: "+52 55 1000 0011", status: "activo", credits: calculateCoachPartnerStudentCredits(coachPartnerPlans.starter), owner: "Mariana Soto", lastChange: "12/06/2026 11:05", notes: "Asignada al grupo CV Estrategico Norte. Descuenta de bolsa del Coach Partner responsable." },
   { kind: "student", name: "Roberto Salas", email: "roberto@coaching-demo.mx", organization: "Empleate YA", role: "Alumno coaching 1o1", phone: "+52 55 1000 0012", status: "pendiente", credits: 1545, owner: "Sofia Rivera", lastChange: "12/06/2026 11:12", notes: "Pendiente asignar calendario de sesiones 1o1." },
-  { kind: "outplacement-rh", name: "Ana Torres", email: "ana@empresa-demo.mx", organization: "Empresa Demo Outplacement", role: "Administrador RH", phone: "+52 55 1000 0004", status: "activo", credits: 0, owner: "Leo Galvez", lastChange: "12/06/2026 09:15", notes: "Puede crear campanas y revisar avance de ex-colaboradores autorizados." },
-  { kind: "outplacement-rh", name: "Carlos Ibarra", email: "carlos@empresa-demo.mx", organization: "Empresa Demo Outplacement", role: "Apoyo seguimiento outplacement", phone: "+52 55 1000 0009", status: "activo", credits: 0, owner: "Ana Torres", lastChange: "10/06/2026 18:02", notes: "Puede revisar avance pero no aprobar participantes." },
+  { kind: "outplacement-rh", name: "Ana Torres", email: "ana@empresa-demo.mx", organization: "Empresa Demo Outplacement", role: "Administrador RH", phone: "+52 55 1000 0004", status: "activo", credits: 0, owner: "Leo Galvez", lastChange: "12/06/2026 09:15", notes: "Puede crear y aprobar campanas, cursos y revisar avance de ex-colaboradores autorizados.", permissions: defaultPermissionsFor("outplacement-rh", "Administrador RH", "starter") },
+  { kind: "outplacement-rh", name: "Carlos Ibarra", email: "carlos@empresa-demo.mx", organization: "Empresa Demo Outplacement", role: "Coach de outplacement", phone: "+52 55 1000 0009", status: "activo", credits: calculateOutplacementRoleCredits("Coach de outplacement"), owner: "Ana Torres", lastChange: "10/06/2026 18:02", notes: "Puede crear cursos, campanas y dar seguimiento, pero no aprobar campanas.", permissions: defaultPermissionsFor("outplacement-rh", "Coach de outplacement", "starter") },
   { kind: "outplacement-employee", name: "Miguel Herrera", email: "miguel@exempleado-demo.mx", organization: "Empresa Demo Outplacement", role: "Participante autorizado", phone: "+52 55 1000 0013", status: "activo", credits: 1545, owner: "Ana Torres", lastChange: "12/06/2026 11:18", notes: "Asignado a campana Outplacement Junio 2026. Representante legal: Administrador RH de la empresa." },
   { kind: "outplacement-employee", name: "Paola Castillo", email: "paola@exempleada-demo.mx", organization: "Grupo Industrial Norte", role: "Participante en seguimiento", phone: "+52 55 1000 0014", status: "invitado", credits: 1545, owner: "Ricardo Vega", lastChange: "12/06/2026 11:25", notes: "Pendiente aceptar invitacion de acceso a plataforma." },
   { kind: "internal-coach", name: "Sofia Rivera", email: "sofia@empleateya.mx", organization: "Coaching 1o1", role: "Coach ejecutivo", phone: "+52 55 1000 0005", status: "invitado", credits: 0, owner: "Leo Galvez", lastChange: "10/06/2026 13:02", notes: "Asignable a sesiones 1o1, NPS, notas y testimonios." },
@@ -613,9 +613,9 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
 
   const selectedUser = users.find((user) => user.kind === userKind && user.email === selectedEmail);
   const fixedEmpleateYaOrg = usesFixedEmpleateYaOrganization(userKind);
-  const unlimitedCredits = hasUnlimitedCredits(userKind);
   const defaultStatus = selectedUser?.status ?? t.statuses[0];
   const activeRole = selectedUser?.role ?? kind.roles[0];
+  const unlimitedCredits = hasUnlimitedCredits(userKind, activeRole);
   const activeCoachPlanKey = selectedUser?.permissions?.coachPlanKey ?? pendingPermissions?.coachPlanKey ?? coachPlanKey;
   const activePermissions = selectedUser?.permissions ?? pendingPermissions ?? defaultPermissionsFor(userKind, activeRole, activeCoachPlanKey);
 
@@ -631,12 +631,12 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     const nextRole = String(formData.get("role") || kind.roles[0]);
     const nextCoachPlanKey = String(formData.get("coachPlanKey") || coachPlanKey) as CoachPartnerPlanKey;
     const nextCoachPlan = coachPartnerPlans[nextCoachPlanKey];
-    const nextCredits = userKind === "coach-partner" ? (nextCoachPlan.unlimited ? 0 : calculateCoachPartnerPool(nextCoachPlan)) : unlimitedCredits ? 0 : Number(formData.get("credits") || 0);
     const roleChanged = selectedUser ? selectedUser.role !== nextRole : true;
     const planChanged = selectedUser?.permissions?.coachPlanKey !== nextCoachPlanKey;
     const cascadedPermissions = shouldCascadePermissionsForRole(userKind, roleChanged, planChanged)
       ? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey)
       : pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey);
+    const nextCredits = creditsForUserRole(userKind, nextRole, nextCoachPlan, cascadedPermissions, formData);
     const savedUser: DemoUser = {
       kind: userKind,
       name: String(formData.get("name") || "").trim() || "Usuario sin nombre",
@@ -781,7 +781,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
                       <Td>{user.organization}</Td>
                       <Td>{user.role}</Td>
                       <Td>{user.phone}</Td>
-                      <Td>{hasUnlimitedCredits(user.kind) ? t.unlimitedCredits : user.credits}</Td>
+                      <Td>{hasUnlimitedCredits(user.kind, user.role) ? t.unlimitedCredits : user.credits}</Td>
                       <Td><Pill>{user.status}</Pill></Td>
                       <Td>{user.owner}</Td>
                       <Td>{user.lastChange}</Td>
@@ -851,6 +851,14 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
                   {t.unlimitedCredits}
                   <small className="mt-1 block font-semibold text-emerald-700">{t.unlimitedCreditsHelp}</small>
                   <input type="hidden" name="credits" value="0" />
+                </div>
+              ) : userKind === "outplacement-rh" ? (
+                <div className="rounded-2xl border border-purple-200 bg-purple-50 px-4 py-3 text-sm font-black text-purple-900">
+                  {formatPlanNumber(calculateOutplacementRoleCredits(activeRole), language)}
+                  <small className="mt-1 block font-semibold text-purple-700">
+                    {language === "es" ? "Bolsa calculada: avatares asignados x 3. Los aprobadores sin consumo operativo quedan en 0." : "Calculated pool: assigned avatars x 3. Approvers without operational usage stay at 0."}
+                  </small>
+                  <input type="hidden" name="credits" value={calculateOutplacementRoleCredits(activeRole)} />
                 </div>
               ) : (
                 <Input name="credits" placeholder="0" type="number" defaultValue={selectedUser?.credits ?? (userKind === "online" ? onlineBaselineCredits : 0)} readOnly={userKind !== "online" || !canCurrentUserEditOnlineCredits} />
@@ -1160,7 +1168,7 @@ function PermissionsPanel({
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          {hasUnlimitedCredits(userKind) ? (
+          {hasUnlimitedCredits(userKind, userRole) ? (
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold leading-6 text-emerald-900">
               {t.unlimitedCredits}. {t.unlimitedCreditsHelp}
             </div>
@@ -1264,6 +1272,13 @@ function allowedAvatarsFor(userKind: AdminUserKind, userRole: string, coachPlanK
   }
   if (userKind === "coach-partner") return coachPartnerPlans[coachPlanKey].avatarIds;
   if (userKind === "internal-coach") return internalCoachAvatarsFor(userRole);
+  if (userKind === "outplacement-rh") return outplacementRhAvatarsFor(userRole);
+  return allAvatarIds;
+}
+
+function outplacementRhAvatarsFor(userRole: string) {
+  const role = normalizeRole(userRole);
+  if (role.includes("aprobador") || role.includes("approver")) return [];
   return allAvatarIds;
 }
 
@@ -1280,6 +1295,26 @@ function calculateCoachPartnerPool(plan: (typeof coachPartnerPlans)[CoachPartner
 function calculateCoachPartnerStudentCredits(plan: (typeof coachPartnerPlans)[CoachPartnerPlanKey]) {
   if (plan.unlimited) return Infinity;
   return plan.baseCreditsPerCycle * plan.studentCycles;
+}
+
+function creditsForUserRole(
+  userKind: AdminUserKind,
+  userRole: string,
+  coachPlan: (typeof coachPartnerPlans)[CoachPartnerPlanKey],
+  permissions: UserPermissions,
+  formData: FormData,
+) {
+  if (userKind === "coach-partner") return coachPlan.unlimited ? 0 : calculateCoachPartnerPool(coachPlan);
+  if (hasUnlimitedCredits(userKind, userRole)) return 0;
+  if (userKind === "outplacement-rh") return calculateOutplacementRoleCredits(userRole, permissions.avatarIds);
+  return Number(formData.get("credits") || 0);
+}
+
+function calculateOutplacementRoleCredits(userRole: string, avatarIds = outplacementRhAvatarsFor(userRole)) {
+  const role = normalizeRole(userRole);
+  if (role.includes("administrador rh") || role.includes("hr administrator")) return 0;
+  if (role.includes("aprobador") || role.includes("approver")) return 0;
+  return avatarIds.reduce((total, avatarId) => total + (skillRegistry[avatarId]?.baseCredits ?? 0), 0) * 3;
 }
 
 function formatPlanNumber(value: number, language: "es" | "en") {
@@ -1365,7 +1400,7 @@ function supportRoleMenuAllowed(userRole: string, href: string) {
   const role = normalizeRole(userRole);
   if (role.includes("supervisor delegado") || role.includes("temporary delegated")) return true;
   if (role.includes("cobranza") || role.includes("collections")) return ["/admin", "/admin/credits", "/admin/payments", "/admin/reports", "/admin/audit"].includes(href);
-  if (role.includes("outplacement")) return ["/admin", "/admin/users", "/admin/users/outplacement-employees", "/admin/organizations", "/admin/campaigns", "/admin/reports", "/admin/audit"].includes(href);
+  if (role.includes("outplacement")) return ["/admin", "/admin/users", "/admin/users/outplacement-employees", "/admin/organizations", "/admin/campaigns", "/admin/coaching", "/admin/reports", "/admin/audit"].includes(href);
   if (role.includes("coach partner")) return ["/admin", "/admin/users", "/admin/users/students", "/admin/organizations", "/admin/groups", "/admin/coaching", "/admin/permissions", "/admin/reports", "/admin/audit"].includes(href);
   return ["/admin", "/admin/users", "/admin/users/students", "/admin/users/outplacement-employees", "/admin/organizations", "/admin/permissions", "/admin/reports"].includes(href);
 }
@@ -1381,8 +1416,8 @@ function supportRoleUserSubmenuAllowed(userRole: string, href: string) {
 
 function outplacementCompanyMenuAllowed(userRole: string, href: string) {
   const role = normalizeRole(userRole);
-  const operationalHrefs = ["/admin/users", "/admin/users/outplacement-employees", "/admin/campaigns", "/admin/reports"];
-  if (role.includes("seguimiento") || role.includes("follow-up")) return ["/admin/users/outplacement-employees", "/admin/campaigns", "/admin/reports"].includes(href);
+  const operationalHrefs = ["/admin/users", "/admin/users/outplacement-employees", "/admin/campaigns", "/admin/coaching", "/admin/reports"];
+  if (role.includes("coach de outplacement") || role.includes("outplacement coach")) return ["/admin/users/outplacement-employees", "/admin/campaigns", "/admin/coaching", "/admin/reports"].includes(href);
   return operationalHrefs.includes(href);
 }
 
@@ -1398,8 +1433,9 @@ function usesFixedEmpleateYaOrganization(userKind: AdminUserKind) {
   return userKind === "online" || userKind === "super-admin-support" || userKind === "internal-coach";
 }
 
-function hasUnlimitedCredits(userKind: AdminUserKind) {
-  return userKind === "super-admin-support" || userKind === "internal-coach";
+function hasUnlimitedCredits(userKind: AdminUserKind, userRole = "") {
+  const role = normalizeRole(userRole);
+  return userKind === "super-admin-support" || userKind === "internal-coach" || (userKind === "outplacement-rh" && (role.includes("administrador rh") || role.includes("hr administrator")));
 }
 
 function usesCareerDataFields(userKind: AdminUserKind) {
@@ -1439,7 +1475,7 @@ function formatShortDate(value: string, language: "es" | "en") {
 
 function isDateLikeField(field: string) {
   const normalized = field.toLowerCase();
-  return normalized.includes("fecha") || normalized.includes("date");
+  return normalized.includes("fecha") || normalized.includes("date") || normalized.includes("vigencia") || normalized.includes("start") || normalized.includes("end");
 }
 
 function readStoredJson<T>(key: string): T | null {

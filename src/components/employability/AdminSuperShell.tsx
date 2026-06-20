@@ -66,7 +66,7 @@ const copy = {
     payments: "Pagos",
     reports: "Reportes",
     feedback: "Feedback",
-    coaching: "Trainee & Coaching",
+    coaching: "Cursos de Coaching & Outplacement",
     testimonials: "Testimonios",
     audit: "Bitacora",
     userSubsections: [
@@ -100,7 +100,7 @@ const copy = {
     payments: "Payments",
     reports: "Reports",
     feedback: "Feedback",
-    coaching: "Trainee & Coaching",
+    coaching: "Coaching & Outplacement Courses",
     testimonials: "Testimonials",
     audit: "Audit log",
     userSubsections: [
