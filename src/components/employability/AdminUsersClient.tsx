@@ -98,13 +98,13 @@ const kindConfig = {
       extraFields: ["Licencia minima 6 meses", "Fecha inicio licencia", "Clientes autorizados"],
     },
     "outplacement-rh": {
-      title: "Administrador RH y apoyos de outplacement",
-      description: "Usuarios de empresas cliente que administran campanas de outplacement y apoyos con rol operativo definido.",
-      profile: "Empresa outplacement",
+      title: "Outplacement",
+      description: "Administradores RH y apoyos de empresas cliente. Solo operan usuarios de outplacement, ex-empleados, campanas y reportes de su propia organizacion.",
+      profile: "Outplacement",
       organizationLabel: "Empresa cliente",
       organizationPlaceholder: "Ej. Empresa Demo Outplacement",
       roleLabel: "Rol en empresa",
-      roles: ["Administrador RH", "Apoyo administrativo RH", "Apoyo seguimiento outplacement", "Lectura ejecutiva", "Aprobador de campana"],
+      roles: ["Administrador RH", "Apoyo administrativo RH", "Apoyo seguimiento outplacement", "Aprobador de campana"],
       extraFields: ["Campana asignada", "Permiso para ver avance", "Puede aprobar participantes"],
     },
     student: {
@@ -170,13 +170,13 @@ const kindConfig = {
       extraFields: ["Minimum 6-month license", "License start date", "Authorized clients"],
     },
     "outplacement-rh": {
-      title: "HR admin and outplacement support",
-      description: "Company client users who manage outplacement campaigns and support roles with defined permissions.",
-      profile: "Outplacement company",
+      title: "Outplacement",
+      description: "HR admins and support users from client companies. They only manage outplacement users, former employees, campaigns, and reports for their own organization.",
+      profile: "Outplacement",
       organizationLabel: "Client company",
       organizationPlaceholder: "Example: Demo Outplacement Company",
       roleLabel: "Company role",
-      roles: ["HR Administrator", "HR administrative support", "Outplacement follow-up support", "Executive read-only", "Campaign approver"],
+      roles: ["HR Administrator", "HR administrative support", "Outplacement follow-up support", "Campaign approver"],
       extraFields: ["Assigned campaign", "Can view progress", "Can approve participants"],
     },
     student: {
@@ -1335,7 +1335,7 @@ function menuAllowedFor(userKind: AdminUserKind, userRole: string, href: string)
   if (userKind === "online") return false;
   if (userKind === "coach-partner") return ["/admin/users", "/admin/users/students", "/admin/groups", "/admin/reports", "/admin/coaching"].includes(href);
   if (userKind === "student") return false;
-  if (userKind === "outplacement-rh") return ["/admin/users", "/admin/users/outplacement-employees", "/admin/organizations", "/admin/campaigns", "/admin/reports", "/admin/coaching"].includes(href);
+  if (userKind === "outplacement-rh") return outplacementCompanyMenuAllowed(userRole, href);
   if (userKind === "outplacement-employee") return false;
   if (userKind === "internal-coach") return ["/admin/coaching", "/admin/groups", "/admin/users/students", "/admin/reports", "/admin/feedback"].includes(href);
   if (userKind === "super-admin-support") return supportRoleMenuAllowed(userRole, href);
@@ -1358,14 +1358,14 @@ function internalCoachAvatarsFor(userRole: string) {
 }
 
 function shouldCascadePermissionsForRole(userKind: AdminUserKind, roleChanged: boolean, planChanged: boolean) {
-  return (roleChanged || planChanged) && (userKind === "internal-coach" || userKind === "online" || userKind === "super-admin-support" || userKind === "coach-partner");
+  return (roleChanged || planChanged) && (userKind === "internal-coach" || userKind === "online" || userKind === "super-admin-support" || userKind === "coach-partner" || userKind === "outplacement-rh");
 }
 
 function supportRoleMenuAllowed(userRole: string, href: string) {
   const role = normalizeRole(userRole);
   if (role.includes("supervisor delegado") || role.includes("temporary delegated")) return true;
   if (role.includes("cobranza") || role.includes("collections")) return ["/admin", "/admin/credits", "/admin/payments", "/admin/reports", "/admin/audit"].includes(href);
-  if (role.includes("outplacement")) return ["/admin", "/admin/users", "/admin/users/outplacement-employees", "/admin/organizations", "/admin/campaigns", "/admin/coaching", "/admin/permissions", "/admin/reports", "/admin/audit"].includes(href);
+  if (role.includes("outplacement")) return ["/admin", "/admin/users", "/admin/users/outplacement-employees", "/admin/organizations", "/admin/campaigns", "/admin/reports", "/admin/audit"].includes(href);
   if (role.includes("coach partner")) return ["/admin", "/admin/users", "/admin/users/students", "/admin/organizations", "/admin/groups", "/admin/coaching", "/admin/permissions", "/admin/reports", "/admin/audit"].includes(href);
   return ["/admin", "/admin/users", "/admin/users/students", "/admin/users/outplacement-employees", "/admin/organizations", "/admin/permissions", "/admin/reports"].includes(href);
 }
@@ -1377,6 +1377,13 @@ function supportRoleUserSubmenuAllowed(userRole: string, href: string) {
   if (role.includes("outplacement")) return href === "/admin/users/outplacement-rh";
   if (role.includes("coach partner")) return href === "/admin/users/coach-partner";
   return ["/admin/users/online", "/admin/users/coach-partner", "/admin/users/outplacement-rh"].includes(href);
+}
+
+function outplacementCompanyMenuAllowed(userRole: string, href: string) {
+  const role = normalizeRole(userRole);
+  const operationalHrefs = ["/admin/users", "/admin/users/outplacement-employees", "/admin/campaigns", "/admin/reports"];
+  if (role.includes("seguimiento") || role.includes("follow-up")) return ["/admin/users/outplacement-employees", "/admin/campaigns", "/admin/reports"].includes(href);
+  return operationalHrefs.includes(href);
 }
 
 function normalizeRole(role: string) {

@@ -74,7 +74,7 @@ const copy = {
       ["Apoyos Super Admin", "/admin/users/super-admin-support"],
       ["Coach interno 1o1", "/admin/users/internal-coach"],
       ["Coach Partner", "/admin/users/coach-partner"],
-      ["Empresa outplacement", "/admin/users/outplacement-rh"],
+      ["Outplacement", "/admin/users/outplacement-rh"],
     ],
   },
   en: {
@@ -108,7 +108,7 @@ const copy = {
       ["Super Admin Support", "/admin/users/super-admin-support"],
       ["Internal 1:1 Coach", "/admin/users/internal-coach"],
       ["Coach Partner", "/admin/users/coach-partner"],
-      ["Outplacement company", "/admin/users/outplacement-rh"],
+      ["Outplacement", "/admin/users/outplacement-rh"],
     ],
   },
 } as const;
