@@ -236,7 +236,8 @@ const copy = {
     savedDataMessage: "Datos del usuario guardados en la tabla correspondiente.",
     permissionsAssignedMessage: "Permisos recalculados y asignados segun la especialidad seleccionada.",
     savedPermissionsMessage: "Permisos guardados. Regresaste a captura y mantenimiento del usuario.",
-    logicalDeleteMessage: "El usuario seleccionado paso a estado borrado_logico. No se elimino definitivamente.",
+    logicalDeleteMessage: "El usuario seleccionado paso a estado borrado lógico. No se elimino definitivamente.",
+    protectedHrAdminMessage: "No se puede borrar logicamente al Administrador RH principal mientras no exista otro Administrador RH activo para esta organizacion. Solo Super Admin puede hacer este relevo.",
     creditAdjustmentMessage: "Movimiento manual de creditos registrado en bitacora.",
     balanceEmailMessage: "Balance preparado para enviarse al correo del cliente con PDF adjunto.",
     balanceTitle: "Estado de cuenta de creditos",
@@ -351,6 +352,7 @@ const copy = {
     permissionsAssignedMessage: "Permissions were recalculated and assigned according to the selected specialty.",
     savedPermissionsMessage: "Permissions saved. You are back in user capture and maintenance.",
     logicalDeleteMessage: "The selected user was moved to logical_delete. It was not permanently deleted.",
+    protectedHrAdminMessage: "The main HR Administrator cannot be logically deleted until another active HR Administrator exists for this organization. Only Super Admin can perform this handoff.",
     creditAdjustmentMessage: "Manual credit movement recorded in the audit log.",
     balanceEmailMessage: "Balance prepared to be emailed to the client with the PDF attached.",
     balanceTitle: "Credit statement",
@@ -644,7 +646,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     const cascadedPermissions = shouldCascadePermissionsForRole(userKind, roleChanged, planChanged)
       ? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey)
       : pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey);
-    const nextCredits = creditsForUserRole(userKind, nextRole, nextCoachPlan, cascadedPermissions, formData);
+    const nextCredits = creditsForUserRole(userKind, nextRole, nextCoachPlan, formData);
     const savedUser: DemoUser = {
       kind: userKind,
       name: String(formData.get("name") || "").trim() || "Usuario sin nombre",
@@ -702,6 +704,10 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
 
   function handleLogicalDelete() {
     if (!selectedUser) return;
+    if (isProtectedLastHrAdmin(selectedUser, users)) {
+      setNotice(t.protectedHrAdminMessage);
+      return;
+    }
     setUsers((currentUsers) => currentUsers.map((user) => (user.email === selectedUser.email ? { ...user, status: "borrado_logico", lastChange: new Date().toLocaleString(language === "es" ? "es-MX" : "en-US", { dateStyle: "short", timeStyle: "short" }) } : user)));
     setNotice(t.logicalDeleteMessage);
   }
@@ -768,7 +774,12 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
                   <Input value={query} onChange={(event) => setQuery(event.target.value)} className="pl-10" placeholder={t.searchPlaceholder} />
                 </div>
               </div>
-              <Field label={t.status}><Select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">{t.all}</option>{t.statuses.map((item) => <option key={item}>{item}</option>)}</Select></Field>
+              <Field label={t.status}>
+                <Select value={status} onChange={(event) => setStatus(event.target.value)}>
+                  <option value="all">{t.all}</option>
+                  {t.statuses.map((item) => <option key={item} value={item}>{statusLabel(item, language)}</option>)}
+                </Select>
+              </Field>
             </div>
           </section>
 
@@ -792,7 +803,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
                       <Td>{user.role}</Td>
                       <Td>{user.phone}</Td>
                       <Td>{hasUnlimitedCredits(user.kind, user.role) ? t.unlimitedCredits : user.credits}</Td>
-                      <Td><Pill>{user.status}</Pill></Td>
+                      <Td><Pill>{statusLabel(user.status, language)}</Pill></Td>
                       <Td>{user.owner}</Td>
                       <Td>{user.lastChange}</Td>
                       <Td>{user.notes}</Td>
@@ -831,7 +842,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             <Field label={t.phone}><Input name="phone" placeholder="+52 55 0000 0000" defaultValue={selectedUser?.phone ?? ""} /></Field>
           </FormGroup>
           <FormGroup title={kind.organizationLabel} icon={<Building2 size={18} />}>
-            <Field label={t.organization}>{fixedEmpleateYaOrg ? <Input name="organization" value={empleateYaOrganization} readOnly /> : usesOrganizationCatalog(userKind) ? <Select name="organization" defaultValue={selectedUser?.organization}>{organizationCatalog[userKind].map((item) => <option key={item}>{item}</option>)}</Select> : <Input name="organization" placeholder={kind.organizationPlaceholder} defaultValue={selectedUser?.organization ?? ""} />}</Field>
+            <Field label={t.organization}>{organizationFieldForUserKind(userKind, selectedUser, fixedEmpleateYaOrg, kind.organizationPlaceholder)}</Field>
             {usesOrganizationCatalog(userKind) ? <p className="text-xs font-semibold leading-5 text-slate-500">{t.orgHelp}</p> : null}
             <Field label={kind.roleLabel}>
               <Select
@@ -860,7 +871,11 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             <p className="text-xs font-semibold leading-5 text-slate-500">{t.ownerHelp}</p>
           </FormGroup>
           <FormGroup title={t.extra} icon={<ShieldCheck size={18} />}>
-            <Field label={t.statusLabel}><Select name="status" defaultValue={defaultStatus}>{t.statuses.map((item) => <option key={item}>{item}</option>)}</Select></Field>
+            <Field label={t.statusLabel}>
+              <Select name="status" defaultValue={defaultStatus}>
+                {t.statuses.map((item) => <option key={item} value={item}>{statusLabel(item, language)}</option>)}
+              </Select>
+            </Field>
             <Field label={t.credits}>
               {userKind === "coach-partner" ? (
                 <div className="rounded-2xl border border-purple-200 bg-purple-50 px-4 py-3 text-sm font-black text-purple-900">
@@ -876,18 +891,18 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
                 </div>
               ) : userKind === "outplacement-rh" ? (
                 <div className="rounded-2xl border border-purple-200 bg-purple-50 px-4 py-3 text-sm font-black text-purple-900">
-                  {formatPlanNumber(calculateOutplacementRoleCredits(activeRole), language)}
+                  {formatPlanNumber(outplacementCurrentCredits(selectedUser, activeRole), language)}
                   <small className="mt-1 block font-semibold text-purple-700">
-                    {language === "es" ? "Bolsa calculada: avatares asignados x 3. Los aprobadores sin consumo operativo quedan en 0." : "Calculated pool: assigned avatars x 3. Approvers without operational usage stay at 0."}
+                    {language === "es" ? "Saldo operativo vigente. Para usuarios nuevos se propone la bolsa mensual del rol; despues se conserva el balance actualizado por consumo." : "Current operating balance. New users get the role monthly pool; after that, the consumed balance is preserved."}
                   </small>
-                  <input type="hidden" name="credits" value={calculateOutplacementRoleCredits(activeRole)} />
+                  <input type="hidden" name="credits" value={outplacementCurrentCredits(selectedUser, activeRole)} />
                 </div>
               ) : (
                 <Input name="credits" placeholder="0" type="number" defaultValue={selectedUser?.credits ?? (userKind === "online" ? onlineBaselineCredits : 0)} readOnly={userKind !== "online" || !canCurrentUserEditOnlineCredits} />
               )}
             </Field>
             {userKind === "online" ? <p className="text-xs font-semibold leading-5 text-slate-500">{t.creditsHelp}</p> : null}
-            <ExtraFields fields={kind.extraFields} selectedUser={selectedUser} />
+            <ExtraFields fields={kind.extraFields} selectedUser={selectedUser} userRole={activeRole} />
             {userKind === "internal-coach" ? <InternalCoachAvailabilityPanel user={selectedUser} language={language} /> : null}
             {userKind === "super-admin-support" ? (
               <p className="rounded-2xl border border-purple-100 bg-purple-50 px-4 py-3 text-xs font-semibold leading-5 text-purple-900">
@@ -1144,7 +1159,7 @@ function PartnerPlanSummary({ plan, language }: { plan: (typeof coachPartnerPlan
   );
 }
 
-function ExtraFields({ fields, selectedUser }: { fields: readonly string[]; selectedUser?: DemoUser }) {
+function ExtraFields({ fields, selectedUser, userRole }: { fields: readonly string[]; selectedUser?: DemoUser; userRole: string }) {
   return (
     <>
       {fields.map((field) => {
@@ -1153,7 +1168,7 @@ function ExtraFields({ fields, selectedUser }: { fields: readonly string[]; sele
         if (isBooleanExtraField(field)) {
           return (
             <label key={field} className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700">
-              <input name={`extra-${key}`} type="checkbox" className="mt-1" defaultChecked={savedValue === true || savedValue === "true"} />
+              <input name={`extra-${key}`} type="checkbox" className="mt-1" defaultChecked={savedValue === undefined ? isDefaultCampaignApproverRole(userRole) : savedValue === true || savedValue === "true"} />
               <span>{field}</span>
             </label>
           );
@@ -1319,9 +1334,7 @@ function allowedAvatarsFor(userKind: AdminUserKind, userRole: string, coachPlanK
   return allAvatarIds;
 }
 
-function outplacementRhAvatarsFor(userRole: string) {
-  const role = normalizeRole(userRole);
-  if (role.includes("aprobador") || role.includes("approver")) return [];
+function outplacementRhAvatarsFor(_userRole: string) {
   return allAvatarIds;
 }
 
@@ -1344,25 +1357,70 @@ function creditsForUserRole(
   userKind: AdminUserKind,
   userRole: string,
   coachPlan: (typeof coachPartnerPlans)[CoachPartnerPlanKey],
-  permissions: UserPermissions,
   formData: FormData,
 ) {
   if (userKind === "coach-partner") return coachPlan.unlimited ? 0 : calculateCoachPartnerPool(coachPlan);
   if (hasUnlimitedCredits(userKind, userRole)) return 0;
-  if (userKind === "outplacement-rh") return calculateOutplacementRoleCredits(userRole, permissions.avatarIds);
+  if (userKind === "outplacement-rh") return Number(formData.get("credits") || calculateOutplacementRoleCredits(userRole));
   return Number(formData.get("credits") || 0);
 }
 
 function calculateOutplacementRoleCredits(userRole: string, avatarIds = outplacementRhAvatarsFor(userRole)) {
-  const role = normalizeRole(userRole);
-  if (role.includes("administrador rh") || role.includes("hr administrator")) return 0;
-  if (role.includes("aprobador") || role.includes("approver")) return 0;
   return avatarIds.reduce((total, avatarId) => total + (skillRegistry[avatarId]?.baseCredits ?? 0), 0) * 3;
+}
+
+function outplacementCurrentCredits(selectedUser: DemoUser | undefined, userRole: string) {
+  if (selectedUser) return selectedUser.credits;
+  return calculateOutplacementRoleCredits(userRole);
 }
 
 function formatPlanNumber(value: number, language: "es" | "en") {
   if (!Number.isFinite(value)) return language === "es" ? "Ilimitado" : "Unlimited";
   return value.toLocaleString(language === "es" ? "es-MX" : "en-US");
+}
+
+function organizationFieldForUserKind(userKind: AdminUserKind, selectedUser: DemoUser | undefined, fixedEmpleateYaOrg: boolean, placeholder: string) {
+  if (fixedEmpleateYaOrg) return <Input name="organization" value={empleateYaOrganization} readOnly />;
+  if (userKind === "outplacement-rh") {
+    const value = selectedUser?.organization ?? organizationCatalog["outplacement-rh"][0];
+    return (
+      <>
+        <Input value={value} readOnly />
+        <input type="hidden" name="organization" value={value} />
+      </>
+    );
+  }
+  if (usesOrganizationCatalog(userKind)) return <Select name="organization" defaultValue={selectedUser?.organization}>{organizationCatalog[userKind].map((item) => <option key={item}>{item}</option>)}</Select>;
+  return <Input name="organization" placeholder={placeholder} defaultValue={selectedUser?.organization ?? ""} />;
+}
+
+function statusLabel(status: string, language: "es" | "en") {
+  if (status === "borrado_logico") return "borrado lógico";
+  if (status === "logical_delete") return "logical delete";
+  return status;
+}
+
+function isDefaultCampaignApproverRole(userRole: string) {
+  const role = normalizeRole(userRole);
+  return role.includes("administrador rh") || role.includes("hr administrator") || role.includes("aprobador de campa") || role.includes("campaign approver");
+}
+
+function isProtectedLastHrAdmin(selectedUser: DemoUser, users: DemoUser[]) {
+  if (selectedUser.kind !== "outplacement-rh") return false;
+  if (!isHrAdminRole(selectedUser.role)) return false;
+  return users.filter((user) => (
+    user.kind === "outplacement-rh"
+    && user.organization === selectedUser.organization
+    && user.email !== selectedUser.email
+    && user.status !== "borrado_logico"
+    && user.status !== "logical_delete"
+    && isHrAdminRole(user.role)
+  )).length === 0;
+}
+
+function isHrAdminRole(userRole: string) {
+  const role = normalizeRole(userRole);
+  return role.includes("administrador rh") || role.includes("hr administrator");
 }
 
 function buildBalanceMovements(user: DemoUser, creditAuditEvents: CreditAuditEvent[], language: "es" | "en"): BalanceMovement[] {
@@ -1476,9 +1534,8 @@ function usesFixedEmpleateYaOrganization(userKind: AdminUserKind) {
   return userKind === "online" || userKind === "super-admin-support" || userKind === "internal-coach";
 }
 
-function hasUnlimitedCredits(userKind: AdminUserKind, userRole = "") {
-  const role = normalizeRole(userRole);
-  return userKind === "super-admin-support" || userKind === "internal-coach" || (userKind === "outplacement-rh" && (role.includes("administrador rh") || role.includes("hr administrator")));
+function hasUnlimitedCredits(userKind: AdminUserKind, _userRole = "") {
+  return userKind === "super-admin-support" || userKind === "internal-coach";
 }
 
 function usesCareerDataFields(userKind: AdminUserKind) {
