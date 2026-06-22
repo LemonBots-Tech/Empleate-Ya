@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpenCheck, CircleDollarSign, ClipboardCheck, FolderKanban, ListChecks, Settings2, UsersRound, Building2 } from "lucide-react";
+import { BookOpenCheck, Building2, CircleDollarSign, ClipboardCheck, FileBarChart, FolderKanban, ListChecks, UsersRound } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { cn } from "@/lib/utils/cn";
 
@@ -12,7 +12,7 @@ const tabs = [
   { href: "/admin/campaigns", key: "campaigns", icon: FolderKanban },
   { href: "/admin/groups", key: "groups", icon: ClipboardCheck },
   { href: "/admin/coaching", key: "coaching", icon: BookOpenCheck },
-  { href: "/admin/catalogs", key: "catalogs", icon: Settings2 },
+  { href: "/admin/reports", key: "reports", icon: FileBarChart },
   { href: "/admin/credits", key: "credits", icon: CircleDollarSign },
 ] as const;
 
@@ -21,11 +21,11 @@ const copy = {
     title: "Centro de control",
     users: "Usuarios",
     organizations: "Organizaciones",
-    campaigns: "Campañas",
+    campaigns: "Campanas",
     groups: "Grupos",
     coaching: "Trainee & Coaching",
-    catalogs: "Catálogos",
-    credits: "Créditos",
+    reports: "Reportes",
+    credits: "Creditos",
   },
   en: {
     title: "Control center",
@@ -34,7 +34,7 @@ const copy = {
     campaigns: "Campaigns",
     groups: "Groups",
     coaching: "Trainee & Coaching",
-    catalogs: "Catalogs",
+    reports: "Reports",
     credits: "Credits",
   },
 } as const;

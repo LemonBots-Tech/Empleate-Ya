@@ -13,9 +13,7 @@ import {
   CircleDollarSign,
   FileBarChart,
   FolderKanban,
-  KeyRound,
   MessageSquareQuote,
-  Settings2,
   ShieldCheck,
   UsersRound,
 } from "lucide-react";
@@ -31,14 +29,12 @@ export const adminSections = [
   { href: "/admin/campaigns", key: "campaigns", icon: FolderKanban, group: "programs" },
   { href: "/admin/users/students", key: "students", icon: UsersRound, group: "programs" },
   { href: "/admin/users/outplacement-employees", key: "outplacementEmployees", icon: UsersRound, group: "programs" },
+  { href: "/admin/reports", key: "reports", icon: FileBarChart, group: "programs" },
   { href: "/admin/avatars", key: "avatars", icon: Bot, group: "configuration" },
-  { href: "/admin/catalogs", key: "catalogs", icon: Settings2, group: "configuration" },
-  { href: "/admin/permissions", key: "permissions", icon: KeyRound, group: "configuration" },
+  { href: "/admin/feedback", key: "feedback", icon: MessageSquareQuote, group: "configuration" },
+  { href: "/admin/testimonials", key: "testimonials", icon: MessageSquareQuote, group: "configuration" },
   { href: "/admin/credits", key: "credits", icon: CircleDollarSign, group: "money" },
   { href: "/admin/payments", key: "payments", icon: BadgeDollarSign, group: "money" },
-  { href: "/admin/reports", key: "reports", icon: FileBarChart, group: "operations" },
-  { href: "/admin/feedback", key: "feedback", icon: MessageSquareQuote, group: "operations" },
-  { href: "/admin/testimonials", key: "testimonials", icon: MessageSquareQuote, group: "operations" },
   { href: "/admin/audit", key: "audit", icon: Activity, group: "security" },
 ] as const;
 
@@ -50,7 +46,6 @@ const copy = {
     programs: "Programas de capacitacion / outplacement",
     configuration: "Configuracion",
     money: "Creditos y pagos",
-    operations: "Seguimiento",
     security: "Seguridad",
     overview: "Resumen",
     users: "Usuarios",
@@ -60,8 +55,6 @@ const copy = {
     students: "Alumnos",
     outplacementEmployees: "Ex-empleados outplacement",
     avatars: "Avatares",
-    catalogs: "Catalogos",
-    permissions: "Permisos",
     credits: "Creditos",
     payments: "Pagos",
     reports: "Reportes",
@@ -84,7 +77,6 @@ const copy = {
     programs: "Training / outplacement programs",
     configuration: "Configuration",
     money: "Credits and payments",
-    operations: "Follow-up",
     security: "Security",
     overview: "Overview",
     users: "Users",
@@ -94,8 +86,6 @@ const copy = {
     students: "Students",
     outplacementEmployees: "Outplacement former employees",
     avatars: "Avatars",
-    catalogs: "Catalogs",
-    permissions: "Permissions",
     credits: "Credits",
     payments: "Payments",
     reports: "Reports",
@@ -113,7 +103,7 @@ const copy = {
   },
 } as const;
 
-const groups = ["core", "programs", "configuration", "money", "operations", "security"] as const;
+const groups = ["core", "programs", "configuration", "money", "security"] as const;
 const programUserHrefs = ["/admin/users/students", "/admin/users/outplacement-employees"] as const;
 
 export function AdminSuperShell({ children }: { children: ReactNode }) {
