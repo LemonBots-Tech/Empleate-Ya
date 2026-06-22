@@ -63,7 +63,7 @@ const agentGroups = [
 
 export function EmployabilityShell({ children }: { children: ReactNode }) {
   const { language, setLanguage } = useLanguage();
-  const [role, setRole] = useState<ShellRole>("visitor");
+  const [role, setRole] = useState<ShellRole>("super_admin");
 
   useEffect(() => {
     let cancelled = false;
@@ -80,7 +80,7 @@ export function EmployabilityShell({ children }: { children: ReactNode }) {
         const data = await response.json() as { user?: PublicUserLike | null };
         if (!cancelled) setRole(roleFromUser(data.user));
       } catch {
-        if (!cancelled) setRole("visitor");
+        if (!cancelled) setRole("super_admin");
       }
     }
 
@@ -180,7 +180,9 @@ function AgentGroupsMenu({ language }: { language: "es" | "en" }) {
 }
 
 function roleFromUser(user: PublicUserLike | null | undefined): ShellRole {
-  if (!user) return "visitor";
+  // Temporary development default: until Supabase login and business roles are active,
+  // the working shell behaves as Super Admin so all admin flows remain testable.
+  if (!user) return "super_admin";
   const rawRole = `${user.role ?? ""} ${user.userType ?? ""} ${user.profileType ?? ""}`.toLowerCase();
   const email = user.email?.toLowerCase() ?? "";
 
