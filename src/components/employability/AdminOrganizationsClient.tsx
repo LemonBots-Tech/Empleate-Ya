@@ -27,6 +27,7 @@ type OrganizationRecord = {
   licenseStart: string;
   licenseEnd: string;
   contractTermMonths: number;
+  contractValue: number;
   gracePeriodDays: number;
   graceUntil: string;
   licenseVersion: number;
@@ -54,7 +55,7 @@ const copy = {
   es: {
     eyebrow: "Super Admin",
     title: "Organizaciones",
-    description: "Administra organizaciones externas: empresas que contratan outplacement y empresas/franquicias Coach Partner.",
+    description: "Administra organizaciones externas: empresas que contratan Outplacement y Coach Partner.",
     rule: "Regla base: Empleate YA no se captura aqui. Los usuarios internos, online, apoyos Super Admin y coaches internos tienen Empleate YA por default en su pantalla de usuario. Primero crea la organizacion externa y despues sus administradores, apoyos, alumnos o ex-empleados.",
     filters: "Filtros",
     search: "Buscar",
@@ -84,14 +85,14 @@ const copy = {
     renewalBlocked: "No se puede renovar: la licencia seleccionada sigue vigente o dentro del periodo de gracia.",
     renewalDeleted: "Renovacion marcada como cancelada por Super Admin y registrada en bitacora.",
     graceExtended: "Periodo de gracia extendido por Super Admin y registrado en bitacora.",
-    deleted: "La organizacion paso a estado borrado_logico. No fue eliminada definitivamente.",
+    deleted: "La organizacion paso a estado borrado lógico. No fue eliminada definitivamente.",
     identity: "Identidad",
     commercialName: "Nombre comercial",
     legalName: "Razon social",
     taxId: "RFC / Tax ID",
     contact: "Contacto principal",
-    legalRepresentative: "Representante legal / responsable de cuenta",
-    legalRepresentativeHelp: "Coach Partner: Coach Partner principal. Outplacement: Administrador RH creado para esa empresa.",
+    legalRepresentative: "Representante legal",
+    legalRepresentativeHelp: "Nombre de la persona que firma o representa legalmente el contrato. No tiene que ser usuario del sistema.",
     contactName: "Nombre contacto",
     contactEmail: "Correo contacto",
     contactPhone: "Telefono contacto",
@@ -105,7 +106,10 @@ const copy = {
     licenseStatus: "Estatus licencia",
     plan: "Plan Coach Partner",
     outplacementService: "Servicio outplacement",
-    planHelp: "Los planes solo aplican a Coach Partner. En outplacement se registra el servicio contratado, campanas autorizadas y ex-empleados.",
+    planHelp: "Los planes solo aplican a Coach Partner. En Outplacement se registra el servicio contratado; los creditos son variables segun campana, agentes y duracion.",
+    serviceDuration: "Duracion del servicio",
+    contractValue: "Valor del contrato",
+    contractValueHelp: "Monto comercial capturado para tener visible cuanto vale este cliente.",
     licenseStart: "Inicio licencia",
     licenseEnd: "Fin licencia",
     contractTerm: "Duracion del contrato",
@@ -114,9 +118,9 @@ const copy = {
     licenseVersion: "Version licencia",
     groups: "Grupos mensuales",
     students: "Alumnos por grupo",
-    campaigns: "Campanas outplacement",
+    campaigns: "Campañas de outplacement",
     credits: "Creditos del contrato",
-    creditsHelp: "Coach Partner: se calculan automaticamente por plan. Outplacement: se definen por campana o contrato.",
+    creditsHelp: "Coach Partner: se calculan automaticamente por plan. Outplacement: variable dependiendo de la campana que se cree.",
     capacity: "Capacidad",
     studentCredits: "Creditos por alumno",
     maxStudents: "Alumnos maximos",
@@ -124,17 +128,17 @@ const copy = {
     auditEmpty: "Aun no hay movimientos de licencia en esta sesion.",
     internalOwner: "Responsable interno",
     notes: "Notas internas",
-    columns: ["Seleccion", "Organizacion", "Tipo", "Representante", "Contacto", "Ubicacion", "Licencia vigente", "Plan", "Creditos", "Capacidad", "Responsable", "Estado", "Ultimo cambio"],
+    columns: ["Seleccion", "Organizacion", "Tipo", "Representante", "Contacto", "Ubicacion", "Licencia vigente", "Plan", "Valor contrato", "Creditos", "Capacidad", "Responsable", "Estado", "Ultimo cambio"],
     types: {
       coach_partner: "Coach Partner",
-      outplacement_company: "Empresa outplacement",
+      outplacement_company: "Outplacement",
     },
     statuses: ["activo", "pendiente", "bloqueado", "borrado_logico"],
   },
   en: {
     eyebrow: "Super Admin",
     title: "Organizations",
-    description: "Manage external organizations: companies hiring outplacement and Coach Partner companies/franchises.",
+    description: "Manage external organizations: companies hiring Outplacement and Coach Partner.",
     rule: "Base rule: Empleate YA is not captured here. Internal users, online users, Super Admin support users, and internal coaches get Empleate YA by default in their user screen. Create the external organization first, then its admins, support users, students, or former employees.",
     filters: "Filters",
     search: "Search",
@@ -170,8 +174,8 @@ const copy = {
     legalName: "Legal name",
     taxId: "Tax ID",
     contact: "Main contact",
-    legalRepresentative: "Legal representative / account owner",
-    legalRepresentativeHelp: "Coach Partner: main Coach Partner. Outplacement: HR Administrator created for that company.",
+    legalRepresentative: "Legal representative",
+    legalRepresentativeHelp: "Name of the person who signs or legally represents the contract. This person does not need to be a system user.",
     contactName: "Contact name",
     contactEmail: "Contact email",
     contactPhone: "Contact phone",
@@ -185,7 +189,10 @@ const copy = {
     licenseStatus: "License status",
     plan: "Coach Partner plan",
     outplacementService: "Outplacement service",
-    planHelp: "Plans apply only to Coach Partner. For outplacement, register the contracted service, authorized campaigns, and former employees.",
+    planHelp: "Plans apply only to Coach Partner. For Outplacement, register the contracted service; credits are variable by campaign, agents, and duration.",
+    serviceDuration: "Service duration",
+    contractValue: "Contract value",
+    contractValueHelp: "Commercial amount captured to keep the client value visible.",
     licenseStart: "License start",
     licenseEnd: "License end",
     contractTerm: "Contract duration",
@@ -196,7 +203,7 @@ const copy = {
     students: "Students per group",
     campaigns: "Outplacement campaigns",
     credits: "Contract credits",
-    creditsHelp: "Coach Partner: calculated automatically by plan. Outplacement: defined by campaign or contract.",
+    creditsHelp: "Coach Partner: calculated automatically by plan. Outplacement: variable depending on the campaign created.",
     capacity: "Capacity",
     studentCredits: "Student credits",
     maxStudents: "Maximum students",
@@ -204,20 +211,26 @@ const copy = {
     auditEmpty: "There are no license movements in this session yet.",
     internalOwner: "Internal owner",
     notes: "Internal notes",
-    columns: ["Select", "Organization", "Type", "Representative", "Contact", "Location", "Current license", "Plan", "Credits", "Capacity", "Owner", "Status", "Last change"],
+    columns: ["Select", "Organization", "Type", "Representative", "Contact", "Location", "Current license", "Plan", "Contract value", "Credits", "Capacity", "Owner", "Status", "Last change"],
     types: {
       coach_partner: "Coach Partner",
-      outplacement_company: "Outplacement company",
+      outplacement_company: "Outplacement",
     },
     statuses: ["active", "pending", "blocked", "logical_delete"],
   },
 } as const;
 
 const internalOwners = ["Leo Galvez - Super Admin", "Valeria Nunez - Apoyo administrativo", "Ricardo Vega - Operativo outplacement", "Daniela Ponce - Apoyo cobranza"] as const;
-const legalRepresentatives = ["Leo Galvez - Super Admin", "Mariana Soto - Coach Partner principal", "Ana Torres - Administrador RH", "Sofia Rivera - Coach interno 1o1"] as const;
 const contractTermOptions = [3, 6, 9, 12, 18, 24] as const;
 const coachPartnerPlans = ["Coach Starter", "Coach Pro", "Coach Business"] as const;
-const outplacementServices = ["Outplacement por campana", "Outplacement anual + campanas", "Outplacement ejecutivo", "Outplacement masivo"] as const;
+const statusOptions = ["activo", "pendiente", "bloqueado", "borrado_logico"] as const;
+const outplacementServices = ["Salida digna", "Recolocacion Pyme 60", "Recolocacion profesional 90", "Outplacement ejecutivo Pyme"] as const;
+const outplacementServiceRules = {
+  "Salida digna": { days: 28, durationEs: "4 semanas", durationEn: "4 weeks" },
+  "Recolocacion Pyme 60": { days: 60, durationEs: "60 dias", durationEn: "60 days" },
+  "Recolocacion profesional 90": { days: 90, durationEs: "90 dias", durationEn: "90 days" },
+  "Outplacement ejecutivo Pyme": { days: 90, durationEs: "3 meses", durationEn: "3 months" },
+} as const;
 const coachPartnerPlanRules = {
   "Coach Starter": { groups: 4, studentsPerGroup: 5, baseCreditsPerCycle: 1890, cycles: 3, studentCycles: 2, unlimited: false },
   "Coach Pro": { groups: 12, studentsPerGroup: 5, baseCreditsPerCycle: 2300, cycles: 3, studentCycles: 2, unlimited: false },
@@ -244,6 +257,7 @@ const initialOrganizations: OrganizationRecord[] = [
     licenseStart: "2026-06-01",
     licenseEnd: "2026-12-01",
     contractTermMonths: 6,
+    contractValue: 90000,
     gracePeriodDays: 0,
     graceUntil: "",
     licenseVersion: 1,
@@ -262,7 +276,7 @@ const initialOrganizations: OrganizationRecord[] = [
     legalName: "Empresa Demo Outplacement S.A. de C.V.",
     taxId: "EDO260601CD2",
     status: "activo",
-    legalRepresentative: "Ana Torres - Administrador RH",
+    legalRepresentative: "Ana Torres",
     contactName: "Ana Torres",
     contactEmail: "ana@empresa-demo.mx",
     contactPhone: "+52 55 1000 0004",
@@ -270,10 +284,11 @@ const initialOrganizations: OrganizationRecord[] = [
     state: "Jalisco",
     city: "Guadalajara",
     address: "Oficinas corporativas",
-    plan: "Outplacement anual + campanas",
+    plan: "Recolocacion profesional 90",
     licenseStart: "2026-06-01",
-    licenseEnd: "2027-06-01",
-    contractTermMonths: 12,
+    licenseEnd: "2026-08-30",
+    contractTermMonths: 3,
+    contractValue: 180000,
     gracePeriodDays: 15,
     graceUntil: "2026-06-15",
     licenseVersion: 1,
@@ -335,16 +350,17 @@ export function AdminOrganizationsClient() {
     const id = selectedOrganization?.id ?? `org-${Date.now()}`;
     const type = String(formData.get("type") || "coach_partner") as OrganizationType;
     const plan = String(formData.get("plan") || "").trim();
-    const calculatedCredits = type === "coach_partner" ? calculateCoachPartnerOrganizationCredits(plan) : Number(formData.get("credits") || 0);
+    const calculatedCredits = type === "coach_partner" ? calculateCoachPartnerOrganizationCredits(plan) : 0;
     const calculatedCapacity = type === "coach_partner" ? capacityForCoachPartnerPlan(plan) : null;
+    const contractTermMonths = type === "coach_partner" ? Number(formData.get("contractTermMonths") || 6) : outplacementServiceMonths(plan);
     const saved: OrganizationRecord = {
       id,
       type,
       name: String(formData.get("name") || "").trim() || "Organizacion sin nombre",
       legalName: String(formData.get("legalName") || "").trim(),
       taxId: String(formData.get("taxId") || "").trim(),
-      status: String(formData.get("status") || t.statuses[0]),
-      legalRepresentative: String(formData.get("legalRepresentative") || legalRepresentatives[0]),
+      status: String(formData.get("status") || "activo"),
+      legalRepresentative: String(formData.get("legalRepresentative") || "").trim(),
       contactName: String(formData.get("contactName") || "").trim(),
       contactEmail: String(formData.get("contactEmail") || "").trim(),
       contactPhone: String(formData.get("contactPhone") || "").trim(),
@@ -355,14 +371,15 @@ export function AdminOrganizationsClient() {
       plan,
       licenseStart: String(formData.get("licenseStart") || ""),
       licenseEnd: String(formData.get("licenseEnd") || ""),
-      contractTermMonths: Number(formData.get("contractTermMonths") || 6),
+      contractTermMonths,
+      contractValue: Number(formData.get("contractValue") || 0),
       gracePeriodDays: Number(formData.get("gracePeriodDays") || 0),
       graceUntil: String(formData.get("graceUntil") || ""),
       licenseVersion: Number(formData.get("licenseVersion") || selectedOrganization?.licenseVersion || 1),
       credits: calculatedCredits,
       monthlyGroups: calculatedCapacity ? calculatedCapacity.groups : Number(formData.get("monthlyGroups") || 0),
       studentsPerGroup: calculatedCapacity ? calculatedCapacity.studentsPerGroup : Number(formData.get("studentsPerGroup") || 0),
-      outplacementCampaigns: Number(formData.get("outplacementCampaigns") || 0),
+      outplacementCampaigns: Number(formData.get("outplacementCampaigns") || selectedOrganization?.outplacementCampaigns || 0),
       internalOwner: String(formData.get("internalOwner") || internalOwners[0]),
       notes: String(formData.get("notes") || "").trim(),
       lastChange: new Date().toLocaleString(language === "es" ? "es-MX" : "en-US", { dateStyle: "short", timeStyle: "short" }),
@@ -485,7 +502,7 @@ export function AdminOrganizationsClient() {
               <Field label={t.status}>
                 <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
                   <option value="all">{t.all}</option>
-                  {t.statuses.map((status) => <option key={status}>{status}</option>)}
+                  {statusOptions.map((status) => <option key={status} value={status}>{statusLabel(status, language)}</option>)}
                 </Select>
               </Field>
             </div>
@@ -513,11 +530,12 @@ export function AdminOrganizationsClient() {
                         <span className="block text-xs text-slate-500">{organization.licenseStart || "-"} - {organization.licenseEnd || "-"}</span>
                         <span className="mt-1 inline-block"><Pill>{getLicenseState(organization)}</Pill></span>
                       </Td>
-                      <Td>{organization.plan}<span className="block text-xs text-slate-500">{organization.contractTermMonths} meses</span></Td>
-                      <Td>{formatCredits(organization.credits, language)}</Td>
-                      <Td>{organization.type === "coach_partner" ? coachPartnerCapacityLabel(organization.plan, language) : `${organization.outplacementCampaigns} campanas`}</Td>
+                      <Td>{organization.plan}<span className="block text-xs text-slate-500">{organization.type === "outplacement_company" ? outplacementServiceDurationLabel(organization.plan, language) : contractMonthsLabel(organization.contractTermMonths, language)}</span></Td>
+                      <Td>{formatCurrency(organization.contractValue, language)}</Td>
+                      <Td>{contractCreditsLabel(organization, language)}</Td>
+                      <Td>{organization.type === "coach_partner" ? coachPartnerCapacityLabel(organization.plan, language) : `${organization.outplacementCampaigns} ${language === "es" ? "campañas" : "campaigns"}`}</Td>
                       <Td>{organization.internalOwner}</Td>
-                      <Td><Pill>{organization.status}</Pill></Td>
+                      <Td><Pill>{statusLabel(organization.status, language)}</Pill></Td>
                       <Td>{organization.lastChange}</Td>
                     </tr>
                   ))}
@@ -564,7 +582,7 @@ export function AdminOrganizationsClient() {
             </div>
             <div>
               <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">{t.licenseStatus}</p>
-              <p className="mt-2"><Pill>{selectedLicenseState ?? "sin seleccion"}</Pill></p>
+              <p className="mt-2"><Pill>{selectedLicenseState ?? (language === "es" ? "sin seleccion" : "not selected")}</Pill></p>
             </div>
           </div>
         </section>
@@ -579,14 +597,14 @@ export function AdminOrganizationsClient() {
             <Field label={t.commercialName}><Input name="name" defaultValue={selectedOrganization?.name ?? ""} /></Field>
             <Field label={t.legalName}><Input name="legalName" defaultValue={selectedOrganization?.legalName ?? ""} /></Field>
             <Field label={t.taxId}><Input name="taxId" defaultValue={selectedOrganization?.taxId ?? ""} /></Field>
-            <Field label={t.status}><Select name="status" defaultValue={selectedOrganization?.status ?? t.statuses[0]}>{t.statuses.map((status) => <option key={status}>{status}</option>)}</Select></Field>
+            <Field label={t.status}><Select name="status" defaultValue={selectedOrganization?.status ?? "activo"}>{statusOptions.map((status) => <option key={status} value={status}>{statusLabel(status, language)}</option>)}</Select></Field>
           </FormGroup>
 
           <FormGroup title={t.contact} icon={<Building2 size={18} />}>
             <Field label={t.contactName}><Input name="contactName" defaultValue={selectedOrganization?.contactName ?? ""} /></Field>
             <Field label={t.contactEmail}><Input name="contactEmail" type="email" defaultValue={selectedOrganization?.contactEmail ?? ""} /></Field>
             <Field label={t.contactPhone}><Input name="contactPhone" defaultValue={selectedOrganization?.contactPhone ?? ""} /></Field>
-            <Field label={t.legalRepresentative}><Select name="legalRepresentative" defaultValue={selectedOrganization?.legalRepresentative ?? legalRepresentatives[0]}>{legalRepresentatives.map((representative) => <option key={representative}>{representative}</option>)}</Select></Field>
+            <Field label={t.legalRepresentative}><Input name="legalRepresentative" defaultValue={selectedOrganization?.legalRepresentative ?? ""} placeholder={language === "es" ? "Nombre del representante legal del contrato" : "Contract legal representative name"} /></Field>
             <p className="text-xs font-semibold leading-5 text-slate-500">{t.legalRepresentativeHelp}</p>
             <Field label={t.internalOwner}><Select name="internalOwner" defaultValue={selectedOrganization?.internalOwner ?? internalOwners[0]}>{internalOwners.map((owner) => <option key={owner}>{owner}</option>)}</Select></Field>
           </FormGroup>
@@ -609,13 +627,27 @@ export function AdminOrganizationsClient() {
               </Field>
               <Field label={t.credits}>
                 <div className="rounded-2xl border border-purple-100 bg-white px-4 py-3 text-sm font-black text-slate-950">
-                  {formatCredits(draftType === "coach_partner" ? calculateCoachPartnerOrganizationCredits(draftPlan) : (selectedOrganization?.credits ?? 0), language)}
+                  {draftType === "coach_partner" ? formatCredits(calculateCoachPartnerOrganizationCredits(draftPlan), language) : (language === "es" ? "Variable por campana" : "Variable by campaign")}
                   <small className="mt-1 block font-semibold text-slate-500">{t.creditsHelp}</small>
                 </div>
-                <input type="hidden" name="credits" value={draftType === "coach_partner" ? calculateCoachPartnerOrganizationCredits(draftPlan) : (selectedOrganization?.credits ?? 0)} />
+                <input type="hidden" name="credits" value={draftType === "coach_partner" ? calculateCoachPartnerOrganizationCredits(draftPlan) : 0} />
               </Field>
               {draftType === "coach_partner" ? <CoachPartnerCreditSummary plan={draftPlan} language={language} t={t} /> : null}
-              <Field label={t.contractTerm}><Select name="contractTermMonths" defaultValue={String(selectedOrganization?.contractTermMonths ?? 6)}>{contractTermOptions.map((months) => <option key={months} value={months}>{months} meses</option>)}</Select></Field>
+              {draftType === "coach_partner" ? (
+                <Field label={t.contractTerm}><Select name="contractTermMonths" defaultValue={String(selectedOrganization?.contractTermMonths ?? 6)}>{contractTermOptions.map((months) => <option key={months} value={months}>{contractMonthsLabel(months, language)}</option>)}</Select></Field>
+              ) : (
+                <Field label={t.serviceDuration}>
+                  <div className="rounded-2xl border border-purple-100 bg-white px-4 py-3 text-sm font-black text-slate-950">
+                    {outplacementServiceDurationLabel(draftPlan, language)}
+                    <small className="mt-1 block font-semibold text-slate-500">{language === "es" ? "Los ex-empleados conservan acceso durante esta duracion; despues pasan a usuario normal con compra de creditos." : "Former employees keep access during this duration; afterwards they move to a normal credit-purchase user."}</small>
+                  </div>
+                  <input type="hidden" name="contractTermMonths" value={outplacementServiceMonths(draftPlan)} />
+                </Field>
+              )}
+              <Field label={t.contractValue}>
+                <Input name="contractValue" type="number" min={0} step={1000} defaultValue={selectedOrganization?.contractValue ?? 0} />
+                <small className="mt-1 block text-xs font-semibold text-slate-500">{t.contractValueHelp}</small>
+              </Field>
               <Field label={t.licenseStart}><Input name="licenseStart" type="date" defaultValue={selectedOrganization?.licenseStart ?? ""} /></Field>
               <Field label={t.licenseEnd}><Input name="licenseEnd" type="date" defaultValue={selectedOrganization?.licenseEnd ?? ""} /></Field>
               <Field label={t.gracePeriod}><Input name="gracePeriodDays" type="number" min={0} defaultValue={selectedOrganization?.gracePeriodDays ?? 0} /></Field>
@@ -629,7 +661,10 @@ export function AdminOrganizationsClient() {
                 </>
               ) : (
                 <>
-                  <Field label={t.campaigns}><Input name="outplacementCampaigns" type="number" min={0} defaultValue={selectedOrganization?.outplacementCampaigns ?? 0} /></Field>
+                  <Field label={t.campaigns}>
+                    <Input name="outplacementCampaigns" type="number" min={0} defaultValue={selectedOrganization?.outplacementCampaigns ?? 0} readOnly />
+                    <small className="mt-1 block text-xs font-semibold text-slate-500">{language === "es" ? "Variable: se incrementa cuando se creen campañas asociadas al contrato." : "Variable: increases as campaigns are created under this contract."}</small>
+                  </Field>
                   <input type="hidden" name="monthlyGroups" value={selectedOrganization?.monthlyGroups ?? 0} />
                   <input type="hidden" name="studentsPerGroup" value={selectedOrganization?.studentsPerGroup ?? 0} />
                 </>
@@ -776,6 +811,55 @@ function coachPartnerCapacityLabel(plan: string, language: keyof typeof copy) {
 function formatCredits(value: number, language: keyof typeof copy) {
   if (!Number.isFinite(value)) return unlimitedLabel(language);
   return new Intl.NumberFormat(language === "es" ? "es-MX" : "en-US").format(value);
+}
+
+function contractCreditsLabel(organization: OrganizationRecord, language: keyof typeof copy) {
+  if (organization.type === "outplacement_company") return language === "es" ? "Variable por campana" : "Variable by campaign";
+  return formatCredits(organization.credits, language);
+}
+
+function outplacementServiceRuleFor(plan: string) {
+  return outplacementServiceRules[plan as keyof typeof outplacementServiceRules] ?? outplacementServiceRules["Salida digna"];
+}
+
+function outplacementServiceDurationLabel(plan: string, language: keyof typeof copy) {
+  const rule = outplacementServiceRuleFor(plan);
+  return language === "es" ? rule.durationEs : rule.durationEn;
+}
+
+function outplacementServiceMonths(plan: string) {
+  const rule = outplacementServiceRuleFor(plan);
+  return Math.max(1, Math.round(rule.days / 30));
+}
+
+function contractMonthsLabel(months: number, language: keyof typeof copy) {
+  return language === "es" ? `${months} meses` : `${months} months`;
+}
+
+function formatCurrency(value: number, language: keyof typeof copy) {
+  return new Intl.NumberFormat(language === "es" ? "es-MX" : "en-US", {
+    currency: language === "es" ? "MXN" : "USD",
+    maximumFractionDigits: 0,
+    style: "currency",
+  }).format(value || 0);
+}
+
+function statusLabel(status: string, language: keyof typeof copy) {
+  const labels = {
+    es: {
+      activo: "activo",
+      pendiente: "pendiente",
+      bloqueado: "bloqueado",
+      borrado_logico: "borrado lógico",
+    },
+    en: {
+      activo: "active",
+      pendiente: "pending",
+      bloqueado: "blocked",
+      borrado_logico: "logical delete",
+    },
+  } as const;
+  return labels[language][status as keyof typeof labels.es] ?? status;
 }
 
 function unlimitedLabel(language: keyof typeof copy) {
