@@ -2,31 +2,51 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { skillRegistry } from "@/ai/skillRegistry";
 import { appLanguageOptions, useLanguage } from "@/lib/i18n/LanguageProvider";
 import { ShellNavTabs } from "./ShellNavTabs";
 
-const primaryNav = [
-  { key: "home", href: "/", es: "Inicio", en: "Home" },
-  { key: "dashboard", href: "/dashboard", es: "Dashboard", en: "Dashboard" },
-  { key: "gateway", href: "/gateway", es: "Gateway", en: "Gateway" },
-] as const;
+type ShellRole = "visitor" | "online" | "super_admin" | "super_admin_support" | "outplacement" | "internal_coach" | "coach_partner";
 
-const offerNav = [
-  { key: "coaching", href: "/coaching", es: "Coaching 1o1", en: "1:1 Coaching" },
-  { key: "entrepreneurs", href: "/entrepreneurs", es: "Emprendedores", en: "Entrepreneurs" },
-  { key: "business", href: "/business-services", es: "Servicios para empresas", en: "Business services" },
-] as const;
+type PublicUserLike = {
+  email?: string;
+  role?: string;
+  userType?: string;
+  profileType?: string;
+};
 
-const secondaryNav = [
-  { key: "profile", href: "/account", es: "Perfil", en: "Profile" },
-  { key: "vault", href: "/vault", es: "Mi Bóveda", en: "My Vault" },
-  { key: "projects", href: "/projects", es: "Proyectos", en: "Projects" },
-  { key: "credits", href: "/credits", es: "Créditos", en: "Credits" },
-  { key: "admin", href: "/admin", es: "Admin", en: "Admin" },
-] as const;
+type LocalizedNavItem = {
+  key: string;
+  href: string;
+  es: string;
+  en: string;
+};
+
+const navCatalog = {
+  home: { key: "home", href: "/", es: "Inicio", en: "Home" },
+  dashboard: { key: "dashboard", href: "/dashboard", es: "Dashboard", en: "Dashboard" },
+  agents: { key: "agents", href: "/modules", es: "Agentes", en: "Agents" },
+  coaching: { key: "coaching", href: "/coaching", es: "Coaching 1o1", en: "1:1 Coaching" },
+  coachPartner: { key: "coachPartner", href: "/entrepreneurs", es: "Coach Partner", en: "Coach Partner" },
+  outplacement: { key: "outplacement", href: "/business-services", es: "Outplacement para empresas", en: "Outplacement for companies" },
+  vault: { key: "vault", href: "/vault", es: "Mi Bóveda", en: "My Vault" },
+  projects: { key: "projects", href: "/projects", es: "Proyectos", en: "Projects" },
+  credits: { key: "credits", href: "/credits", es: "Créditos", en: "Credits" },
+  profile: { key: "profile", href: "/account", es: "Mi perfil", en: "My profile" },
+  admin: { key: "admin", href: "/admin", es: "Administración", en: "Administration" },
+} satisfies Record<string, LocalizedNavItem>;
+
+const navByRole: Record<ShellRole, readonly (keyof typeof navCatalog | "agentMenu")[]> = {
+  visitor: ["home", "agentMenu", "coaching", "coachPartner", "outplacement"],
+  online: ["home", "dashboard", "projects", "vault", "credits", "profile"],
+  super_admin: ["home", "dashboard", "agentMenu", "coaching", "coachPartner", "outplacement", "projects", "vault", "profile", "credits", "admin"],
+  super_admin_support: ["home", "dashboard", "agentMenu", "coaching", "coachPartner", "outplacement", "projects", "vault", "profile", "credits", "admin"],
+  outplacement: ["home", "agentMenu", "outplacement", "profile", "vault", "projects", "credits", "admin"],
+  internal_coach: ["home", "dashboard", "agentMenu", "coaching", "vault", "profile", "projects", "credits", "admin"],
+  coach_partner: ["home", "dashboard", "agentMenu", "coachPartner", "profile", "vault", "projects", "credits", "admin"],
+};
 
 const agentMenuCopy = {
   es: { label: "Agentes", open: "Abrir menú de agentes" },
@@ -43,9 +63,34 @@ const agentGroups = [
 
 export function EmployabilityShell({ children }: { children: ReactNode }) {
   const { language, setLanguage } = useLanguage();
-  const primaryItems = primaryNav.map((item) => [item[language], item.href] as const);
-  const offerItems = offerNav.map((item) => [item[language], item.href] as const);
-  const secondaryItems = secondaryNav.map((item) => [item[language], item.href] as const);
+  const [role, setRole] = useState<ShellRole>("visitor");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRole() {
+      const simulatedRole = typeof window !== "undefined" ? window.localStorage.getItem("empleate-ya-nav-profile") : null;
+      if (isShellRole(simulatedRole)) {
+        setRole(simulatedRole);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/auth/me", { cache: "no-store" });
+        const data = await response.json() as { user?: PublicUserLike | null };
+        if (!cancelled) setRole(roleFromUser(data.user));
+      } catch {
+        if (!cancelled) setRole("visitor");
+      }
+    }
+
+    void loadRole();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const navTokens = navByRole[role];
 
   return (
     <main className="min-h-screen bg-[var(--brand-canvas)] text-[var(--brand-ink)]">
@@ -54,10 +99,11 @@ export function EmployabilityShell({ children }: { children: ReactNode }) {
           <Link href="/" className="text-xl font-black tracking-tight text-[var(--brand-ink)]">Empléate <span className="text-[var(--brand-primary)]">YA</span></Link>
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <div className="flex max-w-full flex-wrap gap-1 rounded-[1.25rem] border border-slate-200 bg-white/80 p-1 text-sm shadow-sm md:rounded-full">
-              <ShellNavTabs items={primaryItems} bare />
-              <AgentGroupsMenu language={language} />
-              <ShellNavTabs items={offerItems} bare />
-              <ShellNavTabs items={secondaryItems} bare />
+              {navTokens.map((token) => token === "agentMenu" ? (
+                <AgentGroupsMenu key={token} language={language} />
+              ) : (
+                <ShellNavTabs key={token} items={[[navCatalog[token][language], navCatalog[token].href]]} bare />
+              ))}
             </div>
             <div className="grid grid-cols-2 rounded-full border border-slate-200 bg-white/80 p-1 text-xs shadow-sm">
               {appLanguageOptions.map((option) => (
@@ -131,4 +177,22 @@ function AgentGroupsMenu({ language }: { language: "es" | "en" }) {
       </div>
     </details>
   );
+}
+
+function roleFromUser(user: PublicUserLike | null | undefined): ShellRole {
+  if (!user) return "visitor";
+  const rawRole = `${user.role ?? ""} ${user.userType ?? ""} ${user.profileType ?? ""}`.toLowerCase();
+  const email = user.email?.toLowerCase() ?? "";
+
+  if (email === "leo.galvez.medina@gmail.com" || email === "lgalvez@nielsen-technology.com" || email === "demo@empleateya.local" || rawRole.includes("super admin")) return "super_admin";
+  if (rawRole.includes("apoyo") || rawRole.includes("support")) return "super_admin_support";
+  if (rawRole.includes("outplacement") || rawRole.includes("administrador rh") || rawRole.includes("admin rh")) return "outplacement";
+  if (rawRole.includes("coach interno") || rawRole.includes("internal coach") || rawRole.includes("coach 1o1")) return "internal_coach";
+  if (rawRole.includes("coach partner")) return "coach_partner";
+
+  return "online";
+}
+
+function isShellRole(value: string | null): value is ShellRole {
+  return value === "visitor" || value === "online" || value === "super_admin" || value === "super_admin_support" || value === "outplacement" || value === "internal_coach" || value === "coach_partner";
 }
