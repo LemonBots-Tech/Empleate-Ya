@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { BookOpenCheck, Edit3, Save, Search, Trash2, UserPlus } from "lucide-react";
+import { BookOpenCheck, Edit3, Lock, Save, Search, Trash2, UserPlus } from "lucide-react";
 import { skills, type SkillId } from "@/ai/skillRegistry";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Select, Textarea } from "@/components/ui/Input";
@@ -10,12 +10,15 @@ import { useLanguage } from "@/lib/i18n/LanguageProvider";
 type CourseStatus = "activo" | "pendiente" | "borrado_logico";
 type CourseUse = "coach_partner_group" | "internal_1o1_group" | "outplacement_campaign";
 type SearchMode = "capture" | "edit" | "delete";
+type OrganizationType = "Empleate YA" | "Coach Partner" | "Outplacement";
+type UserProfile = "super_admin" | "super_admin_support" | "coach_partner" | "outplacement" | "internal_coach" | "online" | "visitor";
 
 type CourseRecord = {
   id: string;
   name: string;
   organization: string;
-  organizationType: "Empleate YA" | "Coach Partner" | "Outplacement";
+  organizationType: OrganizationType;
+  commercialModel: string;
   createdBy: string;
   creatorRole: string;
   use: CourseUse;
@@ -27,14 +30,27 @@ type CourseRecord = {
   notes: string;
 };
 
-const storageKey = "empleate-ya-admin-coaching-courses-v1";
+type CurrentUserContext = {
+  profile: UserProfile;
+  canSeeAll: boolean;
+  organization: string;
+  organizationType: OrganizationType;
+  commercialModel: string;
+  userName: string;
+  role: string;
+  defaultUse: CourseUse;
+  allowedAvatarIds: SkillId[];
+};
+
+const storageKey = "empleate-ya-admin-coaching-courses-v2";
+const profileStorageKey = "empleate-ya-nav-profile";
 
 const copy = {
   es: {
     eyebrow: "Programas de capacitacion / outplacement",
     title: "Cursos de Coaching & Outplacement",
     description: "Define cursos reutilizables con los agentes permitidos para Empleate YA, Coach Partner u Outplacement. Despues podran asignarse a grupos o campanas y calcular sus creditos.",
-    rule: "Regla: un curso solo puede usar agentes habilitados para la organizacion o para el usuario que lo crea. El selector temporal de perfil ayuda a validar esta logica hasta conectar login y Supabase.",
+    rule: "Regla: esta pantalla no cambia identidad, rol ni organizacion. Esos datos vienen del usuario y su empresa; aqui solo se crean cursos con los agentes permitidos.",
     create: "Crear",
     edit: "Buscar para editar",
     deleteSearch: "Buscar para borrar",
@@ -46,16 +62,19 @@ const copy = {
     status: "Estado",
     type: "Tipo organizacion",
     all: "Todos",
+    currentIdentity: "Identidad actual",
+    commercialModel: "Plan / servicio contratado",
     found: "Cursos registrados",
-    listHelp: "Selecciona un registro para editarlo o marcarlo con borrado logico. La tabla conserva scroll horizontal y vertical.",
+    listHelp: "Selecciona un registro para editarlo o marcarlo con borrado logico. Esta tabla solo aparece cuando buscas para editar o borrar.",
     formTitle: "Captura y mantenimiento del curso",
     selected: "Seleccionado",
     noSelected: "Crea un curso nuevo o busca uno existente.",
-    selectedForEdit: "Curso seleccionado. Ajusta los datos y guarda.",
+    selectedForEdit: "Curso seleccionado. Ajusta los datos editables y guarda.",
     selectedForDelete: "Curso seleccionado. Confirma el borrado logico si corresponde.",
     saved: "Curso guardado para pruebas.",
     deleted: "Curso marcado como borrado logico. No se elimino definitivamente.",
-    identity: "Datos del curso",
+    identity: "Identidad bloqueada del creador",
+    courseData: "Datos del curso",
     name: "Nombre del curso",
     organization: "Empresa / organizacion",
     organizationType: "Tipo de organizacion",
@@ -69,21 +88,23 @@ const copy = {
     notes: "Notas internas",
     statusActive: "activo",
     statusPending: "pendiente",
-    statusDeleted: "borrado lógico",
+    statusDeleted: "borrado logico",
     zeroAvatars: "Selecciona al menos un agente para sumar creditos.",
-    allowedHelp: "Agentes disponibles segun el tipo de organizacion o permisos del usuario creador.",
-    columns: ["Seleccion", "Curso", "Empresa", "Tipo", "Usuario creador", "Uso", "Agentes", "Creditos", "Estado", "Creacion", "Ultimo cambio"],
+    allowedHelp: "Agentes disponibles segun permisos del usuario o de la organizacion activa.",
+    lockedHelp: "Estos campos se muestran para confirmar contexto. Se modificaran desde usuarios/organizaciones cuando conectemos Supabase.",
+    visibilityHelp: "Solo Empleate YA y sus apoyos autorizados tienen vision completa. Los demas usuarios ven cursos de su organizacion.",
+    columns: ["Seleccion", "Curso", "Empresa", "Identidad", "Plan / servicio", "Usuario creador", "Uso", "Agentes", "Creditos", "Estado", "Creacion", "Ultimo cambio"],
     uses: {
       coach_partner_group: "Grupo Coach Partner",
       internal_1o1_group: "Grupo Coaching 1o1",
-      outplacement_campaign: "Campaña Outplacement",
+      outplacement_campaign: "Campana Outplacement",
     },
   },
   en: {
     eyebrow: "Training / outplacement programs",
     title: "Coaching & Outplacement Courses",
     description: "Define reusable courses with the agents allowed for Empleate YA, Coach Partner, or Outplacement. They can later be assigned to groups or campaigns and calculate credits.",
-    rule: "Rule: a course can only use agents enabled for the organization or for the user creating it. The temporary profile selector helps validate this logic until login and Supabase are connected.",
+    rule: "Rule: this screen does not change identity, role, or organization. Those fields come from the user and company; here you only create courses with allowed agents.",
     create: "Create",
     edit: "Find to edit",
     deleteSearch: "Find to delete",
@@ -95,16 +116,19 @@ const copy = {
     status: "Status",
     type: "Organization type",
     all: "All",
+    currentIdentity: "Current identity",
+    commercialModel: "Contracted plan / service",
     found: "Registered courses",
-    listHelp: "Select a record to edit it or mark it with logical deletion. The table keeps horizontal and vertical scrolling.",
+    listHelp: "Select a record to edit it or mark it with logical deletion. This table only appears when searching to edit or delete.",
     formTitle: "Course capture and maintenance",
     selected: "Selected",
     noSelected: "Create a new course or search an existing one.",
-    selectedForEdit: "Course selected. Adjust data and save.",
+    selectedForEdit: "Course selected. Adjust editable data and save.",
     selectedForDelete: "Course selected. Confirm logical deletion if appropriate.",
     saved: "Course saved for testing.",
     deleted: "Course marked as logical delete. It was not permanently removed.",
-    identity: "Course data",
+    identity: "Creator locked identity",
+    courseData: "Course data",
     name: "Course name",
     organization: "Company / organization",
     organizationType: "Organization type",
@@ -120,8 +144,10 @@ const copy = {
     statusPending: "pending",
     statusDeleted: "logical delete",
     zeroAvatars: "Select at least one agent to add credits.",
-    allowedHelp: "Available agents according to organization type or creator user permissions.",
-    columns: ["Select", "Course", "Company", "Type", "Creator", "Use", "Agents", "Credits", "Status", "Created", "Last change"],
+    allowedHelp: "Available agents according to the active user's or organization's permissions.",
+    lockedHelp: "These fields are shown to confirm context. They will be managed from users/organizations once Supabase is connected.",
+    visibilityHelp: "Only Empleate YA and authorized support roles have full visibility. Other users only see their own organization's courses.",
+    columns: ["Select", "Course", "Company", "Identity", "Plan / service", "Creator", "Use", "Agents", "Credits", "Status", "Created", "Last change"],
     uses: {
       coach_partner_group: "Coach Partner group",
       internal_1o1_group: "1:1 Coaching group",
@@ -130,25 +156,10 @@ const copy = {
   },
 } as const;
 
-const organizations = {
-  "Empleate YA": ["Empleate YA"],
-  "Coach Partner": ["Partner Ejecutivo Norte", "Partner Bajio", "Partner Carrera Global"],
-  Outplacement: ["Empresa Demo Outplacement", "Grupo Industrial Norte", "Servicios Financieros Delta"],
-} as const;
+const allAvatarIds = skills.map((skill) => skill.id);
 
-const roleOptions = [
-  "Super Admin",
-  "Apoyo coach partner",
-  "Operativo outplacement",
-  "Coach interno 1o1",
-  "Coach partner principal",
-  "Coach partner colaborador",
-  "Administrador RH",
-  "Apoyo administrativo RH",
-] as const;
-
-const allowedAvatarProfiles: Record<CourseRecord["organizationType"], SkillId[]> = {
-  "Empleate YA": skills.map((skill) => skill.id),
+const allowedAvatarProfiles: Record<OrganizationType, SkillId[]> = {
+  "Empleate YA": allAvatarIds,
   "Coach Partner": ["scorex", "optim", "mr_wow", "mr_boost_linked", "tommy_lee_picture", "lumo", "boost_me", "new_job_challenge", "miss_quest"],
   Outplacement: ["scorex", "optim", "scorex_360", "mr_wow", "mr_boost_linked", "new_job_challenge", "indiana_jobs", "miss_quest", "recharge"],
 };
@@ -159,6 +170,7 @@ const initialCourses: CourseRecord[] = [
     name: "CV estrategico Coach Partner",
     organization: "Partner Ejecutivo Norte",
     organizationType: "Coach Partner",
+    commercialModel: "Coach Starter",
     createdBy: "Mariana Soto",
     creatorRole: "Coach partner principal",
     use: "coach_partner_group",
@@ -174,6 +186,7 @@ const initialCourses: CourseRecord[] = [
     name: "Outplacement profesional 90",
     organization: "Empresa Demo Outplacement",
     organizationType: "Outplacement",
+    commercialModel: "Recolocacion profesional 90",
     createdBy: "Ana Torres",
     creatorRole: "Administrador RH",
     use: "outplacement_campaign",
@@ -183,6 +196,22 @@ const initialCourses: CourseRecord[] = [
     createdAt: "2026-06-12",
     updatedAt: "2026-06-12",
     notes: "Curso reusable para campanas de recolocacion profesional.",
+  },
+  {
+    id: "course-internal-coach",
+    name: "Coaching 1o1 CV y entrevista",
+    organization: "Empleate YA",
+    organizationType: "Empleate YA",
+    commercialModel: "Coaching interno 1o1",
+    createdBy: "Leo Galvez",
+    creatorRole: "Coach interno 1o1",
+    use: "internal_1o1_group",
+    selectedAvatarIds: ["scorex", "optim", "miss_quest", "mr_wow"],
+    creditsPerParticipant: creditsFor(["scorex", "optim", "miss_quest", "mr_wow"]),
+    status: "activo",
+    createdAt: "2026-06-18",
+    updatedAt: "2026-06-18",
+    notes: "Curso para sesiones internas de Empleate YA.",
   },
 ];
 
@@ -196,15 +225,19 @@ export function AdminCoachingCoursesClient() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [searchMode, setSearchMode] = useState<SearchMode>("capture");
   const [notice, setNotice] = useState("");
-  const [organizationType, setOrganizationType] = useState<CourseRecord["organizationType"]>("Empleate YA");
+  const [context, setContext] = useState<CurrentUserContext>(contextForProfile("super_admin"));
   const [selectedAvatarIds, setSelectedAvatarIds] = useState<SkillId[]>(["scorex", "optim"]);
 
   useEffect(() => {
+    const profile = (window.localStorage.getItem(profileStorageKey) ?? "super_admin") as UserProfile;
+    const nextContext = contextForProfile(profile);
+    setContext(nextContext);
+    setSelectedAvatarIds(nextContext.allowedAvatarIds.slice(0, Math.min(2, nextContext.allowedAvatarIds.length)));
+
     const stored = window.localStorage.getItem(storageKey);
     if (stored) {
       try {
-        const parsed = JSON.parse(stored) as CourseRecord[];
-        setCourses(parsed);
+        setCourses(JSON.parse(stored) as CourseRecord[]);
       } catch {
         setCourses(initialCourses);
       }
@@ -216,24 +249,26 @@ export function AdminCoachingCoursesClient() {
   }, [courses]);
 
   const selectedCourse = courses.find((course) => course.id === selectedId);
-  const allowedAvatarIds = allowedAvatarProfiles[organizationType];
   const selectedCredits = creditsFor(selectedAvatarIds);
+
+  const visibleCourses = useMemo(() => {
+    return context.canSeeAll ? courses : courses.filter((course) => course.organization === context.organization);
+  }, [context.canSeeAll, context.organization, courses]);
 
   const filteredCourses = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return courses.filter((course) => {
+    return visibleCourses.filter((course) => {
       const avatarNames = course.selectedAvatarIds.map((id) => skillName(id)).join(" ");
       const matchesText = !normalized || `${Object.values(course).join(" ")} ${avatarNames}`.toLowerCase().includes(normalized);
       const matchesStatus = statusFilter === "all" || course.status === statusFilter;
       const matchesType = typeFilter === "all" || course.organizationType === typeFilter;
       return matchesText && matchesStatus && matchesType;
     });
-  }, [courses, query, statusFilter, typeFilter]);
+  }, [visibleCourses, query, statusFilter, typeFilter]);
 
   function createNew() {
     setSelectedId("");
-    setOrganizationType("Empleate YA");
-    setSelectedAvatarIds(["scorex", "optim"]);
+    setSelectedAvatarIds(context.allowedAvatarIds.slice(0, Math.min(2, context.allowedAvatarIds.length)));
     setSearchMode("capture");
     setNotice("");
   }
@@ -241,8 +276,7 @@ export function AdminCoachingCoursesClient() {
   function selectForMaintenance(course: CourseRecord) {
     const nextMode = searchMode;
     setSelectedId(course.id);
-    setOrganizationType(course.organizationType);
-    setSelectedAvatarIds(course.selectedAvatarIds);
+    setSelectedAvatarIds(course.selectedAvatarIds.filter((id) => context.allowedAvatarIds.includes(id)));
     setSearchMode("capture");
     setNotice(nextMode === "delete" ? t.selectedForDelete : t.selectedForEdit);
   }
@@ -250,17 +284,22 @@ export function AdminCoachingCoursesClient() {
   function saveCourse(formData: FormData) {
     const now = today();
     const id = selectedCourse?.id ?? `course-${Date.now()}`;
-    const orgType = String(formData.get("organizationType") || "Empleate YA") as CourseRecord["organizationType"];
+    const selectedIdentity = selectedCourse ?? context;
+    const allowedIds = context.canSeeAll ? selectedAvatarIds : selectedAvatarIds.filter((id) => context.allowedAvatarIds.includes(id));
+    const createdBy = selectedCourse?.createdBy ?? context.userName;
+    const creatorRole = selectedCourse?.creatorRole ?? context.role;
+    const courseUse = selectedCourse?.use ?? context.defaultUse;
     const saved: CourseRecord = {
       id,
       name: String(formData.get("name") || "").trim() || "Curso sin nombre",
-      organization: String(formData.get("organization") || organizations[orgType][0]),
-      organizationType: orgType,
-      createdBy: String(formData.get("createdBy") || "").trim() || "Usuario sin nombre",
-      creatorRole: String(formData.get("creatorRole") || roleOptions[0]),
-      use: String(formData.get("use") || "internal_1o1_group") as CourseUse,
-      selectedAvatarIds,
-      creditsPerParticipant: creditsFor(selectedAvatarIds),
+      organization: selectedIdentity.organization,
+      organizationType: selectedIdentity.organizationType,
+      commercialModel: selectedIdentity.commercialModel,
+      createdBy,
+      creatorRole,
+      use: String(formData.get("use") || courseUse) as CourseUse,
+      selectedAvatarIds: allowedIds,
+      creditsPerParticipant: creditsFor(allowedIds),
       status: String(formData.get("status") || "activo") as CourseStatus,
       createdAt: selectedCourse?.createdAt ?? now,
       updatedAt: now,
@@ -269,7 +308,6 @@ export function AdminCoachingCoursesClient() {
 
     setCourses((current) => current.some((course) => course.id === id) ? current.map((course) => course.id === id ? saved : course) : [saved, ...current]);
     setSelectedId(id);
-    setOrganizationType(saved.organizationType);
     setSelectedAvatarIds(saved.selectedAvatarIds);
     setNotice(t.saved);
   }
@@ -280,18 +318,12 @@ export function AdminCoachingCoursesClient() {
     setNotice(t.deleted);
   }
 
-  function changeOrganizationType(nextType: CourseRecord["organizationType"]) {
-    setOrganizationType(nextType);
-    setSelectedAvatarIds((current) => {
-      const allowed = allowedAvatarProfiles[nextType];
-      const kept = current.filter((id) => allowed.includes(id));
-      return kept.length ? kept : allowed.slice(0, Math.min(2, allowed.length));
-    });
-  }
-
   function toggleAvatar(id: SkillId, checked: boolean) {
     setSelectedAvatarIds((current) => checked ? Array.from(new Set([...current, id])) : current.filter((avatarId) => avatarId !== id));
   }
+
+  const identity = selectedCourse ?? context;
+  const allowedAvatarIds = context.canSeeAll && selectedCourse ? allowedAvatarProfiles[selectedCourse.organizationType] : context.allowedAvatarIds;
 
   return (
     <div className="space-y-7">
@@ -301,6 +333,8 @@ export function AdminCoachingCoursesClient() {
         <p className="mt-3 max-w-5xl text-lg leading-8 text-slate-600">{t.description}</p>
         <p className="mt-4 rounded-2xl border border-purple-100 bg-purple-50 px-4 py-3 text-sm font-bold leading-6 text-purple-900">{t.rule}</p>
       </header>
+
+      <ContextStrip t={t} context={context} />
 
       {searchMode !== "capture" ? (
         <SearchPanel
@@ -314,12 +348,13 @@ export function AdminCoachingCoursesClient() {
           courses={filteredCourses}
           selectedId={selectedId}
           onSelect={selectForMaintenance}
+          canSeeAll={context.canSeeAll}
         />
       ) : null}
 
       {notice ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-800">{notice}</div> : null}
 
-      <form key={selectedCourse?.id ?? "new-course"} action={saveCourse} className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+      <form key={selectedCourse?.id ?? `new-${context.profile}`} action={saveCourse} className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
         <div className="mb-5 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <h2 className="text-2xl font-black text-slate-950">{t.formTitle}</h2>
@@ -335,46 +370,41 @@ export function AdminCoachingCoursesClient() {
         </div>
 
         <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-          <FormGroup title={t.identity} icon={<BookOpenCheck size={18} />}>
-            <Field label={t.name}><Input name="name" defaultValue={selectedCourse?.name ?? ""} placeholder="Ej. CV estrategico base" /></Field>
-            <Field label={t.organizationType}>
-              <Select name="organizationType" value={organizationType} onChange={(event) => changeOrganizationType(event.target.value as CourseRecord["organizationType"])}>
-                {Object.keys(organizations).map((type) => <option key={type}>{type}</option>)}
-              </Select>
-            </Field>
-            <Field label={t.organization}>
-              <Select key={`organization-${organizationType}-${selectedCourse?.id ?? "new"}`} name="organization" defaultValue={selectedCourse?.organization ?? organizations[organizationType][0]}>
-                {organizations[organizationType].map((organization) => <option key={organization}>{organization}</option>)}
-              </Select>
-            </Field>
-            <Field label={t.createdBy}><Input name="createdBy" defaultValue={selectedCourse?.createdBy ?? "Leo Galvez"} /></Field>
-            <Field label={t.creatorRole}>
-              <Select name="creatorRole" defaultValue={selectedCourse?.creatorRole ?? roleOptions[0]}>
-                {roleOptions.map((role) => <option key={role}>{role}</option>)}
-              </Select>
-            </Field>
-            <Field label={t.use}>
-              <Select key={`use-${organizationType}-${selectedCourse?.id ?? "new"}`} name="use" defaultValue={selectedCourse?.use ?? defaultUseFor(organizationType)}>
-                {Object.entries(t.uses).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-              </Select>
-            </Field>
-            <Field label={t.status}>
-              <Select name="status" defaultValue={selectedCourse?.status ?? "activo"}>
-                <option value="activo">{t.statusActive}</option>
-                <option value="pendiente">{t.statusPending}</option>
-                <option value="borrado_logico">{t.statusDeleted}</option>
-              </Select>
-            </Field>
-            <div className="grid gap-3 md:grid-cols-2">
-              <Metric label={t.createdAt} value={selectedCourse?.createdAt ?? today()} />
-              <Metric label={t.credits} value={formatCredits(selectedCredits)} />
-            </div>
-            <Field label={t.notes}><Textarea name="notes" defaultValue={selectedCourse?.notes ?? ""} className="min-h-28" /></Field>
-          </FormGroup>
+          <div className="space-y-5">
+            <FormGroup title={t.identity} icon={<Lock size={18} />}>
+              <p className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold leading-6 text-slate-600">{t.lockedHelp}</p>
+              <ReadOnlyField label={t.organizationType} value={identity.organizationType} />
+              <ReadOnlyField label={t.organization} value={identity.organization} />
+              <ReadOnlyField label={t.commercialModel} value={identity.commercialModel} />
+              <ReadOnlyField label={t.createdBy} value={selectedCourse?.createdBy ?? context.userName} />
+              <ReadOnlyField label={t.creatorRole} value={selectedCourse?.creatorRole ?? context.role} />
+            </FormGroup>
+
+            <FormGroup title={t.courseData} icon={<BookOpenCheck size={18} />}>
+              <Field label={t.name}><Input name="name" defaultValue={selectedCourse?.name ?? ""} placeholder="Ej. CV estrategico base" /></Field>
+              <Field label={t.use}>
+                <Select name="use" defaultValue={selectedCourse?.use ?? context.defaultUse}>
+                  {Object.entries(t.uses).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+                </Select>
+              </Field>
+              <Field label={t.status}>
+                <Select name="status" defaultValue={selectedCourse?.status ?? "activo"}>
+                  <option value="activo">{t.statusActive}</option>
+                  <option value="pendiente">{t.statusPending}</option>
+                  <option value="borrado_logico">{t.statusDeleted}</option>
+                </Select>
+              </Field>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Metric label={t.createdAt} value={selectedCourse?.createdAt ?? today()} />
+                <Metric label={t.credits} value={formatCredits(selectedCredits)} />
+              </div>
+              <Field label={t.notes}><Textarea name="notes" defaultValue={selectedCourse?.notes ?? ""} className="min-h-28" /></Field>
+            </FormGroup>
+          </div>
 
           <FormGroup title={t.avatars} icon={<BookOpenCheck size={18} />}>
             <p className="text-sm font-semibold leading-6 text-slate-500">{t.allowedHelp}</p>
-            <div className="mt-3 max-h-[520px] overflow-auto rounded-2xl border border-slate-200 bg-white p-3">
+            <div className="mt-3 max-h-[640px] overflow-auto rounded-2xl border border-slate-200 bg-white p-3">
               <div className="grid gap-3 md:grid-cols-2">
                 {allowedAvatarIds.map((id) => {
                   const skill = skills.find((item) => item.id === id);
@@ -397,13 +427,25 @@ export function AdminCoachingCoursesClient() {
           </FormGroup>
         </div>
       </form>
-
-      <CoursesTable t={t} courses={courses} selectedId={selectedId} onSelect={selectForMaintenance} />
     </div>
   );
 }
 
-function SearchPanel({ t, query, setQuery, typeFilter, setTypeFilter, statusFilter, setStatusFilter, courses, selectedId, onSelect }: {
+function ContextStrip({ t, context }: { t: typeof copy.es | typeof copy.en; context: CurrentUserContext }) {
+  return (
+    <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <Metric label={t.currentIdentity} value={context.organizationType} />
+        <Metric label={t.organization} value={context.organization} />
+        <Metric label={t.creatorRole} value={context.role} />
+        <Metric label={t.commercialModel} value={context.commercialModel} />
+      </div>
+      <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">{t.visibilityHelp}</p>
+    </section>
+  );
+}
+
+function SearchPanel({ t, query, setQuery, typeFilter, setTypeFilter, statusFilter, setStatusFilter, courses, selectedId, onSelect, canSeeAll }: {
   t: typeof copy.es | typeof copy.en;
   query: string;
   setQuery: (value: string) => void;
@@ -414,6 +456,7 @@ function SearchPanel({ t, query, setQuery, typeFilter, setTypeFilter, statusFilt
   courses: CourseRecord[];
   selectedId: string;
   onSelect: (course: CourseRecord) => void;
+  canSeeAll: boolean;
 }) {
   return (
     <section className="space-y-4">
@@ -427,9 +470,11 @@ function SearchPanel({ t, query, setQuery, typeFilter, setTypeFilter, statusFilt
             </div>
           </Field>
           <Field label={t.type}>
-            <Select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+            <Select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} disabled={!canSeeAll}>
               <option value="all">{t.all}</option>
-              {Object.keys(organizations).map((type) => <option key={type}>{type}</option>)}
+              <option value="Empleate YA">Empleate YA</option>
+              <option value="Coach Partner">Coach Partner</option>
+              <option value="Outplacement">Outplacement</option>
             </Select>
           </Field>
           <Field label={t.status}>
@@ -442,20 +487,20 @@ function SearchPanel({ t, query, setQuery, typeFilter, setTypeFilter, statusFilt
           </Field>
         </div>
       </div>
-      <CoursesTable t={t} courses={courses} selectedId={selectedId} onSelect={onSelect} compact />
+      <CoursesTable t={t} courses={courses} selectedId={selectedId} onSelect={onSelect} />
     </section>
   );
 }
 
-function CoursesTable({ t, courses, selectedId, onSelect, compact = false }: { t: typeof copy.es | typeof copy.en; courses: CourseRecord[]; selectedId: string; onSelect: (course: CourseRecord) => void; compact?: boolean }) {
+function CoursesTable({ t, courses, selectedId, onSelect }: { t: typeof copy.es | typeof copy.en; courses: CourseRecord[]; selectedId: string; onSelect: (course: CourseRecord) => void }) {
   return (
     <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-100 px-5 py-4">
         <h2 className="text-xl font-black text-slate-950">{t.found}</h2>
         <p className="mt-1 text-sm font-semibold text-slate-500">{t.listHelp}</p>
       </div>
-      <div className={`${compact ? "max-h-[230px]" : "max-h-[360px]"} overflow-auto`}>
-        <table className="w-full min-w-[1380px] text-left text-sm">
+      <div className="max-h-[300px] overflow-auto">
+        <table className="w-full min-w-[1540px] text-left text-sm">
           <thead className="sticky top-0 z-10"><tr>{t.columns.map((column) => <Th key={column}>{column}</Th>)}</tr></thead>
           <tbody>
             {courses.map((course) => (
@@ -464,6 +509,7 @@ function CoursesTable({ t, courses, selectedId, onSelect, compact = false }: { t
                 <Td><strong className="block text-slate-950">{course.name}</strong><span className="text-xs text-slate-500">{course.notes || "-"}</span></Td>
                 <Td>{course.organization}</Td>
                 <Td><Pill>{course.organizationType}</Pill></Td>
+                <Td>{course.commercialModel}</Td>
                 <Td><strong className="block text-slate-700">{course.createdBy}</strong><span className="text-xs text-slate-500">{course.creatorRole}</span></Td>
                 <Td>{t.uses[course.use]}</Td>
                 <Td>{course.selectedAvatarIds.map((id) => skillName(id)).join(", ")}</Td>
@@ -493,6 +539,15 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   return <div><Label>{label}</Label>{children}</div>;
 }
 
+function ReadOnlyField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <Label>{label}</Label>
+      <div className="flex min-h-11 items-center rounded-2xl border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm font-black text-slate-700">{value}</div>
+    </div>
+  );
+}
+
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-purple-100 bg-white px-4 py-3">
@@ -514,6 +569,59 @@ function Pill({ children }: { children: ReactNode }) {
   return <span className="inline-flex whitespace-nowrap rounded-full bg-[var(--brand-primary-soft)] px-3 py-1 text-xs font-black text-[var(--brand-primary)]">{children}</span>;
 }
 
+function contextForProfile(profile: UserProfile): CurrentUserContext {
+  if (profile === "coach_partner") {
+    return {
+      profile,
+      canSeeAll: false,
+      organization: "Partner Ejecutivo Norte",
+      organizationType: "Coach Partner",
+      commercialModel: "Coach Starter",
+      userName: "Mariana Soto",
+      role: "Coach partner principal",
+      defaultUse: "coach_partner_group",
+      allowedAvatarIds: allowedAvatarProfiles["Coach Partner"],
+    };
+  }
+  if (profile === "outplacement") {
+    return {
+      profile,
+      canSeeAll: false,
+      organization: "Empresa Demo Outplacement",
+      organizationType: "Outplacement",
+      commercialModel: "Recolocacion profesional 90",
+      userName: "Ana Torres",
+      role: "Administrador RH",
+      defaultUse: "outplacement_campaign",
+      allowedAvatarIds: allowedAvatarProfiles.Outplacement,
+    };
+  }
+  if (profile === "internal_coach") {
+    return {
+      profile,
+      canSeeAll: false,
+      organization: "Empleate YA",
+      organizationType: "Empleate YA",
+      commercialModel: "Coaching interno 1o1",
+      userName: "Coach 1o1 Demo",
+      role: "Coach interno 1o1",
+      defaultUse: "internal_1o1_group",
+      allowedAvatarIds: ["scorex", "optim", "miss_quest", "mr_wow"],
+    };
+  }
+  return {
+    profile,
+    canSeeAll: profile === "super_admin" || profile === "super_admin_support",
+    organization: "Empleate YA",
+    organizationType: "Empleate YA",
+    commercialModel: profile === "super_admin_support" ? "Apoyo operativo Empleate YA" : "Super Admin",
+    userName: "Leo Galvez",
+    role: profile === "super_admin_support" ? "Apoyo Super Admin" : "Super Admin",
+    defaultUse: "internal_1o1_group",
+    allowedAvatarIds: allAvatarIds,
+  };
+}
+
 function creditsFor(ids: SkillId[]) {
   return ids.reduce((total, id) => total + (skills.find((skill) => skill.id === id)?.baseCredits ?? 0), 0);
 }
@@ -528,12 +636,6 @@ function formatCredits(value: number) {
 
 function today() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function defaultUseFor(type: CourseRecord["organizationType"]): CourseUse {
-  if (type === "Coach Partner") return "coach_partner_group";
-  if (type === "Outplacement") return "outplacement_campaign";
-  return "internal_1o1_group";
 }
 
 function statusLabel(status: CourseStatus, t: typeof copy.es | typeof copy.en) {
