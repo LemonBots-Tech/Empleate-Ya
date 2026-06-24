@@ -240,6 +240,10 @@ const copy = {
     protectedPrincipalDeleteMessage: "Solo Super Admin puede dar de baja logica al rol principal de una organizacion.",
     duplicatePrincipalMessage: "Ya existe un rol principal activo para esta organizacion. Primero debe darse de baja logica el principal activo y despues crear el nuevo.",
     unauthorizedPrincipalCreateMessage: "Solo Super Admin o apoyos autorizados pueden dar de alta un Coach partner principal o Administrador RH.",
+    requiredOnlineMessage: "Nombre completo y correo son obligatorios para crear o editar un usuario online.",
+    duplicateOnlineNameMessage: "Ya existe un usuario online con ese nombre. Corrige el nombre antes de guardar.",
+    onlineSupportPaidTypeMessage: "Los apoyos a Super Admin solo pueden crear usuarios online como Prospecto online. Cliente Online Pagado se asigna por Super Admin o por compra Stripe.",
+    onlineProspectCreditMessage: "No se pueden modificar creditos manualmente a un Prospecto online. Solo aplica para Cliente Online Pagado.",
     creditAdjustmentMessage: "Movimiento manual de creditos registrado en bitacora.",
     balanceEmailMessage: "Balance preparado para enviarse al correo del cliente con PDF adjunto.",
     balanceTitle: "Estado de cuenta de creditos",
@@ -268,7 +272,7 @@ const copy = {
     role: "Rol",
     statusLabel: "Estado",
     credits: "Creditos / bolsa inicial",
-    creditsHelp: "Solo Super Admin puede mover manualmente la bolsa de usuarios online. Cada aumento o disminucion queda en bitacora.",
+    creditsHelp: "Solo Super Admin o supervisor delegado temporal pueden mover manualmente la bolsa de un Cliente Online Pagado. Cada aumento o disminucion queda en bitacora.",
     careerData: "Datos profesionales",
     age: "Edad",
     ageHelp: "Dato profesional visible para administracion y reportes internos; ayuda a personalizar recomendaciones sin fomentar sesgos.",
@@ -285,7 +289,8 @@ const copy = {
     ownerHelp: "Solo el Super Admin puede modificar esta asignacion. Los nuevos usuarios se reparten aleatoriamente entre Super Admin y usuarios de apoyo.",
     orgHelp: "Para empresas de outplacement y coach partners, la organizacion viene del catalogo administrado por Super Admin o apoyos de Super Admin.",
     privacyAccepted: "Acepto privacidad",
-    privacyReadonly: "Solo Super Admin puede modificar este registro.",
+    privacyReadonly: "Solo el usuario online lo modifica al aceptar el aviso en login. Administracion solo lo consulta.",
+    stripeReadonly: "Dato de solo lectura. Lo genera Stripe cuando el usuario compra creditos en linea.",
     permissions: "Permisos",
     currentPermissions: "Permisos actuales",
     assignedAvatars: "Avatares asignados",
@@ -357,6 +362,10 @@ const copy = {
     protectedPrincipalDeleteMessage: "Only Super Admin can logically delete the main role of an organization.",
     duplicatePrincipalMessage: "An active main role already exists for this organization. Logically delete the active main user first, then create the new one.",
     unauthorizedPrincipalCreateMessage: "Only Super Admin or authorized support users can create a main Coach Partner or HR Administrator.",
+    requiredOnlineMessage: "Full name and email are required to create or edit an online user.",
+    duplicateOnlineNameMessage: "An online user with that name already exists. Correct the name before saving.",
+    onlineSupportPaidTypeMessage: "Super Admin support users can only create online users as Online prospect. Paid online client is assigned by Super Admin or Stripe purchase.",
+    onlineProspectCreditMessage: "Manual credits cannot be changed for an Online prospect. This only applies to Paid online clients.",
     creditAdjustmentMessage: "Manual credit movement recorded in the audit log.",
     balanceEmailMessage: "Balance prepared to be emailed to the client with the PDF attached.",
     balanceTitle: "Credit statement",
@@ -385,7 +394,7 @@ const copy = {
     role: "Role",
     statusLabel: "Status",
     credits: "Credits / initial pool",
-    creditsHelp: "Only Super Admin can manually move the online user credit pool. Every increase or decrease is logged.",
+    creditsHelp: "Only Super Admin or a temporary delegated supervisor can manually move the credit pool of a Paid online client. Every increase or decrease is logged.",
     careerData: "Professional data",
     age: "Age",
     ageHelp: "Professional data visible for administration and internal reports; helps personalize recommendations without encouraging bias.",
@@ -402,7 +411,8 @@ const copy = {
     ownerHelp: "Only the Super Admin can modify this assignment. New users are distributed randomly among Super Admin and support users.",
     orgHelp: "For outplacement companies and coach partners, the organization comes from the organization catalog managed by Super Admin or Super Admin support users.",
     privacyAccepted: "Privacy accepted",
-    privacyReadonly: "Only Super Admin can modify this record.",
+    privacyReadonly: "Only the online user changes this by accepting the notice during login. Administration only reviews it.",
+    stripeReadonly: "Read-only field. Stripe provides it when the user buys credits online.",
     permissions: "Permissions",
     currentPermissions: "Current permissions",
     assignedAvatars: "Assigned avatars",
@@ -491,9 +501,8 @@ const internalOwners = ["Leo Galvez - Super Admin", "Daniela Ponce - Apoyo cobra
 const empleateYaOrganization = "Empleate YA";
 const adminUsersStorageKey = "empleate-ya-admin-users-v3";
 const adminCreditAuditStorageKey = "empleate-ya-admin-credit-audit-v1";
+const profileStorageKey = "empleate-ya-nav-profile";
 const onlineBaselineCredits = 150;
-const canCurrentUserEditPrivacyAcceptance = true;
-const canCurrentUserEditOnlineCredits = true;
 const currentAdminOperator = { name: "Leo Galvez", role: "Super Admin" } as const;
 const onlineBasicAvatarIds: SkillId[] = ["lumo", "recharge", "scorex", "mr_ikigai", "new_job_challenge", "mr_wow"];
 const linkedInVisualAvatarIds: SkillId[] = ["mr_boost_linked", "tommy_lee_picture"];
@@ -587,8 +596,10 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const [showBalance, setShowBalance] = useState(false);
   const [storageLoaded, setStorageLoaded] = useState(false);
   const [draftRole, setDraftRole] = useState("");
+  const [currentOperator, setCurrentOperator] = useState(() => operatorForProfile("super_admin"));
 
   useEffect(() => {
+    setCurrentOperator(operatorForProfile(window.localStorage.getItem(profileStorageKey) ?? "super_admin"));
     const storedUsers = readStoredJson<DemoUser[]>(adminUsersStorageKey);
     const storedAuditEvents = readStoredJson<CreditAuditEvent[]>(adminCreditAuditStorageKey);
     if (storedUsers?.length) setUsers(storedUsers);
@@ -623,6 +634,11 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const unlimitedCredits = hasUnlimitedCredits(userKind, activeRole);
   const activeCoachPlanKey = pendingPermissions?.coachPlanKey ?? selectedUser?.permissions?.coachPlanKey ?? coachPlanKey;
   const activePermissions = pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, activeRole, activeCoachPlanKey);
+  const operatorIsSuperAdmin = currentOperator.role === "Super Admin";
+  const operatorCanMoveOnlineCredits = operatorIsSuperAdmin || currentOperator.role === "Supervisor delegado temporal";
+  const onlineUserIsPaid = activeRole === "Cliente Online Pagado" || activeRole === "Paid online client";
+  const canEditOnlineRoleAndOwner = userKind !== "online" || operatorIsSuperAdmin;
+  const canEditOnlineCredits = userKind === "online" && operatorCanMoveOnlineCredits && onlineUserIsPaid;
 
   useEffect(() => {
     setDraftRole(selectedUser?.role ?? kind.roles[0]);
@@ -638,8 +654,22 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   }
 
   function handleSaveUser(formData: FormData) {
+    const nextName = String(formData.get("name") || "").trim();
     const email = String(formData.get("email") || "").trim();
-    const nextRole = String(formData.get("role") || kind.roles[0]);
+    const requestedRole = String(formData.get("role") || kind.roles[0]);
+    const nextRole = userKind === "online" && !operatorIsSuperAdmin ? (selectedUser?.role ?? kind.roles[0]) : requestedRole;
+    if (userKind === "online" && (!nextName || !email)) {
+      setNotice(t.requiredOnlineMessage);
+      return;
+    }
+    if (userKind === "online" && !operatorIsSuperAdmin && !selectedUser && (requestedRole === "Cliente Online Pagado" || requestedRole === "Paid online client")) {
+      setNotice(t.onlineSupportPaidTypeMessage);
+      return;
+    }
+    if (userKind === "online" && users.some((user) => user.kind === "online" && user.email !== selectedUser?.email && user.name.trim().toLowerCase() === nextName.toLowerCase())) {
+      setNotice(t.duplicateOnlineNameMessage);
+      return;
+    }
     const nextOrganization = fixedEmpleateYaOrg ? empleateYaOrganization : String(formData.get("organization") || "").trim();
     const nextCoachPlanKey = String(formData.get("coachPlanKey") || coachPlanKey) as CoachPartnerPlanKey;
     const nextCoachPlan = coachPartnerPlans[nextCoachPlanKey];
@@ -648,7 +678,11 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     const cascadedPermissions = shouldCascadePermissionsForRole(userKind, roleChanged, planChanged)
       ? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey)
       : pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey);
-    const nextCredits = creditsForUserRole(userKind, nextRole, nextCoachPlan, formData);
+    const nextCredits = creditsForUserRole(userKind, nextRole, nextCoachPlan, formData, selectedUser, canEditOnlineCredits);
+    if (userKind === "online" && !onlineUserIsPaid && Number(formData.get("credits") || selectedUser?.credits || onlineBaselineCredits) !== (selectedUser?.credits ?? onlineBaselineCredits)) {
+      setNotice(t.onlineProspectCreditMessage);
+      return;
+    }
     if (isMainOrganizationRole(userKind, nextRole) && !canCurrentOperatorCreateMainOrganizationRole()) {
       setNotice(t.unauthorizedPrincipalCreateMessage);
       return;
@@ -659,14 +693,14 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     }
     const savedUser: DemoUser = {
       kind: userKind,
-      name: String(formData.get("name") || "").trim() || "Usuario sin nombre",
+      name: nextName || "Usuario sin nombre",
       email: email || `usuario-${Date.now()}@empleateya.local`,
       organization: nextOrganization,
       role: nextRole,
       phone: String(formData.get("phone") || "").trim(),
       status: String(formData.get("status") || defaultStatus),
       credits: nextCredits,
-      owner: String(formData.get("owner") || internalOwners[0]),
+      owner: userKind === "online" && !operatorIsSuperAdmin ? (selectedUser?.owner ?? internalOwners[0]) : String(formData.get("owner") || internalOwners[0]),
       lastChange: new Date().toLocaleString(language === "es" ? "es-MX" : "en-US", { dateStyle: "short", timeStyle: "short" }),
       notes: String(formData.get("notes") || "").trim(),
       linkedinUrl: String(formData.get("linkedinUrl") || "").trim(),
@@ -674,7 +708,11 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       desiredSalaryAmount: String(formData.get("desiredSalaryAmount") || "").trim(),
       age: Number(formData.get("age") || 0) || undefined,
       permissions: cascadedPermissions,
-      extraData: buildExtraData(kind.extraFields, formData),
+      extraData: {
+        ...buildExtraData(kind.extraFields, formData, selectedUser, userKind),
+        profileName: nextName,
+        profileEmail: email,
+      },
     };
     let creditAdjusted = false;
 
@@ -697,7 +735,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             amount: difference,
             balanceBefore,
             balanceAfter: nextCredits,
-            actor: "Leo Galvez - Super Admin",
+            actor: `${currentOperator.name} - ${currentOperator.role}`,
             createdAt: new Date().toLocaleString(language === "es" ? "es-MX" : "en-US", { dateStyle: "short", timeStyle: "short" }),
           },
           ...currentEvents,
@@ -858,6 +896,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
               <Select
                 name="role"
                 value={activeRole}
+                disabled={!canEditOnlineRoleAndOwner}
                 onChange={(event) => {
                   const nextRole = event.target.value;
                   setDraftRole(nextRole);
@@ -866,6 +905,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
               >
                 {kind.roles.map((item) => <option key={item}>{item}</option>)}
               </Select>
+              {!canEditOnlineRoleAndOwner ? <input type="hidden" name="role" value={activeRole} /> : null}
             </Field>
             {userKind === "coach-partner" ? (
               <>
@@ -877,7 +917,12 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
                 <PartnerPlanSummary plan={coachPartnerPlans[activeCoachPlanKey]} language={language} />
               </>
             ) : null}
-            <Field label={t.owner}><Select name="owner" defaultValue={selectedUser?.owner ? ownerOptionFor(selectedUser.owner) : internalOwners[0]}>{internalOwners.map((item) => <option key={item}>{item}</option>)}</Select></Field>
+            <Field label={t.owner}>
+              <Select name="owner" defaultValue={selectedUser?.owner ? ownerOptionFor(selectedUser.owner) : internalOwners[0]} disabled={!canEditOnlineRoleAndOwner}>
+                {internalOwners.map((item) => <option key={item}>{item}</option>)}
+              </Select>
+              {!canEditOnlineRoleAndOwner ? <input type="hidden" name="owner" value={selectedUser?.owner ? ownerOptionFor(selectedUser.owner) : internalOwners[0]} /> : null}
+            </Field>
             <p className="text-xs font-semibold leading-5 text-slate-500">{t.ownerHelp}</p>
           </FormGroup>
           <FormGroup title={t.extra} icon={<ShieldCheck size={18} />}>
@@ -908,11 +953,11 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
                   <input type="hidden" name="credits" value={outplacementCurrentCredits(selectedUser, activeRole)} />
                 </div>
               ) : (
-                <Input name="credits" placeholder="0" type="number" defaultValue={selectedUser?.credits ?? (userKind === "online" ? onlineBaselineCredits : 0)} readOnly={userKind !== "online" || !canCurrentUserEditOnlineCredits} />
+                <Input name="credits" placeholder="0" type="number" defaultValue={selectedUser?.credits ?? (userKind === "online" ? onlineBaselineCredits : 0)} readOnly={userKind !== "online" || !canEditOnlineCredits} />
               )}
             </Field>
             {userKind === "online" ? <p className="text-xs font-semibold leading-5 text-slate-500">{t.creditsHelp}</p> : null}
-            <ExtraFields fields={kind.extraFields} selectedUser={selectedUser} userRole={activeRole} />
+            <ExtraFields fields={kind.extraFields} selectedUser={selectedUser} userRole={activeRole} userKind={userKind} language={language} canSeeStripeFull={operatorIsSuperAdmin} />
             {userKind === "internal-coach" ? <InternalCoachAvailabilityPanel user={selectedUser} language={language} /> : null}
             {userKind === "super-admin-support" ? (
               <p className="rounded-2xl border border-purple-100 bg-purple-50 px-4 py-3 text-xs font-semibold leading-5 text-purple-900">
@@ -921,7 +966,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             ) : null}
             {userKind === "online" ? (
               <label className="flex items-start gap-3 rounded-2xl bg-white p-3 text-sm font-bold text-slate-700">
-                <input name="privacyAccepted" type="checkbox" className="mt-1" defaultChecked disabled={!canCurrentUserEditPrivacyAcceptance} />
+                <input name="privacyAccepted" type="checkbox" className="mt-1" checked={Boolean(selectedUser?.extraData?.privacyAccepted)} readOnly disabled />
                 <span>{t.privacyAccepted} <small className="block font-semibold text-slate-500">{t.privacyReadonly}</small></span>
               </label>
             ) : null}
@@ -946,16 +991,6 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
               <Field label={t.linkedinUrl}>
                 <Input name="linkedinUrl" placeholder="https://linkedin.com/in/... / No tengo perfil de LinkedIn" defaultValue={selectedUser?.linkedinUrl ?? ""} />
               </Field>
-              <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 md:mt-6">
-                <input
-                  type="checkbox"
-                  onChange={(event) => {
-                    const input = event.currentTarget.form?.elements.namedItem("linkedinUrl") as HTMLInputElement | null;
-                    if (input) input.value = event.target.checked ? t.noLinkedin : "";
-                  }}
-                />
-                {t.noLinkedin}
-              </label>
               <Field label={t.salaryRange}>
                 <Select name="salaryRange" defaultValue={selectedUser?.salaryRange ?? ""}>
                   <option value="">-</option>
@@ -973,7 +1008,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
           <Label>{t.notes}</Label>
           <textarea name="notes" className="min-h-28 w-full rounded-2xl border border-[var(--brand-border)] bg-white px-4 py-3 text-sm text-[var(--brand-ink)] outline-none transition focus:border-[var(--brand-primary)] focus:ring-4 focus:ring-[var(--brand-primary-soft)]" defaultValue={selectedUser?.notes ?? ""} />
         </div>
-        {userKind === "online" ? <CreditAuditLog title={t.creditAuditTitle} empty={t.creditAuditEmpty} events={creditAuditEvents} /> : null}
+        {userKind === "online" ? <CreditAuditLog title={t.creditAuditTitle} empty={t.creditAuditEmpty} events={selectedUser ? creditAuditEvents.filter((event) => event.userEmail === selectedUser.email) : []} /> : null}
       </form>
     </div>
   );
@@ -1169,12 +1204,25 @@ function PartnerPlanSummary({ plan, language }: { plan: (typeof coachPartnerPlan
   );
 }
 
-function ExtraFields({ fields, selectedUser, userRole }: { fields: readonly string[]; selectedUser?: DemoUser; userRole: string }) {
+function ExtraFields({ fields, selectedUser, userRole, userKind, language, canSeeStripeFull }: { fields: readonly string[]; selectedUser?: DemoUser; userRole: string; userKind: AdminUserKind; language: "es" | "en"; canSeeStripeFull: boolean }) {
+  const t = copy[language];
   return (
     <>
       {fields.map((field) => {
         const key = extraFieldKey(field);
         const savedValue = selectedUser?.extraData?.[key];
+        const isStripeField = userKind === "online" && key.includes("stripe");
+        if (isStripeField) {
+          const rawValue = typeof savedValue === "string" ? savedValue : "";
+          const visibleValue = rawValue ? (canSeeStripeFull ? rawValue : maskStripeId(rawValue)) : "Stripe asignara este ID al comprar creditos";
+          return (
+            <Field key={field} label={field}>
+              <Input value={visibleValue} readOnly />
+              <input type="hidden" name={`extra-${key}`} value={typeof savedValue === "string" ? savedValue : ""} />
+              <p className="mt-1 text-xs font-semibold text-slate-500">{t.stripeReadonly}</p>
+            </Field>
+          );
+        }
         if (isBooleanExtraField(field)) {
           return (
             <label key={field} className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700">
@@ -1368,10 +1416,16 @@ function creditsForUserRole(
   userRole: string,
   coachPlan: (typeof coachPartnerPlans)[CoachPartnerPlanKey],
   formData: FormData,
+  selectedUser?: DemoUser,
+  canEditOnlineCredits = false,
 ) {
   if (userKind === "coach-partner") return coachPlan.unlimited ? 0 : calculateCoachPartnerPool(coachPlan);
   if (hasUnlimitedCredits(userKind, userRole)) return 0;
   if (userKind === "outplacement-rh") return Number(formData.get("credits") || calculateOutplacementRoleCredits(userRole));
+  if (userKind === "online") {
+    if (!canEditOnlineCredits) return selectedUser?.credits ?? onlineBaselineCredits;
+    return Number(formData.get("credits") || selectedUser?.credits || onlineBaselineCredits);
+  }
   return Number(formData.get("credits") || 0);
 }
 
@@ -1502,6 +1556,11 @@ function formatSignedCredits(value: number) {
   return value > 0 ? `+${value.toLocaleString("es-MX")}` : value.toLocaleString("es-MX");
 }
 
+function maskStripeId(value: string) {
+  if (value.length <= 8) return "****";
+  return `${value.slice(0, 4)}...${value.slice(-4)}`;
+}
+
 function menuAllowedFor(userKind: AdminUserKind, userRole: string, href: string) {
   if (userKind === "online") return false;
   if (userKind === "coach-partner") return ["/admin/users", "/admin/users/students", "/admin/groups", "/admin/reports", "/admin/coaching"].includes(href);
@@ -1608,12 +1667,16 @@ function formatShortDate(value: string, language: "es" | "en") {
   return new Date(`${value}T12:00:00`).toLocaleDateString(language === "es" ? "es-MX" : "en-US", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function buildExtraData(fields: readonly string[], formData: FormData) {
-  return fields.reduce<Record<string, string | boolean>>((extraData, field) => {
+function buildExtraData(fields: readonly string[], formData: FormData, selectedUser?: DemoUser, userKind?: AdminUserKind) {
+  const extraData = fields.reduce<Record<string, string | boolean>>((currentExtraData, field) => {
     const key = extraFieldKey(field);
-    extraData[key] = isBooleanExtraField(field) ? formData.get(`extra-${key}`) === "on" : String(formData.get(`extra-${key}`) || "").trim();
-    return extraData;
+    currentExtraData[key] = isBooleanExtraField(field) ? formData.get(`extra-${key}`) === "on" : String(formData.get(`extra-${key}`) || selectedUser?.extraData?.[key] || "").trim();
+    return currentExtraData;
   }, {});
+  if (userKind === "online") {
+    extraData.privacyAccepted = selectedUser?.extraData?.privacyAccepted === true || selectedUser?.extraData?.privacyAccepted === "true";
+  }
+  return extraData;
 }
 
 function extraFieldKey(field: string) {
@@ -1642,6 +1705,12 @@ function readStoredJson<T>(key: string): T | null {
 
 function ownerOptionFor(owner: string) {
   return internalOwners.find((item) => item.startsWith(owner)) ?? internalOwners[0];
+}
+
+function operatorForProfile(profile: string) {
+  if (profile === "supervisor_delegado_temporal") return { name: "Monica Reyes", role: "Supervisor delegado temporal" } as const;
+  if (profile === "super_admin_support") return { name: "Valeria Nunez", role: "Apoyo administrativo" } as const;
+  return { name: "Leo Galvez", role: "Super Admin" } as const;
 }
 
 function FormGroup({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
