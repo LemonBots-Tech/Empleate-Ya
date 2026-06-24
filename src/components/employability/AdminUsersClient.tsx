@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Building2, Edit3, FileText, KeyRound, Mail, Printer, Save, Search, ShieldCheck, Trash2, UserPlus, UsersRound } from "lucide-react";
+import { Building2, FileText, KeyRound, Mail, Printer, Save, Search, ShieldCheck, UserPlus, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Select } from "@/components/ui/Input";
 import { skillRegistry, type SkillId } from "@/ai/skillRegistry";
@@ -223,14 +223,14 @@ const copy = {
     all: "Todos",
     formTitle: "Captura y mantenimiento",
     create: "Crear",
-    edit: "Buscar para editar",
+    edit: "Buscar usuario",
     balance: "Movimientos / balance",
     balanceDisabledHelp: "Selecciona primero un usuario online para consultar su balance.",
     saveData: "Guardar datos",
-    deleteLogical: "Buscar para borrar",
+    deleteLogical: "Buscar usuario",
     confirmDelete: "Confirmar borrado logico",
-    searchModeEditHelp: "Busca y selecciona un usuario. Al elegirlo regresaras a captura para editar y guardar cambios.",
-    searchModeDeleteHelp: "Busca y selecciona un usuario. Al elegirlo regresaras a captura para confirmar el borrado logico.",
+    searchModeEditHelp: "Busca y selecciona un usuario. Al elegirlo regresaras a captura para editar estado, datos, creditos o permisos y guardar cambios.",
+    searchModeDeleteHelp: "Busca y selecciona un usuario. Al elegirlo regresaras a captura para editar estado, datos, creditos o permisos y guardar cambios.",
     selectedForEdit: "Usuario seleccionado. Edita lo necesario y presiona Guardar datos.",
     selectedForDelete: "Usuario seleccionado. Revisa el registro y confirma el borrado logico si corresponde.",
     savedDataMessage: "Datos del usuario guardados en la tabla correspondiente.",
@@ -348,14 +348,14 @@ const copy = {
     all: "All",
     formTitle: "Capture and maintenance",
     create: "Create",
-    edit: "Find to edit",
+    edit: "Find user",
     balance: "Movements / balance",
     balanceDisabledHelp: "Select an online user first to review their balance.",
     saveData: "Save data",
-    deleteLogical: "Find to delete",
+    deleteLogical: "Find user",
     confirmDelete: "Confirm logical delete",
-    searchModeEditHelp: "Search and select a user. After selecting, you will return to capture to edit and save changes.",
-    searchModeDeleteHelp: "Search and select a user. After selecting, you will return to capture to confirm logical deletion.",
+    searchModeEditHelp: "Search and select a user. After selecting, you will return to capture to edit status, data, credits, or permissions and save changes.",
+    searchModeDeleteHelp: "Search and select a user. After selecting, you will return to capture to edit status, data, credits, or permissions and save changes.",
     selectedForEdit: "User selected. Edit what is needed and press Save data.",
     selectedForDelete: "User selected. Review the record and confirm logical deletion if appropriate.",
     savedDataMessage: "User data saved in the corresponding table.",
@@ -651,12 +651,11 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   }, [kind.roles, selectedUser?.role, userKind]);
 
   function selectUserForMaintenance(email: string) {
-    const nextMode = searchMode;
     const user = users.find((currentUser) => currentUser.kind === userKind && currentUser.email === email);
     setSelectedEmail(email);
     setDraftRole(user?.role ?? kind.roles[0]);
     setSearchMode("capture");
-    setNotice(nextMode === "delete" ? t.selectedForDelete : t.selectedForEdit);
+    setNotice(t.selectedForEdit);
   }
 
   function handleSaveUser(formData: FormData) {
@@ -682,13 +681,15 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     const roleChanged = selectedUser ? selectedUser.role !== nextRole : true;
     const planChanged = selectedUser?.permissions?.coachPlanKey !== nextCoachPlanKey;
     const requestedStatus = selectedUser ? String(formData.get("status") || defaultStatus) : activeStatusValue(language);
+    const statusChanged = selectedUser ? selectedUser.status !== requestedStatus : false;
     const nextRoleIsPaidOnline = nextRole === "Cliente Online Pagado" || nextRole === "Paid online client";
-    const nextCanEditOnlineCredits = userKind === "online" && operatorCanMoveOnlineCredits && nextRoleIsPaidOnline;
-    const basePermissions = shouldCascadePermissionsForRole(userKind, roleChanged, planChanged)
-      ? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey, requestedStatus)
-      : pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey, requestedStatus);
-    const cascadedPermissions = userKind === "online" ? permissionsForOnlineStatus(basePermissions, requestedStatus) : basePermissions;
-    const nextCredits = creditsForUserRole(userKind, nextRole, nextCoachPlan, formData, selectedUser, nextCanEditOnlineCredits, requestedStatus);
+    const nextCanEditOnlineCredits = !statusChanged && userKind === "online" && operatorCanMoveOnlineCredits && nextRoleIsPaidOnline;
+    const shouldRestoreOnlineDefaults = userKind === "online" && selectedUser && !isActiveStatus(selectedUser.status) && isActiveStatus(requestedStatus);
+    const shouldCascade = shouldCascadePermissionsForRole(userKind, roleChanged, planChanged);
+    const cascadedPermissions = shouldRestoreOnlineDefaults || shouldCascade
+      ? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey)
+      : pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey);
+    const nextCredits = statusChanged && selectedUser ? selectedUser.credits : creditsForUserRole(userKind, nextRole, nextCoachPlan, formData, selectedUser, nextCanEditOnlineCredits, requestedStatus);
     if (userKind === "online" && !nextRoleIsPaidOnline && !isInvitedStatus(requestedStatus) && Number(formData.get("credits") || selectedUser?.credits || onlineBaselineCredits) !== (selectedUser?.credits ?? onlineBaselineCredits)) {
       setNotice(t.onlineProspectCreditMessage);
       return;
@@ -764,16 +765,6 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     setNotice(creditAdjusted ? `${t.savedDataMessage} ${t.creditAdjustmentMessage}${cascadedMessage}` : `${t.savedDataMessage}${cascadedMessage}`);
   }
 
-  function handleLogicalDelete() {
-    if (!selectedUser) return;
-    if (isMainOrganizationRole(selectedUser.kind, selectedUser.role) && !canCurrentOperatorDeleteMainOrganizationRole()) {
-      setNotice(t.protectedPrincipalDeleteMessage);
-      return;
-    }
-    setUsers((currentUsers) => currentUsers.map((user) => (user.email === selectedUser.email ? { ...user, status: "borrado_logico", lastChange: new Date().toLocaleString(language === "es" ? "es-MX" : "en-US", { dateStyle: "short", timeStyle: "short" }) } : user)));
-    setNotice(t.logicalDeleteMessage);
-  }
-
   if (showPermissions) {
     return (
       <PermissionsPanel
@@ -823,8 +814,8 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
           <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
             <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <h2 className="text-xl font-black text-slate-950">{searchMode === "edit" ? t.edit : t.deleteLogical}</h2>
-                <p className="mt-1 text-sm font-semibold text-slate-500">{searchMode === "edit" ? t.searchModeEditHelp : t.searchModeDeleteHelp}</p>
+                <h2 className="text-xl font-black text-slate-950">{t.edit}</h2>
+                <p className="mt-1 text-sm font-semibold text-slate-500">{t.searchModeEditHelp}</p>
               </div>
               <Button type="button" className="border border-[var(--brand-border)] bg-white text-slate-700 hover:bg-slate-50" onClick={() => setSearchMode("capture")}>{t.backToCapture}</Button>
             </div>
@@ -888,11 +879,9 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="button" className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]" onClick={() => { setSelectedEmail(""); setDraftRole(kind.roles[0]); setPendingPermissions(null); setNotice(""); setSearchMode("capture"); }}><UserPlus size={17} />{t.create}</Button>
-            <Button type="button" className="gap-2 bg-slate-950 text-white hover:bg-slate-800" onClick={() => { setSearchMode("edit"); setNotice(""); }}><Edit3 size={17} />{t.edit}</Button>
-            <Button type="button" className="gap-2 bg-amber-500 text-white hover:bg-amber-600" onClick={() => { setSearchMode("delete"); setNotice(""); }}><Trash2 size={17} />{t.deleteLogical}</Button>
+            <Button type="button" className="gap-2 bg-slate-950 text-white hover:bg-slate-800" onClick={() => { setSearchMode("edit"); setNotice(""); }}><Search size={17} />{t.edit}</Button>
             {userKind === "online" ? <Button type="button" disabled={!selectedUser} title={!selectedUser ? t.balanceDisabledHelp : undefined} className="gap-2 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50" onClick={() => setShowBalance(true)}><FileText size={17} />{t.balance}</Button> : null}
             <Button type="submit" className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"><Save size={17} />{t.saveData}</Button>
-            {selectedUser ? <Button type="button" className="gap-2 bg-red-600 text-white hover:bg-red-700" onClick={handleLogicalDelete}><Trash2 size={17} />{t.confirmDelete}</Button> : null}
             <Button type="button" className="gap-2 border border-[var(--brand-border)] bg-white text-[var(--brand-primary)] hover:bg-[var(--brand-primary-soft)]" onClick={() => { setPendingPermissions(activePermissions); setShowPermissions(true); }}><KeyRound size={17} />{t.permissions}</Button>
           </div>
         </div>
@@ -941,9 +930,10 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
           </FormGroup>
           <FormGroup title={t.extra} icon={<ShieldCheck size={18} />}>
             <Field label={t.statusLabel}>
-              <Select name="status" defaultValue={defaultStatus}>
+              <Select name="status" defaultValue={defaultStatus} disabled={Boolean(selectedUser && isLockedOrDeletedStatus(selectedUser.status) && !operatorIsSuperAdmin)}>
                 {t.statuses.map((item) => <option key={item} value={item}>{statusLabel(item, language)}</option>)}
               </Select>
+              {selectedUser && isLockedOrDeletedStatus(selectedUser.status) && !operatorIsSuperAdmin ? <input type="hidden" name="status" value={selectedUser.status} /> : null}
             </Field>
             <Field label={t.credits}>
               {userKind === "coach-partner" ? (
@@ -1490,18 +1480,16 @@ function isInvitedStatus(status: string) {
   return status === "invitado" || status === "invited";
 }
 
+function isActiveStatus(status: string) {
+  return status === "activo" || status === "active";
+}
+
 function isRestrictedAccessStatus(status: string) {
   return ["pendiente", "pending", "bloqueado", "blocked", "borrado_logico", "logical_delete"].includes(status);
 }
 
 function isLockedOrDeletedStatus(status: string) {
   return ["bloqueado", "blocked", "borrado_logico", "logical_delete"].includes(status);
-}
-
-function permissionsForOnlineStatus(permissions: UserPermissions, status: string): UserPermissions {
-  if (isRestrictedAccessStatus(status)) return { ...permissions, avatarIds: [] };
-  if (isInvitedStatus(status)) return { ...permissions, avatarIds: allAvatarIds };
-  return permissions;
 }
 
 function isDefaultCampaignApproverRole(userRole: string) {
@@ -1546,10 +1534,6 @@ function canCurrentOperatorCreateMainOrganizationRole() {
     "Operativo outplacement",
     "Supervisor delegado temporal",
   ].includes(currentAdminOperator.role);
-}
-
-function canCurrentOperatorDeleteMainOrganizationRole() {
-  return currentAdminOperator.role === "Super Admin";
 }
 
 function buildBalanceMovements(user: DemoUser, creditAuditEvents: CreditAuditEvent[], language: "es" | "en"): BalanceMovement[] {
