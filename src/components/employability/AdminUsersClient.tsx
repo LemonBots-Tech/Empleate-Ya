@@ -244,7 +244,10 @@ const copy = {
     duplicateOnlineNameMessage: "Ya existe un usuario online con ese nombre. Corrige el nombre antes de guardar.",
     onlineSupportPaidTypeMessage: "Los apoyos a Super Admin solo pueden crear usuarios online como Prospecto online. Cliente Online Pagado se asigna por Super Admin o por compra Stripe.",
     onlineProspectCreditMessage: "No se pueden modificar creditos manualmente a un Prospecto online. Solo aplica para Cliente Online Pagado.",
+    protectedStatusRestoreMessage: "Solo Super Admin puede cambiar un usuario desde borrado logico o bloqueado hacia otro estado.",
     creditAdjustmentMessage: "Movimiento manual de creditos registrado en bitacora.",
+    alertTitle: "Atencion",
+    alertAccept: "Aceptar",
     balanceEmailMessage: "Balance preparado para enviarse al correo del cliente con PDF adjunto.",
     balanceTitle: "Estado de cuenta de creditos",
     balanceDescription: "Consulta movimientos desde la creacion del usuario y genera un preview para imprimir, PDF o envio por correo.",
@@ -366,7 +369,10 @@ const copy = {
     duplicateOnlineNameMessage: "An online user with that name already exists. Correct the name before saving.",
     onlineSupportPaidTypeMessage: "Super Admin support users can only create online users as Online prospect. Paid online client is assigned by Super Admin or Stripe purchase.",
     onlineProspectCreditMessage: "Manual credits cannot be changed for an Online prospect. This only applies to Paid online clients.",
+    protectedStatusRestoreMessage: "Only Super Admin can move a user from logical delete or blocked into another status.",
     creditAdjustmentMessage: "Manual credit movement recorded in the audit log.",
+    alertTitle: "Attention",
+    alertAccept: "Accept",
     balanceEmailMessage: "Balance prepared to be emailed to the client with the PDF attached.",
     balanceTitle: "Credit statement",
     balanceDescription: "Review movements since the user was created and generate a preview for print, PDF, or email delivery.",
@@ -675,12 +681,20 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     const nextCoachPlan = coachPartnerPlans[nextCoachPlanKey];
     const roleChanged = selectedUser ? selectedUser.role !== nextRole : true;
     const planChanged = selectedUser?.permissions?.coachPlanKey !== nextCoachPlanKey;
-    const cascadedPermissions = shouldCascadePermissionsForRole(userKind, roleChanged, planChanged)
-      ? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey)
-      : pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey);
-    const nextCredits = creditsForUserRole(userKind, nextRole, nextCoachPlan, formData, selectedUser, canEditOnlineCredits);
-    if (userKind === "online" && !onlineUserIsPaid && Number(formData.get("credits") || selectedUser?.credits || onlineBaselineCredits) !== (selectedUser?.credits ?? onlineBaselineCredits)) {
+    const requestedStatus = selectedUser ? String(formData.get("status") || defaultStatus) : activeStatusValue(language);
+    const nextRoleIsPaidOnline = nextRole === "Cliente Online Pagado" || nextRole === "Paid online client";
+    const nextCanEditOnlineCredits = userKind === "online" && operatorCanMoveOnlineCredits && nextRoleIsPaidOnline;
+    const basePermissions = shouldCascadePermissionsForRole(userKind, roleChanged, planChanged)
+      ? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey, requestedStatus)
+      : pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey, requestedStatus);
+    const cascadedPermissions = userKind === "online" ? permissionsForOnlineStatus(basePermissions, requestedStatus) : basePermissions;
+    const nextCredits = creditsForUserRole(userKind, nextRole, nextCoachPlan, formData, selectedUser, nextCanEditOnlineCredits, requestedStatus);
+    if (userKind === "online" && !nextRoleIsPaidOnline && !isInvitedStatus(requestedStatus) && Number(formData.get("credits") || selectedUser?.credits || onlineBaselineCredits) !== (selectedUser?.credits ?? onlineBaselineCredits)) {
       setNotice(t.onlineProspectCreditMessage);
+      return;
+    }
+    if (selectedUser && isLockedOrDeletedStatus(selectedUser.status) && requestedStatus !== selectedUser.status && !operatorIsSuperAdmin) {
+      setNotice(t.protectedStatusRestoreMessage);
       return;
     }
     if (isMainOrganizationRole(userKind, nextRole) && !canCurrentOperatorCreateMainOrganizationRole()) {
@@ -698,7 +712,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       organization: nextOrganization,
       role: nextRole,
       phone: String(formData.get("phone") || "").trim(),
-      status: String(formData.get("status") || defaultStatus),
+      status: requestedStatus,
       credits: nextCredits,
       owner: userKind === "online" && !operatorIsSuperAdmin ? (selectedUser?.owner ?? internalOwners[0]) : String(formData.get("owner") || internalOwners[0]),
       lastChange: new Date().toLocaleString(language === "es" ? "es-MX" : "en-US", { dateStyle: "short", timeStyle: "short" }),
@@ -864,7 +878,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
         </>
       ) : null}
 
-      {notice ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-800">{notice}</div> : null}
+      <NoticeDialog title={t.alertTitle} acceptLabel={t.alertAccept} message={notice} onClose={() => setNotice("")} />
 
       <form key={`${userKind}-${selectedEmail || "new"}`} action={handleSaveUser} className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
         <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -1080,7 +1094,7 @@ function OnlineBalancePanel({
           </div>
         </div>
 
-        <div className="overflow-auto">
+        <div className="max-h-[980px] overflow-auto">
           <table className="w-full min-w-[780px] text-left text-sm">
             <thead>
               <tr>{t.balanceColumns.map((column) => <Th key={column}>{column}</Th>)}</tr>
@@ -1373,17 +1387,19 @@ function PermissionsPanel({
   );
 }
 
-function defaultPermissionsFor(userKind: AdminUserKind, userRole: string, coachPlanKey: CoachPartnerPlanKey): UserPermissions {
+function defaultPermissionsFor(userKind: AdminUserKind, userRole: string, coachPlanKey: CoachPartnerPlanKey, userStatus = "activo"): UserPermissions {
   return {
-    avatarIds: allowedAvatarsFor(userKind, userRole, coachPlanKey),
+    avatarIds: allowedAvatarsFor(userKind, userRole, coachPlanKey, userStatus),
     adminMenuHrefs: adminSections.filter((section) => menuAllowedFor(userKind, userRole, section.href)).map((section) => section.href),
     userSubmenuHrefs: userSubmenuPermissions.filter((href) => userSubmenuAllowedFor(userKind, userRole, href)),
     coachPlanKey,
   };
 }
 
-function allowedAvatarsFor(userKind: AdminUserKind, userRole: string, coachPlanKey: CoachPartnerPlanKey) {
+function allowedAvatarsFor(userKind: AdminUserKind, userRole: string, coachPlanKey: CoachPartnerPlanKey, userStatus = "activo") {
   if (userKind === "online") {
+    if (isRestrictedAccessStatus(userStatus)) return [];
+    if (isInvitedStatus(userStatus)) return allAvatarIds;
     return userRole === "Cliente Online Pagado" || userRole === "Paid online client" ? allAvatarIds : onlineBasicAvatarIds;
   }
   if (userKind === "coach-partner") return coachPartnerPlans[coachPlanKey].avatarIds;
@@ -1418,11 +1434,13 @@ function creditsForUserRole(
   formData: FormData,
   selectedUser?: DemoUser,
   canEditOnlineCredits = false,
+  userStatus = "activo",
 ) {
   if (userKind === "coach-partner") return coachPlan.unlimited ? 0 : calculateCoachPartnerPool(coachPlan);
   if (hasUnlimitedCredits(userKind, userRole)) return 0;
   if (userKind === "outplacement-rh") return Number(formData.get("credits") || calculateOutplacementRoleCredits(userRole));
   if (userKind === "online") {
+    if (isInvitedStatus(userStatus)) return onlineBaselineCredits;
     if (!canEditOnlineCredits) return selectedUser?.credits ?? onlineBaselineCredits;
     return Number(formData.get("credits") || selectedUser?.credits || onlineBaselineCredits);
   }
@@ -1462,6 +1480,28 @@ function statusLabel(status: string, language: "es" | "en") {
   if (status === "borrado_logico") return "borrado lógico";
   if (status === "logical_delete") return "logical delete";
   return status;
+}
+
+function activeStatusValue(language: "es" | "en") {
+  return language === "es" ? "activo" : "active";
+}
+
+function isInvitedStatus(status: string) {
+  return status === "invitado" || status === "invited";
+}
+
+function isRestrictedAccessStatus(status: string) {
+  return ["pendiente", "pending", "bloqueado", "blocked", "borrado_logico", "logical_delete"].includes(status);
+}
+
+function isLockedOrDeletedStatus(status: string) {
+  return ["bloqueado", "blocked", "borrado_logico", "logical_delete"].includes(status);
+}
+
+function permissionsForOnlineStatus(permissions: UserPermissions, status: string): UserPermissions {
+  if (isRestrictedAccessStatus(status)) return { ...permissions, avatarIds: [] };
+  if (isInvitedStatus(status)) return { ...permissions, avatarIds: allAvatarIds };
+  return permissions;
 }
 
 function isDefaultCampaignApproverRole(userRole: string) {
@@ -1546,6 +1586,11 @@ function isoDateFromDisplayDate(value: string) {
   const parsed = new Date(value);
   if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
   return "2026-06-17";
+}
+
+function eventTime(value: string) {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
 }
 
 function formatBalanceDate(value: string, language: "es" | "en") {
@@ -1738,12 +1783,28 @@ function Pill({ children }: { children: ReactNode }) {
   return <span className="inline-flex whitespace-nowrap rounded-full bg-[var(--brand-primary-soft)] px-3 py-1 text-xs font-black text-[var(--brand-primary)]">{children}</span>;
 }
 
+function NoticeDialog({ title, acceptLabel, message, onClose }: { title: string; acceptLabel: string; message: string; onClose: () => void }) {
+  if (!message) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm" role="alertdialog" aria-modal="true" aria-labelledby="admin-users-notice-title">
+      <div className="w-full max-w-lg rounded-[1.5rem] border border-purple-100 bg-white p-6 shadow-2xl">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--brand-primary)]">{title}</p>
+        <h2 id="admin-users-notice-title" className="mt-3 text-2xl font-black text-slate-950">{message}</h2>
+        <div className="mt-5 flex justify-end">
+          <Button type="button" className="bg-[var(--brand-primary)] text-white hover:bg-[var(--brand-primary-strong)]" onClick={onClose}>{acceptLabel}</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CreditAuditLog({ title, empty, events }: { title: string; empty: string; events: CreditAuditEvent[] }) {
+  const orderedEvents = [...events].sort((left, right) => eventTime(right.createdAt) - eventTime(left.createdAt));
   return (
     <section className="mt-5 rounded-[1.25rem] border border-slate-200 bg-slate-50/70 p-4">
       <h3 className="text-lg font-black text-slate-950">{title}</h3>
       {events.length ? (
-        <div className="mt-3 max-h-44 overflow-auto rounded-2xl border border-slate-200 bg-white">
+        <div className="mt-3 max-h-[520px] overflow-auto rounded-2xl border border-slate-200 bg-white">
           <table className="w-full min-w-[820px] text-left text-sm">
             <thead>
               <tr>
@@ -1755,7 +1816,7 @@ function CreditAuditLog({ title, empty, events }: { title: string; empty: string
               </tr>
             </thead>
             <tbody>
-              {events.map((event) => (
+              {orderedEvents.map((event) => (
                 <tr key={event.id} className="border-b border-slate-100 last:border-0">
                   <Td><strong className="block text-slate-950">{event.userName}</strong><span className="text-xs text-slate-500">{event.userEmail}</span></Td>
                   <Td><strong className={event.amount >= 0 ? "text-emerald-700" : "text-rose-700"}>{event.amount >= 0 ? "+" : ""}{event.amount}</strong></Td>
