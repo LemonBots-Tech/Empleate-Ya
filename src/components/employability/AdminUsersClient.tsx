@@ -985,7 +985,6 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             ) : null}
           </FormGroup>
         </div>
-        <PermissionsSummary permissions={activePermissions} language={language} />
         {usesCareerDataFields(userKind) ? (
           <section className="mt-5 rounded-[1.25rem] border border-slate-200 bg-slate-50/70 p-4">
             <h3 className="mb-4 text-lg font-black text-slate-950">{t.careerData}</h3>
@@ -1017,6 +1016,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             </div>
           </section>
         ) : null}
+        <PermissionsSummary permissions={activePermissions} language={language} />
         <div className="mt-5">
           <Label>{t.notes}</Label>
           <textarea name="notes" className="min-h-28 w-full rounded-2xl border border-[var(--brand-border)] bg-white px-4 py-3 text-sm text-[var(--brand-ink)] outline-none transition focus:border-[var(--brand-primary)] focus:ring-4 focus:ring-[var(--brand-primary-soft)]" defaultValue={selectedUser?.notes ?? ""} />
