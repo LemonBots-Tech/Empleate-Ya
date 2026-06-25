@@ -242,6 +242,7 @@ const copy = {
     unauthorizedPrincipalCreateMessage: "Solo Super Admin o apoyos autorizados pueden dar de alta un Coach partner principal o Administrador RH.",
     requiredOnlineMessage: "Nombre completo y correo son obligatorios para crear o editar un usuario online.",
     requiredSupportMessage: "Nombre completo, telefono y correo son obligatorios para crear o editar un apoyo Super Admin.",
+    requiredInternalCoachMessage: "Nombre completo, telefono y correo son obligatorios para crear o editar un Coach interno 1o1.",
     delegationExistingUserMessage: "La delegacion temporal solo puede asignarse a un usuario de apoyo ya creado. Primero crea el apoyo con su rol base y despues asigna la delegacion.",
     delegationPasswordMessage: "Para guardar fechas de delegacion, un Super Admin o supervisor delegado vigente debe autorizar con su password.",
     delegationDateMessage: "Captura fecha de delegacion y fecha fin de delegacion para habilitar la supervision temporal.",
@@ -374,6 +375,7 @@ const copy = {
     unauthorizedPrincipalCreateMessage: "Only Super Admin or authorized support users can create a main Coach Partner or HR Administrator.",
     requiredOnlineMessage: "Full name and email are required to create or edit an online user.",
     requiredSupportMessage: "Full name, phone, and email are required to create or edit a Super Admin support user.",
+    requiredInternalCoachMessage: "Full name, phone, and email are required to create or edit an internal 1:1 coach.",
     delegationExistingUserMessage: "Temporary delegation can only be assigned to an existing support user. Create the support user with a base role first, then assign delegation.",
     delegationPasswordMessage: "To save delegation dates, a Super Admin or active delegated supervisor must authorize with their password.",
     delegationDateMessage: "Enter delegation start and end dates to enable temporary supervision.",
@@ -618,6 +620,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const [storageLoaded, setStorageLoaded] = useState(false);
   const [draftRole, setDraftRole] = useState("");
   const [draftStatus, setDraftStatus] = useState("");
+  const [draftOwner, setDraftOwner] = useState<string>(internalOwners[0]);
   const [currentOperator, setCurrentOperator] = useState(() => operatorForProfile("super_admin"));
 
   useEffect(() => {
@@ -671,11 +674,16 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     setDraftStatus(selectedUser?.status ?? t.statuses[0]);
   }, [selectedUser?.status, t.statuses]);
 
+  useEffect(() => {
+    setDraftOwner(selectedUser?.owner ? ownerOptionFor(selectedUser.owner) : internalOwners[0]);
+  }, [selectedUser?.owner, userKind]);
+
   function selectUserForMaintenance(email: string) {
     const user = users.find((currentUser) => currentUser.kind === userKind && currentUser.email === email);
     setSelectedEmail(email);
     setDraftRole(user?.role ?? kind.roles[0]);
     setDraftStatus(user?.status ?? t.statuses[0]);
+    setDraftOwner(user?.owner ? ownerOptionFor(user.owner) : internalOwners[0]);
     setSearchMode("capture");
     setNotice(t.selectedForEdit);
   }
@@ -692,6 +700,10 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     }
     if (userKind === "super-admin-support" && (!nextName || !phone || !email)) {
       setNotice(t.requiredSupportMessage);
+      return;
+    }
+    if (userKind === "internal-coach" && (!nextName || !phone || !email)) {
+      setNotice(t.requiredInternalCoachMessage);
       return;
     }
     if (userKind === "super-admin-support" && isTemporarySupervisorRole(nextRole) && !selectedUser) {
@@ -770,7 +782,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       phone,
       status: requestedStatus,
       credits: nextCredits,
-      owner: userKind === "online" && !operatorIsSuperAdmin ? (selectedUser?.owner ?? internalOwners[0]) : String(formData.get("owner") || internalOwners[0]),
+      owner: userKind === "online" && !operatorIsSuperAdmin ? (selectedUser?.owner ?? internalOwners[0]) : String(formData.get("owner") || draftOwner || internalOwners[0]),
       lastChange: new Date().toLocaleString(language === "es" ? "es-MX" : "en-US", { dateStyle: "short", timeStyle: "short" }),
       notes: String(formData.get("notes") || "").trim(),
       linkedinUrl: String(formData.get("linkedinUrl") || "").trim(),
@@ -935,7 +947,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             <p className="mt-1 text-sm font-semibold text-slate-500">{selectedUser ? `${t.selected}: ${selectedUser.name}` : t.noSelected}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]" onClick={() => { setSelectedEmail(""); setDraftRole(kind.roles[0]); setDraftStatus(t.statuses[0]); setPendingPermissions(null); setNotice(""); setSearchMode("capture"); }}><UserPlus size={17} />{t.create}</Button>
+            <Button type="button" className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]" onClick={() => { setSelectedEmail(""); setDraftRole(kind.roles[0]); setDraftStatus(t.statuses[0]); setDraftOwner(internalOwners[0]); setPendingPermissions(null); setNotice(""); setSearchMode("capture"); }}><UserPlus size={17} />{t.create}</Button>
             <Button type="button" className="gap-2 bg-slate-950 text-white hover:bg-slate-800" onClick={() => { setSearchMode("edit"); setNotice(""); }}><Search size={17} />{t.edit}</Button>
             {userKind === "online" ? <Button type="button" disabled={!selectedUser} title={!selectedUser ? t.balanceDisabledHelp : undefined} className="gap-2 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50" onClick={() => setShowBalance(true)}><FileText size={17} />{t.balance}</Button> : null}
             <Button type="submit" className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"><Save size={17} />{t.saveData}</Button>
@@ -978,10 +990,10 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
               </>
             ) : null}
             <Field label={t.owner}>
-              <Select name="owner" defaultValue={selectedUser?.owner ? ownerOptionFor(selectedUser.owner) : internalOwners[0]} disabled={!canEditOnlineRoleAndOwner}>
+              <Select name="owner" value={draftOwner} onChange={(event) => setDraftOwner(event.target.value)} disabled={!canEditOnlineRoleAndOwner}>
                 {internalOwners.map((item) => <option key={item}>{item}</option>)}
               </Select>
-              {!canEditOnlineRoleAndOwner ? <input type="hidden" name="owner" value={selectedUser?.owner ? ownerOptionFor(selectedUser.owner) : internalOwners[0]} /> : null}
+              {!canEditOnlineRoleAndOwner ? <input type="hidden" name="owner" value={draftOwner} /> : null}
             </Field>
             <p className="text-xs font-semibold leading-5 text-slate-500">{t.ownerHelp}</p>
           </FormGroup>
