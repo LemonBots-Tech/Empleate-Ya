@@ -563,7 +563,7 @@ const salaryRangeOptions = {
 } as const;
 
 const demoUsers: DemoUser[] = [
-  { kind: "online", name: "Laura Mendez", email: "laura@email.com", organization: empleateYaOrganization, role: "Cliente Online Pagado", phone: "+52 55 1000 0001", status: "activo", credits: onlineBaselineCredits, owner: "Leo Galvez", lastChange: "12/06/2026 10:40", notes: "Compra individual Stripe. Puede ejecutar avatares segun saldo.", age: 34 },
+  { kind: "online", name: "Laura Mendez", email: "laura@email.com", organization: empleateYaOrganization, role: "Cliente Online Pagado", phone: "+52 55 1000 0001", status: "activo", credits: onlineBaselineCredits - skillRegistry.scorex.baseCredits + 500, owner: "Leo Galvez", lastChange: "12/06/2026 10:40", notes: "Compra individual Stripe. Puede ejecutar avatares segun saldo.", age: 34 },
   { kind: "online", name: "Jorge Luna", email: "jorge@email.com", organization: empleateYaOrganization, role: "Prospecto online", phone: "+52 55 1000 0006", status: "pendiente", credits: onlineBaselineCredits, owner: "Sistema", lastChange: "12/06/2026 08:20", notes: "Prueba limitada. Requiere registro para consumir mas avatares.", age: 42 },
   { kind: "super-admin-support", name: "Daniela Ponce", email: "daniela@empleateya.mx", organization: "Cobranza", role: "Apoyo cobranza", phone: "+52 55 1000 0002", status: "activo", credits: 0, owner: "Leo Galvez", lastChange: "12/06/2026 10:10", notes: "Acceso a pagos, estados de cuenta y comentarios internos." },
   { kind: "super-admin-support", name: "Ricardo Vega", email: "ricardo@empleateya.mx", organization: "Operaciones", role: "Operativo outplacement", phone: "+52 55 1000 0007", status: "invitado", credits: 0, owner: "Leo Galvez", lastChange: "12/06/2026 07:52", notes: "Apoya altas masivas y seguimiento operativo de campanas." },
@@ -645,6 +645,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const onlineUserIsPaid = activeRole === "Cliente Online Pagado" || activeRole === "Paid online client";
   const canEditOnlineRoleAndOwner = userKind !== "online" || operatorIsSuperAdmin;
   const canEditOnlineCredits = userKind === "online" && operatorCanMoveOnlineCredits && onlineUserIsPaid;
+  const selectedOnlineBalance = selectedUser && userKind === "online" ? balanceTotalForUser(selectedUser, creditAuditEvents, language) : undefined;
 
   useEffect(() => {
     setDraftRole(selectedUser?.role ?? kind.roles[0]);
@@ -684,13 +685,20 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     const statusChanged = selectedUser ? selectedUser.status !== requestedStatus : false;
     const nextRoleIsPaidOnline = nextRole === "Cliente Online Pagado" || nextRole === "Paid online client";
     const nextCanEditOnlineCredits = !statusChanged && userKind === "online" && operatorCanMoveOnlineCredits && nextRoleIsPaidOnline;
+    const currentOnlineBalance = userKind === "online" ? selectedOnlineBalance ?? onlineBaselineCredits : undefined;
     const shouldRestoreOnlineDefaults = userKind === "online" && selectedUser && !isActiveStatus(selectedUser.status) && isActiveStatus(requestedStatus);
     const shouldCascade = shouldCascadePermissionsForRole(userKind, roleChanged, planChanged);
     const cascadedPermissions = shouldRestoreOnlineDefaults || shouldCascade
       ? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey)
       : pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey);
-    const nextCredits = statusChanged && selectedUser ? selectedUser.credits : creditsForUserRole(userKind, nextRole, nextCoachPlan, formData, selectedUser, nextCanEditOnlineCredits, requestedStatus);
-    if (userKind === "online" && !nextRoleIsPaidOnline && !isInvitedStatus(requestedStatus) && Number(formData.get("credits") || selectedUser?.credits || onlineBaselineCredits) !== (selectedUser?.credits ?? onlineBaselineCredits)) {
+    const nextCredits = userKind === "online"
+      ? statusChanged && selectedUser
+        ? currentOnlineBalance ?? onlineBaselineCredits
+        : nextCanEditOnlineCredits
+          ? Number(formData.get("credits") || currentOnlineBalance || onlineBaselineCredits)
+          : currentOnlineBalance ?? onlineBaselineCredits
+      : creditsForUserRole(userKind, nextRole, nextCoachPlan, formData, selectedUser, nextCanEditOnlineCredits, requestedStatus);
+    if (userKind === "online" && !nextRoleIsPaidOnline && !isInvitedStatus(requestedStatus) && Number(formData.get("credits") || currentOnlineBalance || onlineBaselineCredits) !== (currentOnlineBalance ?? onlineBaselineCredits)) {
       setNotice(t.onlineProspectCreditMessage);
       return;
     }
@@ -738,7 +746,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       return currentUsers.map((user, index) => (index === existingIndex ? savedUser : user));
     });
     if (userKind === "online") {
-      const balanceBefore = selectedUser?.credits ?? onlineBaselineCredits;
+      const balanceBefore = currentOnlineBalance ?? onlineBaselineCredits;
       const difference = nextCredits - balanceBefore;
       if (difference !== 0) {
         creditAdjusted = true;
@@ -957,7 +965,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
                   <input type="hidden" name="credits" value={outplacementCurrentCredits(selectedUser, activeRole)} />
                 </div>
               ) : (
-                <Input name="credits" placeholder="0" type="number" defaultValue={selectedUser?.credits ?? (userKind === "online" ? onlineBaselineCredits : 0)} readOnly={userKind !== "online" || !canEditOnlineCredits} />
+                <Input name="credits" placeholder="0" type="number" defaultValue={selectedOnlineBalance ?? selectedUser?.credits ?? (userKind === "online" ? onlineBaselineCredits : 0)} readOnly={userKind !== "online" || !canEditOnlineCredits} />
               )}
             </Field>
             {userKind === "online" ? <p className="text-xs font-semibold leading-5 text-slate-500">{t.creditsHelp}</p> : null}
@@ -1538,6 +1546,12 @@ function canCurrentOperatorCreateMainOrganizationRole() {
 
 function buildBalanceMovements(user: DemoUser, creditAuditEvents: CreditAuditEvent[], language: "es" | "en"): BalanceMovement[] {
   const defaultConcept = copy[language].balanceDefaultConcept;
+  const seededDemoMovements: BalanceMovement[] = user.email === "laura@email.com"
+    ? [
+        { date: "2026-06-05", concept: "ScoreX | evalua CV para ATS", credits: 0, consumption: -skillRegistry.scorex.baseCredits },
+        { date: "2026-06-08", concept: "Compra de 999 creditos | Referencia Stripe: 9999999999", credits: 500, consumption: 0 },
+      ]
+    : [];
   const userAuditMovements = creditAuditEvents
     .filter((event) => event.userEmail === user.email)
     .map((event) => ({
@@ -1549,10 +1563,13 @@ function buildBalanceMovements(user: DemoUser, creditAuditEvents: CreditAuditEve
 
   return [
     { date: "2026-06-01", concept: defaultConcept, credits: onlineBaselineCredits, consumption: 0 },
-    { date: "2026-06-05", concept: "ScoreX | evalua CV para ATS", credits: 0, consumption: -skillRegistry.scorex.baseCredits },
-    { date: "2026-06-08", concept: "Compra de 999 creditos | Referencia Stripe: 9999999999", credits: 500, consumption: 0 },
+    ...seededDemoMovements,
     ...userAuditMovements,
   ].sort((left, right) => left.date.localeCompare(right.date));
+}
+
+function balanceTotalForUser(user: DemoUser, creditAuditEvents: CreditAuditEvent[], language: "es" | "en") {
+  return buildBalanceMovements(user, creditAuditEvents, language).reduce((total, movement) => total + movement.credits + movement.consumption, 0);
 }
 
 function filterBalanceMovements(movements: BalanceMovement[], period: BalancePeriod, startDate: string, endDate: string) {
