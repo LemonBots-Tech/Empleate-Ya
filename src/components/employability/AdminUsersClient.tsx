@@ -96,7 +96,7 @@ const kindConfig = {
       organizationPlaceholder: "Ej. Partner Ejecutivo Norte",
       roleLabel: "Rol partner",
       roles: ["Coach partner principal", "Coach partner colaborador"],
-      extraFields: ["Licencia", "Fecha inicio licencia", "Fecha vigencia licencia"],
+      extraFields: ["Numero de licencia", "Estado organizacion", "Fecha inicio licencia", "Fecha vigencia licencia", "Fecha gracia vigente"],
     },
     "outplacement-rh": {
       title: "Outplacement",
@@ -168,7 +168,7 @@ const kindConfig = {
       organizationPlaceholder: "Example: Executive North Partner",
       roleLabel: "Partner role",
       roles: ["Main coach partner", "Coach partner collaborator"],
-      extraFields: ["License", "License start date", "License end date"],
+      extraFields: ["License number", "Organization status", "License start date", "License end date", "Active grace date"],
     },
     "outplacement-rh": {
       title: "Outplacement",
@@ -554,16 +554,31 @@ const coachPartnerPlans = {
   business: { label: "Coach Business", avatarIds: allAvatarIds, baseCreditsPerCycle: Infinity, groups: Infinity, studentsPerGroup: Infinity, cycles: Infinity, studentCycles: Infinity, unlimited: true },
 } as const;
 
-const coachPartnerOrganizationLicenses: Record<string, { licenseNumber: string; licenseStart: string; licenseEnd: string; planKey: CoachPartnerPlanKey }> = {
-  "Partner Ejecutivo Norte": { licenseNumber: "CP-2026-001-v1", licenseStart: "2026-06-01", licenseEnd: "2026-12-01", planKey: "starter" },
-  "Partner Bajio": { licenseNumber: "CP-2026-002-v1", licenseStart: "2026-06-01", licenseEnd: "2027-06-01", planKey: "pro" },
-  "Partner Ejecutivo CDMX": { licenseNumber: "CP-2026-003-v1", licenseStart: "2026-07-01", licenseEnd: "2027-01-01", planKey: "starter" },
-  "Partner Carrera Global": { licenseNumber: "CP-2026-004-v1", licenseStart: "2026-06-15", licenseEnd: "2027-06-15", planKey: "business" },
+type CoachPartnerOrganizationLicense = {
+  licenseNumber: string;
+  licenseStart: string;
+  licenseEnd: string;
+  graceUntil: string;
+  planKey: CoachPartnerPlanKey;
+  status: string;
+  contractTermMonths: number;
 };
 
+const coachPartnerOrganizationLicenses: Record<string, CoachPartnerOrganizationLicense> = {
+  "Partner Ejecutivo Norte": { licenseNumber: "CP-2026-001-v1", licenseStart: "2026-06-01", licenseEnd: "2026-12-01", graceUntil: "", planKey: "starter", status: "activo", contractTermMonths: 6 },
+  "Partner Bajio": { licenseNumber: "CP-2026-002-v1", licenseStart: "2026-06-01", licenseEnd: "2027-06-01", graceUntil: "2027-06-15", planKey: "pro", status: "activo", contractTermMonths: 12 },
+  "Partner Ejecutivo CDMX": { licenseNumber: "CP-2026-003-v1", licenseStart: "2026-07-01", licenseEnd: "2027-01-01", graceUntil: "2027-01-15", planKey: "starter", status: "activo", contractTermMonths: 6 },
+  "Partner Carrera Global": { licenseNumber: "CP-2026-004-v1", licenseStart: "2026-06-15", licenseEnd: "2027-06-15", graceUntil: "", planKey: "business", status: "activo", contractTermMonths: 12 },
+  "Partner Talento Sureste": { licenseNumber: "CP-2026-005-v1", licenseStart: "2026-05-15", licenseEnd: "2026-11-15", graceUntil: "2026-11-30", planKey: "starter", status: "activo", contractTermMonths: 6 },
+  "Partner Carrera Industrial": { licenseNumber: "CP-2026-006-v1", licenseStart: "2026-04-01", licenseEnd: "2027-04-01", graceUntil: "", planKey: "pro", status: "activo", contractTermMonths: 12 },
+  "Partner Mujeres Profesionales": { licenseNumber: "CP-2026-007-v1", licenseStart: "2026-08-01", licenseEnd: "2027-02-01", graceUntil: "", planKey: "starter", status: "pendiente", contractTermMonths: 6 },
+};
+
+const coachPartnerOrganizationNames = Object.keys(coachPartnerOrganizationLicenses);
+
 const organizationCatalog = {
-  "coach-partner": ["Partner Ejecutivo Norte", "Partner Bajio", "Partner Ejecutivo CDMX", "Partner Carrera Global"],
-  student: ["Empleate YA", "Partner Ejecutivo Norte", "Partner Bajio", "Partner Ejecutivo CDMX", "Partner Carrera Global"],
+  "coach-partner": coachPartnerOrganizationNames,
+  student: ["Empleate YA", ...coachPartnerOrganizationNames],
   "outplacement-rh": ["Empresa Demo Outplacement", "Grupo Industrial Norte", "Servicios Financieros Delta", "Retail Nacional"],
   "outplacement-employee": ["Empresa Demo Outplacement", "Grupo Industrial Norte", "Servicios Financieros Delta", "Retail Nacional"],
 } as const;
@@ -1613,10 +1628,19 @@ function coachPartnerLicenseForOrganization(organization?: string) {
   return coachPartnerOrganizationLicenses[organization || ""] ?? coachPartnerOrganizationLicenses["Partner Ejecutivo Norte"];
 }
 
-function coachPartnerLicenseFieldValue(key: string, license: { licenseNumber: string; licenseStart: string; licenseEnd: string }) {
+function coachPartnerLicenseFieldValue(key: string, license: CoachPartnerOrganizationLicense) {
+  if (key.includes("estado") || key.includes("status")) return statusLabel(license.status, key.includes("status") ? "en" : "es");
+  if (key.includes("gracia") || key.includes("grace")) return license.graceUntil || "-";
   if (key.includes("inicio") || key.includes("start")) return license.licenseStart;
-  if (key.includes("vigencia") || key.includes("end")) return license.licenseEnd;
+  if (key.includes("vigencia") || key.includes("end")) return license.licenseEnd || addMonthsToDate(license.licenseStart, license.contractTermMonths);
   return license.licenseNumber;
+}
+
+function addMonthsToDate(dateValue: string, months: number) {
+  if (!dateValue) return "";
+  const date = new Date(`${dateValue}T00:00:00`);
+  date.setMonth(date.getMonth() + months);
+  return date.toISOString().slice(0, 10);
 }
 
 function formatPlanNumber(value: number, language: "es" | "en") {
