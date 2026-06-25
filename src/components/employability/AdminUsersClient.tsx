@@ -508,8 +508,8 @@ const empleateYaOrganization = "Empleate YA";
 const adminUsersStorageKey = "empleate-ya-admin-users-v3";
 const adminCreditAuditStorageKey = "empleate-ya-admin-credit-audit-v1";
 const profileStorageKey = "empleate-ya-nav-profile";
+const roleStorageKey = "empleate-ya-nav-role";
 const onlineBaselineCredits = 150;
-const currentAdminOperator = { name: "Leo Galvez", role: "Super Admin" } as const;
 const onlineBasicAvatarIds: SkillId[] = ["lumo", "recharge", "scorex", "mr_ikigai", "new_job_challenge", "mr_wow"];
 const linkedInVisualAvatarIds: SkillId[] = ["mr_boost_linked", "tommy_lee_picture"];
 const coachStarterAvatarIds: SkillId[] = ["scorex", "optim", "mr_wow", ...linkedInVisualAvatarIds];
@@ -567,6 +567,7 @@ const demoUsers: DemoUser[] = [
   { kind: "online", name: "Jorge Luna", email: "jorge@email.com", organization: empleateYaOrganization, role: "Prospecto online", phone: "+52 55 1000 0006", status: "pendiente", credits: onlineBaselineCredits, owner: "Sistema", lastChange: "12/06/2026 08:20", notes: "Prueba limitada. Requiere registro para consumir mas avatares.", age: 42 },
   { kind: "super-admin-support", name: "Daniela Ponce", email: "daniela@empleateya.mx", organization: "Cobranza", role: "Apoyo cobranza", phone: "+52 55 1000 0002", status: "activo", credits: 0, owner: "Leo Galvez", lastChange: "12/06/2026 10:10", notes: "Acceso a pagos, estados de cuenta y comentarios internos." },
   { kind: "super-admin-support", name: "Ricardo Vega", email: "ricardo@empleateya.mx", organization: "Operaciones", role: "Operativo outplacement", phone: "+52 55 1000 0007", status: "invitado", credits: 0, owner: "Leo Galvez", lastChange: "12/06/2026 07:52", notes: "Apoya altas masivas y seguimiento operativo de campanas." },
+  { kind: "super-admin-support", name: "Monica Reyes", email: "monica@empleateya.mx", organization: "Direccion", role: "Supervisor delegado temporal", phone: "+52 55 1000 0015", status: "activo", credits: 0, owner: "Leo Galvez", lastChange: "18/06/2026 09:00", notes: "Delegacion temporal para pruebas de facultades Super Admin.", extraData: { fecha_de_delegacion: "2026-06-01", fecha_fin_delegacion: "2026-12-31", supervisor_responsable: "Leo Galvez - Super Admin" } },
   { kind: "coach-partner", name: "Mariana Soto", email: "mariana@partner-demo.mx", organization: "Partner Ejecutivo Norte", role: "Coach partner principal", phone: "+52 55 1000 0003", status: "activo", credits: calculateCoachPartnerPool(coachPartnerPlans.starter), owner: "Leo Galvez", lastChange: "11/06/2026 17:20", notes: "Licencia minima 6 meses. Administra clientes propios.", permissions: defaultPermissionsFor("coach-partner", "Coach partner principal", "starter") },
   { kind: "coach-partner", name: "Hector Ramos", email: "hector@partner-demo.mx", organization: "Partner Bajio", role: "Coach partner colaborador", phone: "+52 55 1000 0008", status: "pendiente", credits: calculateCoachPartnerPool(coachPartnerPlans.pro), owner: "Mariana Soto", lastChange: "11/06/2026 12:35", notes: "Pendiente completar curso online de metodologia.", permissions: defaultPermissionsFor("coach-partner", "Coach partner colaborador", "pro") },
   { kind: "student", name: "Fernanda Rios", email: "fernanda@alumno-demo.mx", organization: "Partner Ejecutivo Norte", role: "Alumno Coach Partner", phone: "+52 55 1000 0011", status: "activo", credits: calculateCoachPartnerStudentCredits(coachPartnerPlans.starter), owner: "Mariana Soto", lastChange: "12/06/2026 11:05", notes: "Asignada al grupo CV Estrategico Norte. Descuenta de bolsa del Coach Partner responsable." },
@@ -605,10 +606,10 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const [currentOperator, setCurrentOperator] = useState(() => operatorForProfile("super_admin"));
 
   useEffect(() => {
-    setCurrentOperator(operatorForProfile(window.localStorage.getItem(profileStorageKey) ?? "super_admin"));
+    setCurrentOperator(operatorForProfile(window.localStorage.getItem(profileStorageKey) ?? "super_admin", window.localStorage.getItem(roleStorageKey) ?? ""));
     const storedUsers = readStoredJson<DemoUser[]>(adminUsersStorageKey);
     const storedAuditEvents = readStoredJson<CreditAuditEvent[]>(adminCreditAuditStorageKey);
-    if (storedUsers?.length) setUsers(storedUsers);
+    if (storedUsers?.length) setUsers(mergeMissingDemoUsers(storedUsers));
     if (storedAuditEvents?.length) setCreditAuditEvents(storedAuditEvents);
     setStorageLoaded(true);
   }, []);
@@ -640,8 +641,8 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const unlimitedCredits = hasUnlimitedCredits(userKind, activeRole);
   const activeCoachPlanKey = pendingPermissions?.coachPlanKey ?? selectedUser?.permissions?.coachPlanKey ?? coachPlanKey;
   const activePermissions = pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, activeRole, activeCoachPlanKey);
-  const operatorIsSuperAdmin = currentOperator.role === "Super Admin";
-  const operatorCanMoveOnlineCredits = operatorIsSuperAdmin || currentOperator.role === "Supervisor delegado temporal";
+  const operatorIsSuperAdmin = currentOperator.role === "Super Admin" || delegatedSupervisorIsActive(currentOperator, users);
+  const operatorCanMoveOnlineCredits = operatorIsSuperAdmin;
   const onlineUserIsPaid = activeRole === "Cliente Online Pagado" || activeRole === "Paid online client";
   const canEditOnlineRoleAndOwner = userKind !== "online" || operatorIsSuperAdmin;
   const canEditOnlineCredits = userKind === "online" && operatorCanMoveOnlineCredits && onlineUserIsPaid;
@@ -706,7 +707,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       setNotice(t.protectedStatusRestoreMessage);
       return;
     }
-    if (isMainOrganizationRole(userKind, nextRole) && !canCurrentOperatorCreateMainOrganizationRole()) {
+    if (isMainOrganizationRole(userKind, nextRole) && !canCurrentOperatorCreateMainOrganizationRole(currentOperator.role, operatorIsSuperAdmin)) {
       setNotice(t.unauthorizedPrincipalCreateMessage);
       return;
     }
@@ -849,7 +850,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
               <h2 className="text-xl font-black text-slate-950">{t.results}</h2>
               <p className="mt-1 text-sm font-semibold text-slate-500">{t.resultHelp}</p>
             </div>
-            <div className="max-h-[156px] overflow-auto">
+            <div className="max-h-[210px] overflow-auto">
               <table className="w-full min-w-[1280px] text-left text-sm">
                 <thead className="sticky top-0 z-10">
                   <tr>{t.columns.map((column) => <Th key={column}>{column}</Th>)}</tr>
@@ -864,7 +865,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
                       <Td>{user.role}</Td>
                       <Td>{user.phone}</Td>
                       <Td>{hasUnlimitedCredits(user.kind, user.role) ? t.unlimitedCredits : user.credits}</Td>
-                      <Td><Pill>{statusLabel(user.status, language)}</Pill></Td>
+                      <Td><StatusPill status={user.status} language={language} /></Td>
                       <Td>{user.owner}</Td>
                       <Td>{user.lastChange}</Td>
                       <Td>{user.notes}</Td>
@@ -1535,13 +1536,12 @@ function samePrincipalFamily(leftRole: string, rightRole: string) {
   return (isHrAdminRole(leftRole) && isHrAdminRole(rightRole)) || (isCoachPartnerPrincipalRole(leftRole) && isCoachPartnerPrincipalRole(rightRole));
 }
 
-function canCurrentOperatorCreateMainOrganizationRole() {
-  return currentAdminOperator.role === "Super Admin" || [
+function canCurrentOperatorCreateMainOrganizationRole(operatorRole: string, hasSuperAdminAuthority: boolean) {
+  return hasSuperAdminAuthority || [
     "Apoyo coach partner",
     "Apoyo administrativo",
     "Operativo outplacement",
-    "Supervisor delegado temporal",
-  ].includes(currentAdminOperator.role);
+  ].includes(operatorRole);
 }
 
 function buildBalanceMovements(user: DemoUser, creditAuditEvents: CreditAuditEvent[], language: "es" | "en"): BalanceMovement[] {
@@ -1749,14 +1749,43 @@ function readStoredJson<T>(key: string): T | null {
   }
 }
 
+function mergeMissingDemoUsers(storedUsers: DemoUser[]) {
+  const storedEmails = new Set(storedUsers.map((user) => user.email));
+  const missingUsers = demoUsers.filter((user) => !storedEmails.has(user.email));
+  return missingUsers.length ? [...storedUsers, ...missingUsers] : storedUsers;
+}
+
 function ownerOptionFor(owner: string) {
   return internalOwners.find((item) => item.startsWith(owner)) ?? internalOwners[0];
 }
 
-function operatorForProfile(profile: string) {
-  if (profile === "supervisor_delegado_temporal") return { name: "Monica Reyes", role: "Supervisor delegado temporal" } as const;
-  if (profile === "super_admin_support") return { name: "Valeria Nunez", role: "Apoyo administrativo" } as const;
+function operatorForProfile(profile: string, role = "") {
+  if (profile === "super_admin_support") {
+    if (role === "temporary_delegate") return { name: "Monica Reyes", role: "Supervisor delegado temporal" } as const;
+    if (role === "collections_support") return { name: "Daniela Ponce", role: "Apoyo cobranza" } as const;
+    if (role === "outplacement_operator") return { name: "Ricardo Vega", role: "Operativo outplacement" } as const;
+    if (role === "coach_partner_support") return { name: "Camila Ortega", role: "Apoyo coach partner" } as const;
+    return { name: "Valeria Nunez", role: "Apoyo administrativo" } as const;
+  }
   return { name: "Leo Galvez", role: "Super Admin" } as const;
+}
+
+function delegatedSupervisorIsActive(operator: { name: string; role: string }, users: DemoUser[]) {
+  if (operator.role !== "Supervisor delegado temporal") return false;
+  const delegatedUser = users.find((user) => user.kind === "super-admin-support" && user.role === "Supervisor delegado temporal" && user.name === operator.name);
+  if (!delegatedUser || !isActiveStatus(delegatedUser.status)) return false;
+  const start = extraDataDate(delegatedUser.extraData, ["fecha_de_delegacion", "delegation_start_date"]);
+  const end = extraDataDate(delegatedUser.extraData, ["fecha_fin_delegacion", "delegation_end_date"]);
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  return (!start || today >= start) && (!end || today <= end);
+}
+
+function extraDataDate(extraData: DemoUser["extraData"], keys: string[]) {
+  const value = keys.map((key) => extraData?.[key]).find((item) => typeof item === "string" && item.length > 0);
+  if (typeof value !== "string") return null;
+  const parsed = new Date(`${value}T12:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function FormGroup({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
@@ -1782,6 +1811,18 @@ function Td({ children }: { children: ReactNode }) {
 
 function Pill({ children }: { children: ReactNode }) {
   return <span className="inline-flex whitespace-nowrap rounded-full bg-[var(--brand-primary-soft)] px-3 py-1 text-xs font-black text-[var(--brand-primary)]">{children}</span>;
+}
+
+function StatusPill({ status, language }: { status: string; language: "es" | "en" }) {
+  const normalized = status.toLowerCase();
+  const tone = normalized.includes("activo") || normalized.includes("active")
+    ? "bg-emerald-50 text-emerald-700"
+    : normalized.includes("bloqueado") || normalized.includes("blocked") || normalized.includes("borrado") || normalized.includes("delete")
+      ? "bg-rose-50 text-rose-700"
+      : normalized.includes("pendiente") || normalized.includes("pending")
+        ? "bg-amber-50 text-amber-700"
+        : "bg-slate-100 text-slate-700";
+  return <span className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-black ${tone}`}>{statusLabel(status, language)}</span>;
 }
 
 function NoticeDialog({ title, acceptLabel, message, onClose }: { title: string; acceptLabel: string; message: string; onClose: () => void }) {

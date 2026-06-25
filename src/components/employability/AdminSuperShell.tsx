@@ -356,7 +356,7 @@ function menuAllowedForTestContext(profile: TestProfile, role: string, href: str
   if (profile === "coach_partner") return ["/admin", "/admin/users", "/admin/coaching", "/admin/groups", "/admin/users/students", "/admin/reports"].includes(href);
   if (profile === "outplacement") return ["/admin", "/admin/users", "/admin/coaching", "/admin/campaigns", "/admin/users/outplacement-employees", "/admin/reports"].includes(href);
   if (profile === "super_admin_support") {
-    if (role === "temporary_delegate") return true;
+    if (role === "temporary_delegate") return temporaryDelegationIsActiveFromStorage() ? true : href === "/admin";
     if (role === "collections_support") return ["/admin", "/admin/credits", "/admin/payments", "/admin/reports"].includes(href);
     if (role === "outplacement_operator") return ["/admin", "/admin/users", "/admin/organizations", "/admin/coaching", "/admin/campaigns", "/admin/users/outplacement-employees", "/admin/reports"].includes(href);
     if (role === "coach_partner_support") return ["/admin", "/admin/users", "/admin/organizations", "/admin/coaching", "/admin/groups", "/admin/users/students", "/admin/reports"].includes(href);
@@ -371,10 +371,36 @@ function userSubsectionAllowedForTestContext(profile: TestProfile, role: string,
   if (profile === "outplacement") return href === "/admin/users/outplacement-rh";
   if (profile === "internal_coach") return false;
   if (profile === "super_admin_support") {
-    if (role === "temporary_delegate" || role === "administrative_support") return true;
+    if (role === "temporary_delegate") return temporaryDelegationIsActiveFromStorage();
+    if (role === "administrative_support") return true;
     if (role === "outplacement_operator") return href === "/admin/users/outplacement-rh";
     if (role === "coach_partner_support") return href === "/admin/users/coach-partner";
     return href === "/admin/users/online";
   }
   return false;
+}
+
+function temporaryDelegationIsActiveFromStorage() {
+  if (typeof window === "undefined") return false;
+  try {
+    const storedUsers = JSON.parse(window.localStorage.getItem("empleate-ya-admin-users-v3") ?? "[]") as Array<{ name?: string; role?: string; status?: string; extraData?: Record<string, unknown> }>;
+    const monica = storedUsers.find((user) => user.name === "Monica Reyes" && user.role === "Supervisor delegado temporal");
+    const candidate = monica ?? { status: "activo", extraData: { fecha_de_delegacion: "2026-06-01", fecha_fin_delegacion: "2026-12-31" } };
+    const status = String(candidate.status ?? "").toLowerCase();
+    if (status !== "activo" && status !== "active") return false;
+    const start = dateFromExtra(candidate.extraData, ["fecha_de_delegacion", "delegation_start_date"]);
+    const end = dateFromExtra(candidate.extraData, ["fecha_fin_delegacion", "delegation_end_date"]);
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    return (!start || today >= start) && (!end || today <= end);
+  } catch {
+    return false;
+  }
+}
+
+function dateFromExtra(extraData: Record<string, unknown> | undefined, keys: string[]) {
+  const value = keys.map((key) => extraData?.[key]).find((item) => typeof item === "string" && item.length > 0);
+  if (typeof value !== "string") return null;
+  const parsed = new Date(`${value}T12:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
