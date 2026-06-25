@@ -96,7 +96,7 @@ const kindConfig = {
       organizationPlaceholder: "Ej. Partner Ejecutivo Norte",
       roleLabel: "Rol partner",
       roles: ["Coach partner principal", "Coach partner colaborador"],
-      extraFields: ["Licencia minima 6 meses", "Fecha inicio licencia", "Clientes autorizados"],
+      extraFields: ["Licencia", "Fecha inicio licencia", "Fecha vigencia licencia"],
     },
     "outplacement-rh": {
       title: "Outplacement",
@@ -168,7 +168,7 @@ const kindConfig = {
       organizationPlaceholder: "Example: Executive North Partner",
       roleLabel: "Partner role",
       roles: ["Main coach partner", "Coach partner collaborator"],
-      extraFields: ["Minimum 6-month license", "License start date", "Authorized clients"],
+      extraFields: ["License", "License start date", "License end date"],
     },
     "outplacement-rh": {
       title: "Outplacement",
@@ -243,6 +243,7 @@ const copy = {
     requiredOnlineMessage: "Nombre completo y correo son obligatorios para crear o editar un usuario online.",
     requiredSupportMessage: "Nombre completo, telefono y correo son obligatorios para crear o editar un apoyo Super Admin.",
     requiredInternalCoachMessage: "Nombre completo, telefono y correo son obligatorios para crear o editar un Coach interno 1o1.",
+    requiredCoachPartnerMessage: "Nombre completo, telefono y correo son obligatorios para crear o editar un Coach Partner.",
     delegationExistingUserMessage: "La delegacion temporal solo puede asignarse a un usuario de apoyo ya creado. Primero crea el apoyo con su rol base y despues asigna la delegacion.",
     delegationPasswordMessage: "Para guardar fechas de delegacion, un Super Admin o supervisor delegado vigente debe autorizar con su password.",
     delegationDateMessage: "Captura fecha de delegacion y fecha fin de delegacion para habilitar la supervision temporal.",
@@ -376,6 +377,7 @@ const copy = {
     requiredOnlineMessage: "Full name and email are required to create or edit an online user.",
     requiredSupportMessage: "Full name, phone, and email are required to create or edit a Super Admin support user.",
     requiredInternalCoachMessage: "Full name, phone, and email are required to create or edit an internal 1:1 coach.",
+    requiredCoachPartnerMessage: "Full name, phone, and email are required to create or edit a Coach Partner.",
     delegationExistingUserMessage: "Temporary delegation can only be assigned to an existing support user. Create the support user with a base role first, then assign delegation.",
     delegationPasswordMessage: "To save delegation dates, a Super Admin or active delegated supervisor must authorize with their password.",
     delegationDateMessage: "Enter delegation start and end dates to enable temporary supervision.",
@@ -552,6 +554,13 @@ const coachPartnerPlans = {
   business: { label: "Coach Business", avatarIds: allAvatarIds, baseCreditsPerCycle: Infinity, groups: Infinity, studentsPerGroup: Infinity, cycles: Infinity, studentCycles: Infinity, unlimited: true },
 } as const;
 
+const coachPartnerOrganizationLicenses: Record<string, { licenseNumber: string; licenseStart: string; licenseEnd: string; planKey: CoachPartnerPlanKey }> = {
+  "Partner Ejecutivo Norte": { licenseNumber: "CP-2026-001-v1", licenseStart: "2026-06-01", licenseEnd: "2026-12-01", planKey: "starter" },
+  "Partner Bajio": { licenseNumber: "CP-2026-002-v1", licenseStart: "2026-06-01", licenseEnd: "2027-06-01", planKey: "pro" },
+  "Partner Ejecutivo CDMX": { licenseNumber: "CP-2026-003-v1", licenseStart: "2026-07-01", licenseEnd: "2027-01-01", planKey: "starter" },
+  "Partner Carrera Global": { licenseNumber: "CP-2026-004-v1", licenseStart: "2026-06-15", licenseEnd: "2027-06-15", planKey: "business" },
+};
+
 const organizationCatalog = {
   "coach-partner": ["Partner Ejecutivo Norte", "Partner Bajio", "Partner Ejecutivo CDMX", "Partner Carrera Global"],
   student: ["Empleate YA", "Partner Ejecutivo Norte", "Partner Bajio", "Partner Ejecutivo CDMX", "Partner Carrera Global"],
@@ -584,7 +593,7 @@ const demoUsers: DemoUser[] = [
   { kind: "super-admin-support", name: "Daniela Ponce", email: "daniela@empleateya.mx", organization: "Cobranza", role: "Apoyo cobranza", phone: "+52 55 1000 0002", status: "activo", credits: 0, owner: "Leo Galvez", lastChange: "12/06/2026 10:10", notes: "Acceso a pagos, estados de cuenta y comentarios internos." },
   { kind: "super-admin-support", name: "Ricardo Vega", email: "ricardo@empleateya.mx", organization: "Operaciones", role: "Operativo outplacement", phone: "+52 55 1000 0007", status: "invitado", credits: 0, owner: "Leo Galvez", lastChange: "12/06/2026 07:52", notes: "Apoya altas masivas y seguimiento operativo de campanas." },
   { kind: "super-admin-support", name: "Monica Reyes", email: "monica@empleateya.mx", organization: "Direccion", role: "Supervisor delegado temporal", phone: "+52 55 1000 0015", status: "activo", credits: 0, owner: "Leo Galvez", lastChange: "18/06/2026 09:00", notes: "Delegacion temporal para pruebas de facultades Super Admin.", extraData: { fecha_de_delegacion: "2026-06-01", fecha_fin_delegacion: "2026-12-31", supervisor_responsable: "Leo Galvez - Super Admin" } },
-  { kind: "coach-partner", name: "Mariana Soto", email: "mariana@partner-demo.mx", organization: "Partner Ejecutivo Norte", role: "Coach partner principal", phone: "+52 55 1000 0003", status: "activo", credits: calculateCoachPartnerPool(coachPartnerPlans.starter), owner: "Leo Galvez", lastChange: "11/06/2026 17:20", notes: "Licencia minima 6 meses. Administra clientes propios.", permissions: defaultPermissionsFor("coach-partner", "Coach partner principal", "starter") },
+  { kind: "coach-partner", name: "Mariana Soto", email: "mariana@partner-demo.mx", organization: "Partner Ejecutivo Norte", role: "Coach partner principal", phone: "+52 55 1000 0003", status: "activo", credits: calculateCoachPartnerPool(coachPartnerPlans.starter), owner: "Leo Galvez", lastChange: "11/06/2026 17:20", notes: "Licencia activa tomada de la organizacion. Administra clientes propios.", permissions: defaultPermissionsFor("coach-partner", "Coach partner principal", "starter") },
   { kind: "coach-partner", name: "Hector Ramos", email: "hector@partner-demo.mx", organization: "Partner Bajio", role: "Coach partner colaborador", phone: "+52 55 1000 0008", status: "pendiente", credits: calculateCoachPartnerPool(coachPartnerPlans.pro), owner: "Mariana Soto", lastChange: "11/06/2026 12:35", notes: "Pendiente completar curso online de metodologia.", permissions: defaultPermissionsFor("coach-partner", "Coach partner colaborador", "pro") },
   { kind: "student", name: "Fernanda Rios", email: "fernanda@alumno-demo.mx", organization: "Partner Ejecutivo Norte", role: "Alumno Coach Partner", phone: "+52 55 1000 0011", status: "activo", credits: calculateCoachPartnerStudentCredits(coachPartnerPlans.starter), owner: "Mariana Soto", lastChange: "12/06/2026 11:05", notes: "Asignada al grupo CV Estrategico Norte. Descuenta de bolsa del Coach Partner responsable." },
   { kind: "student", name: "Roberto Salas", email: "roberto@coaching-demo.mx", organization: "Empleate YA", role: "Alumno coaching 1o1", phone: "+52 55 1000 0012", status: "pendiente", credits: 1545, owner: "Sofia Rivera", lastChange: "12/06/2026 11:12", notes: "Pendiente asignar calendario de sesiones 1o1." },
@@ -621,6 +630,8 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const [draftRole, setDraftRole] = useState("");
   const [draftStatus, setDraftStatus] = useState("");
   const [draftOwner, setDraftOwner] = useState<string>(internalOwners[0]);
+  const [draftOrganization, setDraftOrganization] = useState("");
+  const [draftCoachPlanKey, setDraftCoachPlanKey] = useState<CoachPartnerPlanKey>("starter");
   const [currentOperator, setCurrentOperator] = useState(() => operatorForProfile("super_admin"));
 
   useEffect(() => {
@@ -654,10 +665,13 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
 
   const selectedUser = users.find((user) => user.kind === userKind && user.email === selectedEmail);
   const fixedEmpleateYaOrg = usesFixedEmpleateYaOrganization(userKind);
+  const activeOrganization = fixedEmpleateYaOrg
+    ? empleateYaOrganization
+    : draftOrganization || selectedUser?.organization || (usesOrganizationCatalog(userKind) ? organizationCatalog[userKind][0] : "");
   const defaultStatus = selectedUser?.status ?? t.statuses[0];
   const activeRole = draftRole || selectedUser?.role || kind.roles[0];
   const unlimitedCredits = hasUnlimitedCredits(userKind, activeRole);
-  const activeCoachPlanKey = pendingPermissions?.coachPlanKey ?? selectedUser?.permissions?.coachPlanKey ?? coachPlanKey;
+  const activeCoachPlanKey = pendingPermissions?.coachPlanKey ?? (userKind === "coach-partner" ? coachPartnerLicenseForOrganization(activeOrganization).planKey : draftCoachPlanKey);
   const activePermissions = normalizePermissionsForUser(pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, activeRole, activeCoachPlanKey), userKind, activeRole);
   const operatorIsSuperAdmin = currentOperator.role === "Super Admin" || delegatedSupervisorIsActive(currentOperator, users);
   const operatorCanMoveOnlineCredits = operatorIsSuperAdmin;
@@ -678,12 +692,27 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     setDraftOwner(selectedUser?.owner ? ownerOptionFor(selectedUser.owner) : internalOwners[0]);
   }, [selectedUser?.owner, userKind]);
 
+  useEffect(() => {
+    if (fixedEmpleateYaOrg) {
+      setDraftOrganization(empleateYaOrganization);
+      return;
+    }
+    setDraftOrganization(selectedUser?.organization ?? (usesOrganizationCatalog(userKind) ? organizationCatalog[userKind][0] : ""));
+  }, [fixedEmpleateYaOrg, selectedUser?.organization, userKind]);
+
+  useEffect(() => {
+    const organizationPlanKey = userKind === "coach-partner" ? coachPartnerLicenseForOrganization(activeOrganization).planKey : undefined;
+    setDraftCoachPlanKey(selectedUser?.permissions?.coachPlanKey ?? organizationPlanKey ?? coachPlanKey);
+  }, [activeOrganization, coachPlanKey, selectedUser?.permissions?.coachPlanKey, userKind]);
+
   function selectUserForMaintenance(email: string) {
     const user = users.find((currentUser) => currentUser.kind === userKind && currentUser.email === email);
     setSelectedEmail(email);
     setDraftRole(user?.role ?? kind.roles[0]);
     setDraftStatus(user?.status ?? t.statuses[0]);
     setDraftOwner(user?.owner ? ownerOptionFor(user.owner) : internalOwners[0]);
+    setDraftOrganization(user?.organization ?? (usesOrganizationCatalog(userKind) ? organizationCatalog[userKind][0] : ""));
+    setDraftCoachPlanKey(user?.permissions?.coachPlanKey ?? (userKind === "coach-partner" ? coachPartnerLicenseForOrganization(user?.organization).planKey : coachPlanKey));
     setSearchMode("capture");
     setNotice(t.selectedForEdit);
   }
@@ -704,6 +733,10 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     }
     if (userKind === "internal-coach" && (!nextName || !phone || !email)) {
       setNotice(t.requiredInternalCoachMessage);
+      return;
+    }
+    if (userKind === "coach-partner" && (!nextName || !phone || !email)) {
+      setNotice(t.requiredCoachPartnerMessage);
       return;
     }
     if (userKind === "super-admin-support" && isTemporarySupervisorRole(nextRole) && !selectedUser) {
@@ -736,7 +769,9 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     if (delegationExpired) {
       nextRole = previousSupportRole;
     }
-    const nextCoachPlanKey = String(formData.get("coachPlanKey") || coachPlanKey) as CoachPartnerPlanKey;
+    const nextCoachPlanKey = userKind === "coach-partner"
+      ? coachPartnerLicenseForOrganization(nextOrganization).planKey
+      : String(formData.get("coachPlanKey") || draftCoachPlanKey || coachPlanKey) as CoachPartnerPlanKey;
     const nextCoachPlan = coachPartnerPlans[nextCoachPlanKey];
     const roleChanged = selectedUser ? selectedUser.role !== nextRole : true;
     const planChanged = selectedUser?.permissions?.coachPlanKey !== nextCoachPlanKey;
@@ -750,13 +785,16 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     const cascadedPermissions = normalizePermissionsForUser(shouldRestoreOnlineDefaults || shouldCascade
       ? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey)
       : pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey), userKind, nextRole);
-    const nextCredits = userKind === "online"
+    let nextCredits = userKind === "online"
       ? statusChanged && selectedUser
         ? currentOnlineBalance ?? onlineBaselineCredits
         : nextCanEditOnlineCredits
           ? Number(formData.get("credits") || currentOnlineBalance || onlineBaselineCredits)
           : currentOnlineBalance ?? onlineBaselineCredits
       : creditsForUserRole(userKind, nextRole, nextCoachPlan, formData, selectedUser, nextCanEditOnlineCredits, requestedStatus);
+    if (userKind === "coach-partner") {
+      nextCredits = selectedUser?.credits ?? calculateCoachPartnerPool(nextCoachPlan);
+    }
     if (userKind === "online" && !nextRoleIsPaidOnline && !isInvitedStatus(requestedStatus) && Number(formData.get("credits") || currentOnlineBalance || onlineBaselineCredits) !== (currentOnlineBalance ?? onlineBaselineCredits)) {
       setNotice(t.onlineProspectCreditMessage);
       return;
@@ -826,7 +864,11 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       }
     }
     setSelectedEmail(savedUser.email);
-    if (userKind === "coach-partner") setCoachPlanKey(nextCoachPlanKey);
+    setDraftOrganization(savedUser.organization);
+    if (userKind === "coach-partner") {
+      setCoachPlanKey(nextCoachPlanKey);
+      setDraftCoachPlanKey(nextCoachPlanKey);
+    }
     setDraftRole(nextRole);
     setPendingPermissions(null);
     const cascadedMessage = shouldCascadePermissionsForRole(userKind, roleChanged, planChanged) ? ` ${t.permissionsAssignedMessage}` : "";
@@ -947,7 +989,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             <p className="mt-1 text-sm font-semibold text-slate-500">{selectedUser ? `${t.selected}: ${selectedUser.name}` : t.noSelected}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]" onClick={() => { setSelectedEmail(""); setDraftRole(kind.roles[0]); setDraftStatus(t.statuses[0]); setDraftOwner(internalOwners[0]); setPendingPermissions(null); setNotice(""); setSearchMode("capture"); }}><UserPlus size={17} />{t.create}</Button>
+            <Button type="button" className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]" onClick={() => { const defaultOrganization = fixedEmpleateYaOrg ? empleateYaOrganization : (usesOrganizationCatalog(userKind) ? organizationCatalog[userKind][0] : ""); setSelectedEmail(""); setDraftRole(kind.roles[0]); setDraftStatus(t.statuses[0]); setDraftOwner(internalOwners[0]); setDraftOrganization(defaultOrganization); setDraftCoachPlanKey(coachPartnerLicenseForOrganization(defaultOrganization).planKey); setPendingPermissions(null); setNotice(""); setSearchMode("capture"); }}><UserPlus size={17} />{t.create}</Button>
             <Button type="button" className="gap-2 bg-slate-950 text-white hover:bg-slate-800" onClick={() => { setSearchMode("edit"); setNotice(""); }}><Search size={17} />{t.edit}</Button>
             {userKind === "online" ? <Button type="button" disabled={!selectedUser} title={!selectedUser ? t.balanceDisabledHelp : undefined} className="gap-2 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50" onClick={() => setShowBalance(true)}><FileText size={17} />{t.balance}</Button> : null}
             <Button type="submit" className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"><Save size={17} />{t.saveData}</Button>
@@ -962,7 +1004,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             <Field label={t.phone}><Input name="phone" placeholder="+52 55 0000 0000" defaultValue={selectedUser?.phone ?? ""} /></Field>
           </FormGroup>
           <FormGroup title={kind.organizationLabel} icon={<Building2 size={18} />}>
-            <Field label={t.organization}>{organizationFieldForUserKind(userKind, selectedUser, fixedEmpleateYaOrg, kind.organizationPlaceholder)}</Field>
+            <Field label={t.organization}>{organizationFieldForUserKind(userKind, activeOrganization, fixedEmpleateYaOrg, kind.organizationPlaceholder, setDraftOrganization)}</Field>
             {usesOrganizationCatalog(userKind) ? <p className="text-xs font-semibold leading-5 text-slate-500">{t.orgHelp}</p> : null}
             <Field label={kind.roleLabel}>
               <Select
@@ -982,9 +1024,10 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             {userKind === "coach-partner" ? (
               <>
                 <Field label={t.partnerPlan}>
-                  <Select name="coachPlanKey" defaultValue={activeCoachPlanKey}>
+                  <Select name="coachPlanKey" value={activeCoachPlanKey} disabled>
                     {Object.entries(coachPartnerPlans).map(([key, plan]) => <option key={key} value={key}>{plan.label}</option>)}
                   </Select>
+                  <input type="hidden" name="coachPlanKey" value={activeCoachPlanKey} />
                 </Field>
                 <PartnerPlanSummary plan={coachPartnerPlans[activeCoachPlanKey]} language={language} />
               </>
@@ -1030,7 +1073,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
               )}
             </Field>
             {userKind === "online" ? <p className="text-xs font-semibold leading-5 text-slate-500">{t.creditsHelp}</p> : null}
-            <ExtraFields fields={kind.extraFields} selectedUser={selectedUser} userRole={activeRole} userKind={userKind} language={language} canSeeStripeFull={operatorIsSuperAdmin} currentOperator={currentOperator} operatorIsSuperAdmin={operatorIsSuperAdmin} />
+            <ExtraFields fields={kind.extraFields} selectedUser={selectedUser} userRole={activeRole} userKind={userKind} organization={activeOrganization} language={language} canSeeStripeFull={operatorIsSuperAdmin} currentOperator={currentOperator} operatorIsSuperAdmin={operatorIsSuperAdmin} />
             {userKind === "internal-coach" ? <InternalCoachAvailabilityPanel user={selectedUser} language={language} /> : null}
             {userKind === "super-admin-support" ? (
               <p className="rounded-2xl border border-purple-100 bg-purple-50 px-4 py-3 text-xs font-semibold leading-5 text-purple-900">
@@ -1202,7 +1245,7 @@ function InternalCoachAvailabilityPanel({ user, language }: { user?: DemoUser; l
               <div key={`${assignment.coachEmail}-${assignment.name}`} className="border-b border-slate-100 px-3 py-2 text-xs last:border-0">
                 <strong className="block text-slate-950">{assignment.name}</strong>
                 <span className="text-slate-500">
-                  {assignment.kind === "campaign" ? (language === "es" ? "Campana" : "Campaign") : (language === "es" ? "Grupo" : "Group")} Â· {formatShortDate(assignment.startDate, language)} - {formatShortDate(assignment.endDate, language)} Â· {modalityLabel(assignment.modality, language)} Â· NPS {assignment.nps}
+                  {assignment.kind === "campaign" ? (language === "es" ? "Campana" : "Campaign") : (language === "es" ? "Grupo" : "Group")} · {formatShortDate(assignment.startDate, language)} - {formatShortDate(assignment.endDate, language)} · {modalityLabel(assignment.modality, language)} · NPS {assignment.nps}
                 </span>
               </div>
             ))}
@@ -1282,6 +1325,7 @@ function ExtraFields({
   selectedUser,
   userRole,
   userKind,
+  organization,
   language,
   canSeeStripeFull,
   currentOperator,
@@ -1291,6 +1335,7 @@ function ExtraFields({
   selectedUser?: DemoUser;
   userRole: string;
   userKind: AdminUserKind;
+  organization: string;
   language: "es" | "en";
   canSeeStripeFull: boolean;
   currentOperator: { name: string; role: string };
@@ -1304,6 +1349,16 @@ function ExtraFields({
         const key = extraFieldKey(field);
         const savedValue = selectedUser?.extraData?.[key];
         const isStripeField = userKind === "online" && key.includes("stripe");
+        if (userKind === "coach-partner") {
+          const license = coachPartnerLicenseForOrganization(organization);
+          const value = coachPartnerLicenseFieldValue(key, license);
+          return (
+            <Field key={field} label={field}>
+              <Input value={value} readOnly />
+              <input type="hidden" name={`extra-${key}`} value={value} />
+            </Field>
+          );
+        }
         if (isStripeField) {
           const rawValue = typeof savedValue === "string" ? savedValue : "";
           const visibleValue = rawValue ? (canSeeStripeFull ? rawValue : maskStripeId(rawValue)) : "Stripe asignara este ID al comprar creditos";
@@ -1554,15 +1609,25 @@ function outplacementCurrentCredits(selectedUser: DemoUser | undefined, userRole
   return calculateOutplacementRoleCredits(userRole);
 }
 
+function coachPartnerLicenseForOrganization(organization?: string) {
+  return coachPartnerOrganizationLicenses[organization || ""] ?? coachPartnerOrganizationLicenses["Partner Ejecutivo Norte"];
+}
+
+function coachPartnerLicenseFieldValue(key: string, license: { licenseNumber: string; licenseStart: string; licenseEnd: string }) {
+  if (key.includes("inicio") || key.includes("start")) return license.licenseStart;
+  if (key.includes("vigencia") || key.includes("end")) return license.licenseEnd;
+  return license.licenseNumber;
+}
+
 function formatPlanNumber(value: number, language: "es" | "en") {
   if (!Number.isFinite(value)) return language === "es" ? "Ilimitado" : "Unlimited";
   return value.toLocaleString(language === "es" ? "es-MX" : "en-US");
 }
 
-function organizationFieldForUserKind(userKind: AdminUserKind, selectedUser: DemoUser | undefined, fixedEmpleateYaOrg: boolean, placeholder: string) {
+function organizationFieldForUserKind(userKind: AdminUserKind, organization: string, fixedEmpleateYaOrg: boolean, placeholder: string, onChange: (value: string) => void) {
   if (fixedEmpleateYaOrg) return <Input name="organization" value={empleateYaOrganization} readOnly />;
   if (userKind === "outplacement-rh") {
-    const value = selectedUser?.organization ?? organizationCatalog["outplacement-rh"][0];
+    const value = organization || organizationCatalog["outplacement-rh"][0];
     return (
       <>
         <Input value={value} readOnly />
@@ -1570,8 +1635,8 @@ function organizationFieldForUserKind(userKind: AdminUserKind, selectedUser: Dem
       </>
     );
   }
-  if (usesOrganizationCatalog(userKind)) return <Select name="organization" defaultValue={selectedUser?.organization}>{organizationCatalog[userKind].map((item) => <option key={item}>{item}</option>)}</Select>;
-  return <Input name="organization" placeholder={placeholder} defaultValue={selectedUser?.organization ?? ""} />;
+  if (usesOrganizationCatalog(userKind)) return <Select name="organization" value={organization || organizationCatalog[userKind][0]} onChange={(event) => onChange(event.target.value)}>{organizationCatalog[userKind].map((item) => <option key={item}>{item}</option>)}</Select>;
+  return <Input name="organization" placeholder={placeholder} value={organization} onChange={(event) => onChange(event.target.value)} />;
 }
 
 function statusLabel(status: string, language: "es" | "en") {
