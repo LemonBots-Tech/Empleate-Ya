@@ -655,7 +655,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const activeRole = draftRole || selectedUser?.role || kind.roles[0];
   const unlimitedCredits = hasUnlimitedCredits(userKind, activeRole);
   const activeCoachPlanKey = pendingPermissions?.coachPlanKey ?? selectedUser?.permissions?.coachPlanKey ?? coachPlanKey;
-  const activePermissions = pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, activeRole, activeCoachPlanKey);
+  const activePermissions = normalizePermissionsForUser(pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, activeRole, activeCoachPlanKey), userKind, activeRole);
   const operatorIsSuperAdmin = currentOperator.role === "Super Admin" || delegatedSupervisorIsActive(currentOperator, users);
   const operatorCanMoveOnlineCredits = operatorIsSuperAdmin;
   const onlineUserIsPaid = activeRole === "Cliente Online Pagado" || activeRole === "Paid online client";
@@ -735,9 +735,9 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     const currentOnlineBalance = userKind === "online" ? selectedOnlineBalance ?? onlineBaselineCredits : undefined;
     const shouldRestoreOnlineDefaults = userKind === "online" && selectedUser && !isActiveStatus(selectedUser.status) && isActiveStatus(requestedStatus);
     const shouldCascade = shouldCascadePermissionsForRole(userKind, roleChanged, planChanged);
-    const cascadedPermissions = shouldRestoreOnlineDefaults || shouldCascade
+    const cascadedPermissions = normalizePermissionsForUser(shouldRestoreOnlineDefaults || shouldCascade
       ? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey)
-      : pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey);
+      : pendingPermissions ?? selectedUser?.permissions ?? defaultPermissionsFor(userKind, nextRole, nextCoachPlanKey), userKind, nextRole);
     const nextCredits = userKind === "online"
       ? statusChanged && selectedUser
         ? currentOnlineBalance ?? onlineBaselineCredits
@@ -960,7 +960,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
                 onChange={(event) => {
                   const nextRole = event.target.value;
                   setDraftRole(nextRole);
-                  setPendingPermissions(defaultPermissionsFor(userKind, nextRole, activeCoachPlanKey));
+                  setPendingPermissions(normalizePermissionsForUser(defaultPermissionsFor(userKind, nextRole, activeCoachPlanKey), userKind, nextRole));
                 }}
               >
                 {kind.roles.map((item) => <option key={item}>{item}</option>)}
@@ -1361,7 +1361,7 @@ function PermissionsPanel({
   const partnerCreditPool = calculateCoachPartnerPool(partnerPlan);
   const partnerStudentCredits = calculateCoachPartnerStudentCredits(partnerPlan);
   const showAdminPermissionSections = userKind === "super-admin-support" || userKind === "internal-coach";
-  const savePermissions = () => onSave({ avatarIds, adminMenuHrefs, userSubmenuHrefs: inheritedUserSubmenusForAdminMenus(adminMenuHrefs, userKind, userRole), coachPlanKey: localCoachPlanKey });
+  const savePermissions = () => onSave(normalizePermissionsForUser({ avatarIds, adminMenuHrefs, userSubmenuHrefs: [], coachPlanKey: localCoachPlanKey }, userKind, userRole));
 
   function toggleAdminMenu(href: string, nextChecked: boolean) {
     setAdminMenuHrefs((currentHrefs) => toggleItem(currentHrefs, href, nextChecked));
@@ -1463,6 +1463,17 @@ function defaultPermissionsFor(userKind: AdminUserKind, userRole: string, coachP
     adminMenuHrefs,
     userSubmenuHrefs: inheritedUserSubmenusForAdminMenus(adminMenuHrefs, userKind, userRole),
     coachPlanKey,
+  };
+}
+
+function normalizePermissionsForUser(permissions: UserPermissions, userKind: AdminUserKind, userRole: string): UserPermissions {
+  const validAvatarIds = Array.from(new Set(permissions.avatarIds)).filter((avatarId) => Boolean(skillRegistry[avatarId]));
+  const validAdminMenuHrefs = Array.from(new Set(permissions.adminMenuHrefs)).filter((href) => adminSections.some((section) => section.href === href));
+  return {
+    ...permissions,
+    avatarIds: validAvatarIds,
+    adminMenuHrefs: validAdminMenuHrefs,
+    userSubmenuHrefs: inheritedUserSubmenusForAdminMenus(validAdminMenuHrefs, userKind, userRole),
   };
 }
 
