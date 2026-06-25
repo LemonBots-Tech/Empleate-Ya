@@ -241,6 +241,13 @@ const copy = {
     duplicatePrincipalMessage: "Ya existe un rol principal activo para esta organizacion. Primero debe darse de baja logica el principal activo y despues crear el nuevo.",
     unauthorizedPrincipalCreateMessage: "Solo Super Admin o apoyos autorizados pueden dar de alta un Coach partner principal o Administrador RH.",
     requiredOnlineMessage: "Nombre completo y correo son obligatorios para crear o editar un usuario online.",
+    requiredSupportMessage: "Nombre completo, telefono y correo son obligatorios para crear o editar un apoyo Super Admin.",
+    delegationExistingUserMessage: "La delegacion temporal solo puede asignarse a un usuario de apoyo ya creado. Primero crea el apoyo con su rol base y despues asigna la delegacion.",
+    delegationPasswordMessage: "Para guardar fechas de delegacion, un Super Admin o supervisor delegado vigente debe autorizar con su password.",
+    delegationDateMessage: "Captura fecha de delegacion y fecha fin de delegacion para habilitar la supervision temporal.",
+    delegationPasswordLabel: "Password de autorizacion Super Admin",
+    delegationPasswordHelp: "Demo temporal: usa admin-demo. En produccion se validara contra login real.",
+    delegationExpiredMessage: "La delegacion esta fuera de vigencia; el usuario conserva su rol base y pierde facultades de Super Admin.",
     duplicateOnlineNameMessage: "Ya existe un usuario online con ese nombre. Corrige el nombre antes de guardar.",
     onlineSupportPaidTypeMessage: "Los apoyos a Super Admin solo pueden crear usuarios online como Prospecto online. Cliente Online Pagado se asigna por Super Admin o por compra Stripe.",
     onlineProspectCreditMessage: "No se pueden modificar creditos manualmente a un Prospecto online. Solo aplica para Cliente Online Pagado.",
@@ -366,6 +373,13 @@ const copy = {
     duplicatePrincipalMessage: "An active main role already exists for this organization. Logically delete the active main user first, then create the new one.",
     unauthorizedPrincipalCreateMessage: "Only Super Admin or authorized support users can create a main Coach Partner or HR Administrator.",
     requiredOnlineMessage: "Full name and email are required to create or edit an online user.",
+    requiredSupportMessage: "Full name, phone, and email are required to create or edit a Super Admin support user.",
+    delegationExistingUserMessage: "Temporary delegation can only be assigned to an existing support user. Create the support user with a base role first, then assign delegation.",
+    delegationPasswordMessage: "To save delegation dates, a Super Admin or active delegated supervisor must authorize with their password.",
+    delegationDateMessage: "Enter delegation start and end dates to enable temporary supervision.",
+    delegationPasswordLabel: "Super Admin authorization password",
+    delegationPasswordHelp: "Temporary demo: use admin-demo. Production will validate real login.",
+    delegationExpiredMessage: "The delegation is outside its validity period; the user keeps their base role and loses Super Admin authority.",
     duplicateOnlineNameMessage: "An online user with that name already exists. Correct the name before saving.",
     onlineSupportPaidTypeMessage: "Super Admin support users can only create online users as Online prospect. Paid online client is assigned by Super Admin or Stripe purchase.",
     onlineProspectCreditMessage: "Manual credits cannot be changed for an Online prospect. This only applies to Paid online clients.",
@@ -663,10 +677,19 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   function handleSaveUser(formData: FormData) {
     const nextName = String(formData.get("name") || "").trim();
     const email = String(formData.get("email") || "").trim();
+    const phone = String(formData.get("phone") || "").trim();
     const requestedRole = String(formData.get("role") || kind.roles[0]);
-    const nextRole = userKind === "online" && !operatorIsSuperAdmin ? (selectedUser?.role ?? kind.roles[0]) : requestedRole;
+    let nextRole = userKind === "online" && !operatorIsSuperAdmin ? (selectedUser?.role ?? kind.roles[0]) : requestedRole;
     if (userKind === "online" && (!nextName || !email)) {
       setNotice(t.requiredOnlineMessage);
+      return;
+    }
+    if (userKind === "super-admin-support" && (!nextName || !phone || !email)) {
+      setNotice(t.requiredSupportMessage);
+      return;
+    }
+    if (userKind === "super-admin-support" && isTemporarySupervisorRole(nextRole) && !selectedUser) {
+      setNotice(t.delegationExistingUserMessage);
       return;
     }
     if (userKind === "online" && !operatorIsSuperAdmin && !selectedUser && (requestedRole === "Cliente Online Pagado" || requestedRole === "Paid online client")) {
@@ -678,6 +701,23 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       return;
     }
     const nextOrganization = fixedEmpleateYaOrg ? empleateYaOrganization : String(formData.get("organization") || "").trim();
+    const delegationStart = String(formData.get("extra-fecha_de_delegacion") || selectedUser?.extraData?.fecha_de_delegacion || "").trim();
+    const delegationEnd = String(formData.get("extra-fecha_fin_delegacion") || selectedUser?.extraData?.fecha_fin_delegacion || "").trim();
+    const delegationPassword = String(formData.get("delegationPassword") || "").trim();
+    const assigningDelegation = userKind === "super-admin-support" && isTemporarySupervisorRole(nextRole);
+    if (assigningDelegation && (!delegationStart || !delegationEnd)) {
+      setNotice(t.delegationDateMessage);
+      return;
+    }
+    if (assigningDelegation && currentOperator.role === "Apoyo administrativo" && !operatorIsSuperAdmin && delegationPassword !== "admin-demo") {
+      setNotice(t.delegationPasswordMessage);
+      return;
+    }
+    const previousSupportRole = userKind === "super-admin-support" ? baseSupportRoleForDelegation(selectedUser, nextRole) : "";
+    const delegationExpired = assigningDelegation && !delegationWindowIsActive(delegationStart, delegationEnd);
+    if (delegationExpired) {
+      nextRole = previousSupportRole;
+    }
     const nextCoachPlanKey = String(formData.get("coachPlanKey") || coachPlanKey) as CoachPartnerPlanKey;
     const nextCoachPlan = coachPartnerPlans[nextCoachPlanKey];
     const roleChanged = selectedUser ? selectedUser.role !== nextRole : true;
@@ -721,7 +761,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       email: email || `usuario-${Date.now()}@empleateya.local`,
       organization: nextOrganization,
       role: nextRole,
-      phone: String(formData.get("phone") || "").trim(),
+      phone,
       status: requestedStatus,
       credits: nextCredits,
       owner: userKind === "online" && !operatorIsSuperAdmin ? (selectedUser?.owner ?? internalOwners[0]) : String(formData.get("owner") || internalOwners[0]),
@@ -734,6 +774,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       permissions: cascadedPermissions,
       extraData: {
         ...buildExtraData(kind.extraFields, formData, selectedUser, userKind),
+        ...(previousSupportRole ? { previous_support_role: previousSupportRole } : {}),
         profileName: nextName,
         profileEmail: email,
       },
@@ -771,7 +812,8 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     setDraftRole(nextRole);
     setPendingPermissions(null);
     const cascadedMessage = shouldCascadePermissionsForRole(userKind, roleChanged, planChanged) ? ` ${t.permissionsAssignedMessage}` : "";
-    setNotice(creditAdjusted ? `${t.savedDataMessage} ${t.creditAdjustmentMessage}${cascadedMessage}` : `${t.savedDataMessage}${cascadedMessage}`);
+    const delegationMessage = delegationExpired ? ` ${t.delegationExpiredMessage}` : "";
+    setNotice(creditAdjusted ? `${t.savedDataMessage} ${t.creditAdjustmentMessage}${cascadedMessage}${delegationMessage}` : `${t.savedDataMessage}${cascadedMessage}${delegationMessage}`);
   }
 
   if (showPermissions) {
@@ -970,7 +1012,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
               )}
             </Field>
             {userKind === "online" ? <p className="text-xs font-semibold leading-5 text-slate-500">{t.creditsHelp}</p> : null}
-            <ExtraFields fields={kind.extraFields} selectedUser={selectedUser} userRole={activeRole} userKind={userKind} language={language} canSeeStripeFull={operatorIsSuperAdmin} />
+            <ExtraFields fields={kind.extraFields} selectedUser={selectedUser} userRole={activeRole} userKind={userKind} language={language} canSeeStripeFull={operatorIsSuperAdmin} currentOperator={currentOperator} operatorIsSuperAdmin={operatorIsSuperAdmin} />
             {userKind === "internal-coach" ? <InternalCoachAvailabilityPanel user={selectedUser} language={language} /> : null}
             {userKind === "super-admin-support" ? (
               <p className="rounded-2xl border border-purple-100 bg-purple-50 px-4 py-3 text-xs font-semibold leading-5 text-purple-900">
@@ -1217,8 +1259,27 @@ function PartnerPlanSummary({ plan, language }: { plan: (typeof coachPartnerPlan
   );
 }
 
-function ExtraFields({ fields, selectedUser, userRole, userKind, language, canSeeStripeFull }: { fields: readonly string[]; selectedUser?: DemoUser; userRole: string; userKind: AdminUserKind; language: "es" | "en"; canSeeStripeFull: boolean }) {
+function ExtraFields({
+  fields,
+  selectedUser,
+  userRole,
+  userKind,
+  language,
+  canSeeStripeFull,
+  currentOperator,
+  operatorIsSuperAdmin,
+}: {
+  fields: readonly string[];
+  selectedUser?: DemoUser;
+  userRole: string;
+  userKind: AdminUserKind;
+  language: "es" | "en";
+  canSeeStripeFull: boolean;
+  currentOperator: { name: string; role: string };
+  operatorIsSuperAdmin: boolean;
+}) {
   const t = copy[language];
+  const showDelegationPassword = userKind === "super-admin-support" && isTemporarySupervisorRole(userRole) && currentOperator.role === "Apoyo administrativo" && !operatorIsSuperAdmin;
   return (
     <>
       {fields.map((field) => {
@@ -1244,6 +1305,15 @@ function ExtraFields({ fields, selectedUser, userRole, userKind, language, canSe
             </label>
           );
         }
+        if (key.includes("supervisor_responsable") || key.includes("responsible_supervisor")) {
+          return (
+            <Field key={field} label={field}>
+              <Select name={`extra-${key}`} defaultValue={typeof savedValue === "string" ? savedValue : internalOwners[0]}>
+                {internalOwners.map((owner) => <option key={owner}>{owner}</option>)}
+              </Select>
+            </Field>
+          );
+        }
 
         return (
           <Field key={field} label={field}>
@@ -1251,6 +1321,12 @@ function ExtraFields({ fields, selectedUser, userRole, userKind, language, canSe
           </Field>
         );
       })}
+      {showDelegationPassword ? (
+        <Field label={t.delegationPasswordLabel}>
+          <Input name="delegationPassword" type="password" placeholder="admin-demo" />
+          <p className="mt-1 text-xs font-semibold text-slate-500">{t.delegationPasswordHelp}</p>
+        </Field>
+      ) : null}
     </>
   );
 }
@@ -1499,6 +1575,33 @@ function isRestrictedAccessStatus(status: string) {
 
 function isLockedOrDeletedStatus(status: string) {
   return ["bloqueado", "blocked", "borrado_logico", "logical_delete"].includes(status);
+}
+
+function isTemporarySupervisorRole(role: string) {
+  const normalized = normalizeRole(role);
+  return normalized.includes("supervisor delegado temporal") || normalized.includes("temporary delegated supervisor");
+}
+
+function baseSupportRoleForDelegation(selectedUser: DemoUser | undefined, nextRole: string) {
+  const previousRole = selectedUser?.extraData?.previous_support_role;
+  if (typeof previousRole === "string" && previousRole.trim()) return previousRole;
+  if (selectedUser && !isTemporarySupervisorRole(selectedUser.role)) return selectedUser.role;
+  return nextRole === "Temporary delegated supervisor" ? "Administrative support" : "Apoyo administrativo";
+}
+
+function delegationWindowIsActive(startValue: string, endValue: string) {
+  const start = parseDateOnly(startValue);
+  const end = parseDateOnly(endValue);
+  if (!start || !end) return false;
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  return today >= start && today <= end;
+}
+
+function parseDateOnly(value: string) {
+  if (!value) return null;
+  const parsed = new Date(`${value}T12:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function isDefaultCampaignApproverRole(userRole: string) {
