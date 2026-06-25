@@ -617,6 +617,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   const [showBalance, setShowBalance] = useState(false);
   const [storageLoaded, setStorageLoaded] = useState(false);
   const [draftRole, setDraftRole] = useState("");
+  const [draftStatus, setDraftStatus] = useState("");
   const [currentOperator, setCurrentOperator] = useState(() => operatorForProfile("super_admin"));
 
   useEffect(() => {
@@ -666,10 +667,15 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     setDraftRole(selectedUser?.role ?? kind.roles[0]);
   }, [kind.roles, selectedUser?.role, userKind]);
 
+  useEffect(() => {
+    setDraftStatus(selectedUser?.status ?? t.statuses[0]);
+  }, [selectedUser?.status, t.statuses]);
+
   function selectUserForMaintenance(email: string) {
     const user = users.find((currentUser) => currentUser.kind === userKind && currentUser.email === email);
     setSelectedEmail(email);
     setDraftRole(user?.role ?? kind.roles[0]);
+    setDraftStatus(user?.status ?? t.statuses[0]);
     setSearchMode("capture");
     setNotice(t.selectedForEdit);
   }
@@ -722,7 +728,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     const nextCoachPlan = coachPartnerPlans[nextCoachPlanKey];
     const roleChanged = selectedUser ? selectedUser.role !== nextRole : true;
     const planChanged = selectedUser?.permissions?.coachPlanKey !== nextCoachPlanKey;
-    const requestedStatus = selectedUser ? String(formData.get("status") || defaultStatus) : activeStatusValue(language);
+    const requestedStatus = selectedUser ? String(formData.get("status") || draftStatus || defaultStatus) : activeStatusValue(language);
     const statusChanged = selectedUser ? selectedUser.status !== requestedStatus : false;
     const nextRoleIsPaidOnline = nextRole === "Cliente Online Pagado" || nextRole === "Paid online client";
     const nextCanEditOnlineCredits = !statusChanged && userKind === "online" && operatorCanMoveOnlineCredits && nextRoleIsPaidOnline;
@@ -929,7 +935,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
             <p className="mt-1 text-sm font-semibold text-slate-500">{selectedUser ? `${t.selected}: ${selectedUser.name}` : t.noSelected}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]" onClick={() => { setSelectedEmail(""); setDraftRole(kind.roles[0]); setPendingPermissions(null); setNotice(""); setSearchMode("capture"); }}><UserPlus size={17} />{t.create}</Button>
+            <Button type="button" className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]" onClick={() => { setSelectedEmail(""); setDraftRole(kind.roles[0]); setDraftStatus(t.statuses[0]); setPendingPermissions(null); setNotice(""); setSearchMode("capture"); }}><UserPlus size={17} />{t.create}</Button>
             <Button type="button" className="gap-2 bg-slate-950 text-white hover:bg-slate-800" onClick={() => { setSearchMode("edit"); setNotice(""); }}><Search size={17} />{t.edit}</Button>
             {userKind === "online" ? <Button type="button" disabled={!selectedUser} title={!selectedUser ? t.balanceDisabledHelp : undefined} className="gap-2 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50" onClick={() => setShowBalance(true)}><FileText size={17} />{t.balance}</Button> : null}
             <Button type="submit" className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"><Save size={17} />{t.saveData}</Button>
@@ -981,7 +987,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
           </FormGroup>
           <FormGroup title={t.extra} icon={<ShieldCheck size={18} />}>
             <Field label={t.statusLabel}>
-              <Select name="status" defaultValue={defaultStatus} disabled={Boolean(selectedUser && isLockedOrDeletedStatus(selectedUser.status) && !operatorIsSuperAdmin)}>
+              <Select name="status" value={draftStatus || defaultStatus} onChange={(event) => setDraftStatus(event.target.value)} disabled={Boolean(selectedUser && isLockedOrDeletedStatus(selectedUser.status) && !operatorIsSuperAdmin)}>
                 {t.statuses.map((item) => <option key={item} value={item}>{statusLabel(item, language)}</option>)}
               </Select>
               {selectedUser && isLockedOrDeletedStatus(selectedUser.status) && !operatorIsSuperAdmin ? <input type="hidden" name="status" value={selectedUser.status} /> : null}
@@ -1350,13 +1356,16 @@ function PermissionsPanel({
   const userIsPaidOnline = userRole === "Cliente Online Pagado" || userRole === "Paid online client";
   const [avatarIds, setAvatarIds] = useState<SkillId[]>(permissions.avatarIds);
   const [adminMenuHrefs, setAdminMenuHrefs] = useState<string[]>(permissions.adminMenuHrefs);
-  const [userSubmenuHrefs, setUserSubmenuHrefs] = useState<string[]>(permissions.userSubmenuHrefs);
   const [localCoachPlanKey, setLocalCoachPlanKey] = useState<CoachPartnerPlanKey>(permissions.coachPlanKey);
   const partnerPlan = coachPartnerPlans[localCoachPlanKey];
   const partnerCreditPool = calculateCoachPartnerPool(partnerPlan);
   const partnerStudentCredits = calculateCoachPartnerStudentCredits(partnerPlan);
   const showAdminPermissionSections = userKind === "super-admin-support" || userKind === "internal-coach";
-  const savePermissions = () => onSave({ avatarIds, adminMenuHrefs, userSubmenuHrefs, coachPlanKey: localCoachPlanKey });
+  const savePermissions = () => onSave({ avatarIds, adminMenuHrefs, userSubmenuHrefs: inheritedUserSubmenusForAdminMenus(adminMenuHrefs, userKind, userRole), coachPlanKey: localCoachPlanKey });
+
+  function toggleAdminMenu(href: string, nextChecked: boolean) {
+    setAdminMenuHrefs((currentHrefs) => toggleItem(currentHrefs, href, nextChecked));
+  }
 
   return (
     <section className="space-y-5 rounded-[1.5rem] border border-purple-200 bg-white p-5 shadow-sm">
@@ -1407,7 +1416,7 @@ function PermissionsPanel({
         <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold leading-6 text-emerald-900">{t.partnerRule}</div>
       ) : null}
 
-      <div className={`grid gap-4 ${showAdminPermissionSections ? "xl:grid-cols-[1.2fr_1fr_1fr]" : "xl:grid-cols-1"}`}>
+      <div className={`grid gap-4 ${showAdminPermissionSections ? "xl:grid-cols-[1.2fr_1fr]" : "xl:grid-cols-1"}`}>
         <ChecklistCard title={t.avatars}>
           <div className="grid max-h-80 gap-2 overflow-auto pr-1">
             {allAvatarIds.map((avatarId) => {
@@ -1435,26 +1444,11 @@ function PermissionsPanel({
                     checked={adminMenuHrefs.includes(section.href)}
                     title={adminMenuLabels[language][section.key]}
                     detail={section.href}
-                    onChange={(nextChecked) => setAdminMenuHrefs((currentHrefs) => toggleItem(currentHrefs, section.href, nextChecked))}
+                    onChange={(nextChecked) => toggleAdminMenu(section.href, nextChecked)}
                   />
                 ))}
               </div>
             </ChecklistCard>
-            {userKind === "super-admin-support" ? (
-              <ChecklistCard title={t.submenu}>
-                <div className="grid max-h-80 gap-2 overflow-auto pr-1">
-                  {userSubmenuPermissions.map((href) => (
-                    <PermissionCheck
-                      key={href}
-                      checked={userSubmenuHrefs.includes(href)}
-                      title={href.split("/").at(-1)?.replaceAll("-", " ") ?? href}
-                      detail={href}
-                      onChange={(nextChecked) => setUserSubmenuHrefs((currentHrefs) => toggleItem(currentHrefs, href, nextChecked))}
-                    />
-                  ))}
-                </div>
-              </ChecklistCard>
-            ) : null}
           </>
         ) : null}
       </div>
@@ -1463,12 +1457,18 @@ function PermissionsPanel({
 }
 
 function defaultPermissionsFor(userKind: AdminUserKind, userRole: string, coachPlanKey: CoachPartnerPlanKey, userStatus = "activo"): UserPermissions {
+  const adminMenuHrefs = adminSections.filter((section) => menuAllowedFor(userKind, userRole, section.href)).map((section) => section.href);
   return {
     avatarIds: allowedAvatarsFor(userKind, userRole, coachPlanKey, userStatus),
-    adminMenuHrefs: adminSections.filter((section) => menuAllowedFor(userKind, userRole, section.href)).map((section) => section.href),
-    userSubmenuHrefs: userSubmenuPermissions.filter((href) => userSubmenuAllowedFor(userKind, userRole, href)),
+    adminMenuHrefs,
+    userSubmenuHrefs: inheritedUserSubmenusForAdminMenus(adminMenuHrefs, userKind, userRole),
     coachPlanKey,
   };
+}
+
+function inheritedUserSubmenusForAdminMenus(adminMenuHrefs: string[], userKind: AdminUserKind, userRole: string) {
+  if (!adminMenuHrefs.includes("/admin/users")) return [];
+  return userSubmenuPermissions.filter((href) => userSubmenuAllowedFor(userKind, userRole, href));
 }
 
 function allowedAvatarsFor(userKind: AdminUserKind, userRole: string, coachPlanKey: CoachPartnerPlanKey, userStatus = "activo") {
