@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Building2, FileText, KeyRound, Mail, Printer, Save, Search, ShieldCheck, UserPlus, UsersRound } from "lucide-react";
@@ -106,7 +106,7 @@ const kindConfig = {
       organizationPlaceholder: "Ej. Empresa Demo Outplacement",
       roleLabel: "Rol en empresa",
       roles: ["Administrador RH", "Apoyo administrativo RH", "Coach de outplacement", "Aprobador de Campaña"],
-      extraFields: ["Campana asignada", "Puede aprobar campañas", "Inicio vigencia aprobador", "Fin vigencia aprobador"],
+      extraFields: ["Numero de licencia", "Servicio outplacement", "Fecha inicio licencia", "Fecha vigencia licencia", "Fecha gracia vigente", "Campana asignada", "Inicio vigencia aprobador", "Fin vigencia aprobador"],
     },
     student: {
       title: "Alumnos",
@@ -178,7 +178,7 @@ const kindConfig = {
       organizationPlaceholder: "Example: Demo Outplacement Company",
       roleLabel: "Company role",
       roles: ["HR Administrator", "HR administrative support", "Outplacement coach", "Campaign Approver"],
-      extraFields: ["Assigned campaign", "Can approve campaigns", "Approver assignment start", "Approver assignment end"],
+      extraFields: ["License number", "Outplacement service", "License start date", "License end date", "Active grace date", "Assigned campaign", "Approver assignment start", "Approver assignment end"],
     },
     student: {
       title: "Students",
@@ -244,6 +244,10 @@ const copy = {
     requiredSupportMessage: "Nombre completo, telefono y correo son obligatorios para crear o editar un apoyo Super Admin.",
     requiredInternalCoachMessage: "Nombre completo, telefono y correo son obligatorios para crear o editar un Coach interno 1o1.",
     requiredCoachPartnerMessage: "Nombre completo, telefono y correo son obligatorios para crear o editar un Coach Partner.",
+    requiredOutplacementMessage: "Nombre completo, telefono y correo son obligatorios para crear o editar un usuario de Outplacement.",
+    campaignApproverCreateMessage: "No puedes crear un usuario directamente como Aprobador de Campaña. Primero debe existir como Apoyo administrativo RH o Coach de outplacement, y despues asignarse temporalmente.",
+    campaignApproverDateMessage: "Captura inicio y fin de vigencia para asignar temporalmente el rol Aprobador de Campaña.",
+    campaignAssignmentRoleMessage: "Solo un Coach de outplacement puede tener una campaña asignada.",
     delegationExistingUserMessage: "La delegacion temporal solo puede asignarse a un usuario de apoyo ya creado. Primero crea el apoyo con su rol base y despues asigna la delegacion.",
     delegationPasswordMessage: "Para guardar fechas de delegacion, un Super Admin o supervisor delegado vigente debe autorizar con su password.",
     delegationDateMessage: "Captura fecha de delegacion y fecha fin de delegacion para habilitar la supervision temporal.",
@@ -378,6 +382,10 @@ const copy = {
     requiredSupportMessage: "Full name, phone, and email are required to create or edit a Super Admin support user.",
     requiredInternalCoachMessage: "Full name, phone, and email are required to create or edit an internal 1:1 coach.",
     requiredCoachPartnerMessage: "Full name, phone, and email are required to create or edit a Coach Partner.",
+    requiredOutplacementMessage: "Full name, phone, and email are required to create or edit an Outplacement user.",
+    campaignApproverCreateMessage: "You cannot create a user directly as Campaign Approver. Create them first as HR administrative support or Outplacement coach, then assign the temporary approval role.",
+    campaignApproverDateMessage: "Enter start and end dates to temporarily assign the Campaign Approver role.",
+    campaignAssignmentRoleMessage: "Only an Outplacement coach can have an assigned campaign.",
     delegationExistingUserMessage: "Temporary delegation can only be assigned to an existing support user. Create the support user with a base role first, then assign delegation.",
     delegationPasswordMessage: "To save delegation dates, a Super Admin or active delegated supervisor must authorize with their password.",
     delegationDateMessage: "Enter delegation start and end dates to enable temporary supervision.",
@@ -576,11 +584,31 @@ const coachPartnerOrganizationLicenses: Record<string, CoachPartnerOrganizationL
 
 const coachPartnerOrganizationNames = Object.keys(coachPartnerOrganizationLicenses);
 
+type OutplacementOrganizationLicense = {
+  licenseNumber: string;
+  service: "Salida digna" | "Recolocacion Pyme 60" | "Recolocacion profesional 90" | "Outplacement ejecutivo Pyme";
+  licenseStart: string;
+  licenseEnd: string;
+  graceUntil: string;
+  status: string;
+};
+
+const outplacementOrganizationLicenses: Record<string, OutplacementOrganizationLicense> = {
+  "Empresa Demo Outplacement": { licenseNumber: "OP-2026-001-v1", service: "Recolocacion profesional 90", licenseStart: "2026-06-01", licenseEnd: "2026-08-30", graceUntil: "2026-09-14", status: "activo" },
+  "Grupo Industrial Norte": { licenseNumber: "OP-2026-002-v1", service: "Salida digna", licenseStart: "2026-06-10", licenseEnd: "2026-07-08", graceUntil: "2026-07-15", status: "activo" },
+  "Servicios Financieros Delta": { licenseNumber: "OP-2026-003-v1", service: "Recolocacion Pyme 60", licenseStart: "2026-05-20", licenseEnd: "2026-07-19", graceUntil: "2026-07-29", status: "activo" },
+  "Retail Nacional": { licenseNumber: "OP-2026-004-v1", service: "Outplacement ejecutivo Pyme", licenseStart: "2026-07-01", licenseEnd: "2026-10-01", graceUntil: "", status: "pendiente" },
+  "Manufacturas del Centro": { licenseNumber: "OP-2026-005-v1", service: "Recolocacion profesional 90", licenseStart: "2026-04-15", licenseEnd: "2026-07-14", graceUntil: "2026-07-29", status: "activo" },
+  "Tecnologia Humana Global": { licenseNumber: "OP-2026-006-v1", service: "Recolocacion Pyme 60", licenseStart: "2026-08-01", licenseEnd: "2026-09-30", graceUntil: "", status: "pendiente" },
+};
+
+const outplacementOrganizationNames = Object.keys(outplacementOrganizationLicenses);
+
 const organizationCatalog = {
   "coach-partner": coachPartnerOrganizationNames,
   student: ["Empleate YA", ...coachPartnerOrganizationNames],
-  "outplacement-rh": ["Empresa Demo Outplacement", "Grupo Industrial Norte", "Servicios Financieros Delta", "Retail Nacional"],
-  "outplacement-employee": ["Empresa Demo Outplacement", "Grupo Industrial Norte", "Servicios Financieros Delta", "Retail Nacional"],
+  "outplacement-rh": outplacementOrganizationNames,
+  "outplacement-employee": outplacementOrganizationNames,
 } as const;
 
 const salaryRangeOptions = {
@@ -754,6 +782,10 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       setNotice(t.requiredCoachPartnerMessage);
       return;
     }
+    if (userKind === "outplacement-rh" && (!nextName || !phone || !email)) {
+      setNotice(t.requiredOutplacementMessage);
+      return;
+    }
     if (userKind === "super-admin-support" && isTemporarySupervisorRole(nextRole) && !selectedUser) {
       setNotice(t.delegationExistingUserMessage);
       return;
@@ -770,6 +802,22 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     const delegationStart = String(formData.get("extra-fecha_de_delegacion") || selectedUser?.extraData?.fecha_de_delegacion || "").trim();
     const delegationEnd = String(formData.get("extra-fecha_fin_delegacion") || selectedUser?.extraData?.fecha_fin_delegacion || "").trim();
     const delegationPassword = String(formData.get("delegationPassword") || "").trim();
+    const approverStart = String(formData.get("extra-inicio_vigencia_aprobador") || formData.get("extra-approver_assignment_start") || selectedUser?.extraData?.inicio_vigencia_aprobador || selectedUser?.extraData?.approver_assignment_start || "").trim();
+    const approverEnd = String(formData.get("extra-fin_vigencia_aprobador") || formData.get("extra-approver_assignment_end") || selectedUser?.extraData?.fin_vigencia_aprobador || selectedUser?.extraData?.approver_assignment_end || "").trim();
+    const campaignAssignment = String(formData.get("extra-campana_asignada") || formData.get("extra-assigned_campaign") || selectedUser?.extraData?.campana_asignada || selectedUser?.extraData?.assigned_campaign || "").trim();
+    const assigningCampaignApprover = userKind === "outplacement-rh" && isCampaignApproverRole(nextRole);
+    if (assigningCampaignApprover && !selectedUser) {
+      setNotice(t.campaignApproverCreateMessage);
+      return;
+    }
+    if (assigningCampaignApprover && (!approverStart || !approverEnd)) {
+      setNotice(t.campaignApproverDateMessage);
+      return;
+    }
+    if (userKind === "outplacement-rh" && campaignAssignment && !isOutplacementCoachRole(nextRole)) {
+      setNotice(t.campaignAssignmentRoleMessage);
+      return;
+    }
     const assigningDelegation = userKind === "super-admin-support" && isTemporarySupervisorRole(nextRole);
     if (assigningDelegation && (!delegationStart || !delegationEnd)) {
       setNotice(t.delegationDateMessage);
@@ -783,6 +831,11 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     const delegationExpired = assigningDelegation && !delegationWindowIsActive(delegationStart, delegationEnd);
     if (delegationExpired) {
       nextRole = previousSupportRole;
+    }
+    const previousOutplacementRole = userKind === "outplacement-rh" ? baseOutplacementRoleForApprover(selectedUser, nextRole) : "";
+    const approverExpired = assigningCampaignApprover && !delegationWindowIsActive(approverStart, approverEnd);
+    if (approverExpired) {
+      nextRole = previousOutplacementRole;
     }
     const nextCoachPlanKey = userKind === "coach-partner"
       ? coachPartnerLicenseForOrganization(nextOrganization).planKey
@@ -846,6 +899,7 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       extraData: {
         ...buildExtraData(kind.extraFields, formData, selectedUser, userKind),
         ...(previousSupportRole ? { previous_support_role: previousSupportRole } : {}),
+        ...(previousOutplacementRole ? { previous_outplacement_role: previousOutplacementRole } : {}),
         profileName: nextName,
         profileEmail: email,
       },
@@ -1260,7 +1314,7 @@ function InternalCoachAvailabilityPanel({ user, language }: { user?: DemoUser; l
               <div key={`${assignment.coachEmail}-${assignment.name}`} className="border-b border-slate-100 px-3 py-2 text-xs last:border-0">
                 <strong className="block text-slate-950">{assignment.name}</strong>
                 <span className="text-slate-500">
-                  {assignment.kind === "campaign" ? (language === "es" ? "Campana" : "Campaign") : (language === "es" ? "Grupo" : "Group")} · {formatShortDate(assignment.startDate, language)} - {formatShortDate(assignment.endDate, language)} · {modalityLabel(assignment.modality, language)} · NPS {assignment.nps}
+                  {assignment.kind === "campaign" ? (language === "es" ? "Campana" : "Campaign") : (language === "es" ? "Grupo" : "Group")} Â· {formatShortDate(assignment.startDate, language)} - {formatShortDate(assignment.endDate, language)} Â· {modalityLabel(assignment.modality, language)} Â· NPS {assignment.nps}
                 </span>
               </div>
             ))}
@@ -1374,6 +1428,24 @@ function ExtraFields({
             </Field>
           );
         }
+        if (userKind === "outplacement-rh" && outplacementLicenseFieldIsReadonly(key)) {
+          const license = outplacementLicenseForOrganization(organization);
+          const value = outplacementLicenseFieldValue(key, license, language);
+          return (
+            <Field key={field} label={field}>
+              <Input value={value} readOnly />
+              <input type="hidden" name={`extra-${key}`} value={value} />
+            </Field>
+          );
+        }
+        if (userKind === "outplacement-rh" && (key.includes("campana_asignada") || key.includes("assigned_campaign")) && !isOutplacementCoachRole(userRole)) {
+          return (
+            <Field key={field} label={field}>
+              <Input value={language === "es" ? "Solo aplica para Coach de outplacement" : "Only applies to Outplacement coach"} readOnly />
+              <input type="hidden" name={`extra-${key}`} value="" />
+            </Field>
+          );
+        }
         if (isStripeField) {
           const rawValue = typeof savedValue === "string" ? savedValue : "";
           const visibleValue = rawValue ? (canSeeStripeFull ? rawValue : maskStripeId(rawValue)) : "Stripe asignara este ID al comprar creditos";
@@ -1483,7 +1555,7 @@ function PermissionsPanel({
             <div className="mt-3 rounded-xl bg-slate-950 p-3 text-sm font-bold text-white">
               <p>{t.partnerCreditPool}: {formatPlanNumber(partnerCreditPool, language)}</p>
               <p>{t.partnerStudentCredits}: {formatPlanNumber(partnerStudentCredits, language)}</p>
-              <p className="mt-1 text-xs text-slate-300">{t.groups}: {formatPlanNumber(partnerPlan.groups, language)} · {t.students}: {formatPlanNumber(partnerPlan.studentsPerGroup, language)} · {t.cycles}: {formatPlanNumber(partnerPlan.cycles, language)}</p>
+              <p className="mt-1 text-xs text-slate-300">{t.groups}: {formatPlanNumber(partnerPlan.groups, language)} Â· {t.students}: {formatPlanNumber(partnerPlan.studentsPerGroup, language)} Â· {t.cycles}: {formatPlanNumber(partnerPlan.cycles, language)}</p>
             </div>
           </div>
         ) : null}
@@ -1624,6 +1696,32 @@ function outplacementCurrentCredits(selectedUser: DemoUser | undefined, userRole
   return calculateOutplacementRoleCredits(userRole);
 }
 
+function outplacementLicenseForOrganization(organization?: string) {
+  return outplacementOrganizationLicenses[organization || ""] ?? outplacementOrganizationLicenses["Empresa Demo Outplacement"];
+}
+
+function outplacementLicenseFieldIsReadonly(key: string) {
+  return key.includes("numero_de_licencia")
+    || key.includes("license_number")
+    || key.includes("servicio_outplacement")
+    || key.includes("outplacement_service")
+    || key.includes("fecha_inicio_licencia")
+    || key.includes("license_start")
+    || key.includes("fecha_vigencia_licencia")
+    || key.includes("license_end")
+    || key.includes("fecha_gracia_vigente")
+    || key.includes("active_grace");
+}
+
+function outplacementLicenseFieldValue(key: string, license: OutplacementOrganizationLicense, language: "es" | "en") {
+  if (key.includes("servicio") || key.includes("service")) return license.service;
+  if (key.includes("inicio") || key.includes("start")) return license.licenseStart;
+  if (key.includes("vigencia") || key.includes("end")) return license.licenseEnd;
+  if (key.includes("gracia") || key.includes("grace")) return license.graceUntil || "-";
+  if (key.includes("estado") || key.includes("status")) return statusLabel(license.status, language);
+  return license.licenseNumber;
+}
+
 function coachPartnerLicenseForOrganization(organization?: string) {
   return coachPartnerOrganizationLicenses[organization || ""] ?? coachPartnerOrganizationLicenses["Partner Ejecutivo Norte"];
 }
@@ -1650,15 +1748,6 @@ function formatPlanNumber(value: number, language: "es" | "en") {
 
 function organizationFieldForUserKind(userKind: AdminUserKind, organization: string, fixedEmpleateYaOrg: boolean, placeholder: string, onChange: (value: string) => void) {
   if (fixedEmpleateYaOrg) return <Input name="organization" value={empleateYaOrganization} readOnly />;
-  if (userKind === "outplacement-rh") {
-    const value = organization || organizationCatalog["outplacement-rh"][0];
-    return (
-      <>
-        <Input value={value} readOnly />
-        <input type="hidden" name="organization" value={value} />
-      </>
-    );
-  }
   if (usesOrganizationCatalog(userKind)) return <Select name="organization" value={organization || organizationCatalog[userKind][0]} onChange={(event) => onChange(event.target.value)}>{organizationCatalog[userKind].map((item) => <option key={item}>{item}</option>)}</Select>;
   return <Input name="organization" placeholder={placeholder} value={organization} onChange={(event) => onChange(event.target.value)} />;
 }
@@ -1719,6 +1808,24 @@ function parseDateOnly(value: string) {
 function isDefaultCampaignApproverRole(userRole: string) {
   const role = normalizeRole(userRole);
   return role.includes("administrador rh") || role.includes("hr administrator") || role.includes("aprobador de campa") || role.includes("campaign approver");
+}
+
+function isCampaignApproverRole(userRole: string) {
+  const role = normalizeRole(userRole);
+  return role.includes("aprobador de campa") || role.includes("campaign approver");
+}
+
+function isOutplacementCoachRole(userRole: string) {
+  const role = normalizeRole(userRole);
+  return role.includes("coach de outplacement") || role.includes("outplacement coach");
+}
+
+function baseOutplacementRoleForApprover(selectedUser: DemoUser | undefined, nextRole: string) {
+  if (!isCampaignApproverRole(nextRole)) return "";
+  const previousRole = typeof selectedUser?.extraData?.previous_outplacement_role === "string" ? selectedUser.extraData.previous_outplacement_role : "";
+  if (previousRole && !isCampaignApproverRole(previousRole) && !isHrAdminRole(previousRole)) return previousRole;
+  if (selectedUser?.role && !isCampaignApproverRole(selectedUser.role) && !isHrAdminRole(selectedUser.role)) return selectedUser.role;
+  return "Apoyo administrativo RH";
 }
 
 function isHrAdminRole(userRole: string) {
@@ -2112,4 +2219,6 @@ function PermissionCheck({ checked, title, detail, onChange }: { checked: boolea
     </label>
   );
 }
+
+
 
