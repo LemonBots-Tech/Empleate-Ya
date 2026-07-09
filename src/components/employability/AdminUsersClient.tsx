@@ -106,7 +106,7 @@ const kindConfig = {
       organizationPlaceholder: "Ej. Empresa Demo Outplacement",
       roleLabel: "Rol en empresa",
       roles: ["Administrador RH", "Apoyo administrativo RH", "Coach de outplacement", "Aprobador de Campaña"],
-      extraFields: ["Numero de licencia", "Servicio outplacement", "Fecha inicio licencia", "Fecha vigencia licencia", "Fecha gracia vigente", "Campana asignada", "Inicio vigencia aprobador", "Fin vigencia aprobador"],
+      extraFields: ["Numero de licencia", "Servicio outplacement", "Fecha inicio licencia", "Fecha vigencia licencia", "Fecha gracia vigente", "Campañas asignadas", "Inicio vigencia aprobador", "Fin vigencia aprobador"],
     },
     student: {
       title: "Alumnos",
@@ -178,7 +178,7 @@ const kindConfig = {
       organizationPlaceholder: "Example: Demo Outplacement Company",
       roleLabel: "Company role",
       roles: ["HR Administrator", "HR administrative support", "Outplacement coach", "Campaign Approver"],
-      extraFields: ["License number", "Outplacement service", "License start date", "License end date", "Active grace date", "Assigned campaign", "Approver assignment start", "Approver assignment end"],
+      extraFields: ["License number", "Outplacement service", "License start date", "License end date", "Active grace date", "Assigned campaigns", "Approver assignment start", "Approver assignment end"],
     },
     student: {
       title: "Students",
@@ -245,6 +245,9 @@ const copy = {
     requiredInternalCoachMessage: "Nombre completo, telefono y correo son obligatorios para crear o editar un Coach interno 1o1.",
     requiredCoachPartnerMessage: "Nombre completo, telefono y correo son obligatorios para crear o editar un Coach Partner.",
     requiredOutplacementMessage: "Nombre completo, telefono y correo son obligatorios para crear o editar un usuario de Outplacement.",
+    duplicateOutplacementMessage: "Ya existe un usuario de Outplacement con el mismo nombre, correo o telefono. Corrige los datos antes de guardar.",
+    missingHrAdminMessage: "Primero debe existir un Administrador RH activo para esta organizacion antes de crear apoyos, coaches o aprobadores.",
+    unauthorizedCampaignApproverMessage: "Solo Super Admin o Administrador RH pueden asignar temporalmente el rol Aprobador de Campaña y sus fechas de vigencia.",
     campaignApproverCreateMessage: "No puedes crear un usuario directamente como Aprobador de Campaña. Primero debe existir como Apoyo administrativo RH o Coach de outplacement, y despues asignarse temporalmente.",
     campaignApproverDateMessage: "Captura inicio y fin de vigencia para asignar temporalmente el rol Aprobador de Campaña.",
     campaignAssignmentRoleMessage: "Solo un Coach de outplacement puede tener una campaña asignada.",
@@ -383,6 +386,9 @@ const copy = {
     requiredInternalCoachMessage: "Full name, phone, and email are required to create or edit an internal 1:1 coach.",
     requiredCoachPartnerMessage: "Full name, phone, and email are required to create or edit a Coach Partner.",
     requiredOutplacementMessage: "Full name, phone, and email are required to create or edit an Outplacement user.",
+    duplicateOutplacementMessage: "An Outplacement user already exists with the same name, email, or phone. Correct the data before saving.",
+    missingHrAdminMessage: "An active HR Administrator must exist for this organization before creating support users, coaches, or approvers.",
+    unauthorizedCampaignApproverMessage: "Only Super Admin or HR Administrator can temporarily assign the Campaign Approver role and its validity dates.",
     campaignApproverCreateMessage: "You cannot create a user directly as Campaign Approver. Create them first as HR administrative support or Outplacement coach, then assign the temporary approval role.",
     campaignApproverDateMessage: "Enter start and end dates to temporarily assign the Campaign Approver role.",
     campaignAssignmentRoleMessage: "Only an Outplacement coach can have an assigned campaign.",
@@ -591,15 +597,17 @@ type OutplacementOrganizationLicense = {
   licenseEnd: string;
   graceUntil: string;
   status: string;
+  monthlyCredits: number;
+  internalOwner: string;
 };
 
 const outplacementOrganizationLicenses: Record<string, OutplacementOrganizationLicense> = {
-  "Empresa Demo Outplacement": { licenseNumber: "OP-2026-001-v1", service: "Recolocacion profesional 90", licenseStart: "2026-06-01", licenseEnd: "2026-08-30", graceUntil: "2026-09-14", status: "activo" },
-  "Grupo Industrial Norte": { licenseNumber: "OP-2026-002-v1", service: "Salida digna", licenseStart: "2026-06-10", licenseEnd: "2026-07-08", graceUntil: "2026-07-15", status: "activo" },
-  "Servicios Financieros Delta": { licenseNumber: "OP-2026-003-v1", service: "Recolocacion Pyme 60", licenseStart: "2026-05-20", licenseEnd: "2026-07-19", graceUntil: "2026-07-29", status: "activo" },
-  "Retail Nacional": { licenseNumber: "OP-2026-004-v1", service: "Outplacement ejecutivo Pyme", licenseStart: "2026-07-01", licenseEnd: "2026-10-01", graceUntil: "", status: "pendiente" },
-  "Manufacturas del Centro": { licenseNumber: "OP-2026-005-v1", service: "Recolocacion profesional 90", licenseStart: "2026-04-15", licenseEnd: "2026-07-14", graceUntil: "2026-07-29", status: "activo" },
-  "Tecnologia Humana Global": { licenseNumber: "OP-2026-006-v1", service: "Recolocacion Pyme 60", licenseStart: "2026-08-01", licenseEnd: "2026-09-30", graceUntil: "", status: "pendiente" },
+  "Empresa Demo Outplacement": { licenseNumber: "OP-2026-001-v1", service: "Recolocacion profesional 90", licenseStart: "2026-06-01", licenseEnd: "2026-08-30", graceUntil: "2026-09-14", status: "activo", monthlyCredits: 42000, internalOwner: "Ricardo Vega - Operativo outplacement" },
+  "Grupo Industrial Norte": { licenseNumber: "OP-2026-002-v1", service: "Salida digna", licenseStart: "2026-06-10", licenseEnd: "2026-07-08", graceUntil: "2026-07-15", status: "activo", monthlyCredits: 18000, internalOwner: "Ricardo Vega - Operativo outplacement" },
+  "Servicios Financieros Delta": { licenseNumber: "OP-2026-003-v1", service: "Recolocacion Pyme 60", licenseStart: "2026-05-20", licenseEnd: "2026-07-19", graceUntil: "2026-07-29", status: "activo", monthlyCredits: 28000, internalOwner: "Valeria Nunez - Apoyo administrativo" },
+  "Retail Nacional": { licenseNumber: "OP-2026-004-v1", service: "Outplacement ejecutivo Pyme", licenseStart: "2026-07-01", licenseEnd: "2026-10-01", graceUntil: "", status: "pendiente", monthlyCredits: 55000, internalOwner: "Ricardo Vega - Operativo outplacement" },
+  "Manufacturas del Centro": { licenseNumber: "OP-2026-005-v1", service: "Recolocacion profesional 90", licenseStart: "2026-04-15", licenseEnd: "2026-07-14", graceUntil: "2026-07-29", status: "activo", monthlyCredits: 36000, internalOwner: "Valeria Nunez - Apoyo administrativo" },
+  "Tecnologia Humana Global": { licenseNumber: "OP-2026-006-v1", service: "Recolocacion Pyme 60", licenseStart: "2026-08-01", licenseEnd: "2026-09-30", graceUntil: "", status: "pendiente", monthlyCredits: 30000, internalOwner: "Ricardo Vega - Operativo outplacement" },
 };
 
 const outplacementOrganizationNames = Object.keys(outplacementOrganizationLicenses);
@@ -640,8 +648,8 @@ const demoUsers: DemoUser[] = [
   { kind: "coach-partner", name: "Hector Ramos", email: "hector@partner-demo.mx", organization: "Partner Bajio", role: "Coach partner colaborador", phone: "+52 55 1000 0008", status: "pendiente", credits: calculateCoachPartnerPool(coachPartnerPlans.pro), owner: "Mariana Soto", lastChange: "11/06/2026 12:35", notes: "Pendiente completar curso online de metodologia.", permissions: defaultPermissionsFor("coach-partner", "Coach partner colaborador", "pro") },
   { kind: "student", name: "Fernanda Rios", email: "fernanda@alumno-demo.mx", organization: "Partner Ejecutivo Norte", role: "Alumno Coach Partner", phone: "+52 55 1000 0011", status: "activo", credits: calculateCoachPartnerStudentCredits(coachPartnerPlans.starter), owner: "Mariana Soto", lastChange: "12/06/2026 11:05", notes: "Asignada al grupo CV Estrategico Norte. Descuenta de bolsa del Coach Partner responsable." },
   { kind: "student", name: "Roberto Salas", email: "roberto@coaching-demo.mx", organization: "Empleate YA", role: "Alumno coaching 1o1", phone: "+52 55 1000 0012", status: "pendiente", credits: 1545, owner: "Sofia Rivera", lastChange: "12/06/2026 11:12", notes: "Pendiente asignar calendario de sesiones 1o1." },
-  { kind: "outplacement-rh", name: "Ana Torres", email: "ana@empresa-demo.mx", organization: "Empresa Demo Outplacement", role: "Administrador RH", phone: "+52 55 1000 0004", status: "activo", credits: 0, owner: "Leo Galvez", lastChange: "12/06/2026 09:15", notes: "Puede crear y aprobar campanas, cursos y revisar avance de ex-colaboradores autorizados.", permissions: defaultPermissionsFor("outplacement-rh", "Administrador RH", "starter") },
-  { kind: "outplacement-rh", name: "Carlos Ibarra", email: "carlos@empresa-demo.mx", organization: "Empresa Demo Outplacement", role: "Coach de outplacement", phone: "+52 55 1000 0009", status: "activo", credits: calculateOutplacementRoleCredits("Coach de outplacement"), owner: "Ana Torres", lastChange: "10/06/2026 18:02", notes: "Puede crear cursos, campanas y dar seguimiento, pero no aprobar campanas.", permissions: defaultPermissionsFor("outplacement-rh", "Coach de outplacement", "starter") },
+  { kind: "outplacement-rh", name: "Ana Torres", email: "ana@empresa-demo.mx", organization: "Empresa Demo Outplacement", role: "Administrador RH", phone: "+52 55 1000 0004", status: "activo", credits: outplacementOrganizationLicenses["Empresa Demo Outplacement"].monthlyCredits, owner: "Ricardo Vega", lastChange: "12/06/2026 09:15", notes: "Puede crear y aprobar campanas, cursos y revisar avance de ex-colaboradores autorizados.", permissions: defaultPermissionsFor("outplacement-rh", "Administrador RH", "starter") },
+  { kind: "outplacement-rh", name: "Carlos Ibarra", email: "carlos@empresa-demo.mx", organization: "Empresa Demo Outplacement", role: "Coach de outplacement", phone: "+52 55 1000 0009", status: "activo", credits: outplacementOrganizationLicenses["Empresa Demo Outplacement"].monthlyCredits, owner: "Ana Torres", lastChange: "10/06/2026 18:02", notes: "Puede crear cursos, campanas y dar seguimiento, pero no aprobar campanas.", permissions: defaultPermissionsFor("outplacement-rh", "Coach de outplacement", "starter") },
   { kind: "outplacement-employee", name: "Miguel Herrera", email: "miguel@exempleado-demo.mx", organization: "Empresa Demo Outplacement", role: "Participante autorizado", phone: "+52 55 1000 0013", status: "activo", credits: 1545, owner: "Ana Torres", lastChange: "12/06/2026 11:18", notes: "Asignado a campana Outplacement Junio 2026. Representante legal: Administrador RH de la empresa." },
   { kind: "outplacement-employee", name: "Paola Castillo", email: "paola@exempleada-demo.mx", organization: "Grupo Industrial Norte", role: "Participante en seguimiento", phone: "+52 55 1000 0014", status: "invitado", credits: 1545, owner: "Ricardo Vega", lastChange: "12/06/2026 11:25", notes: "Pendiente aceptar invitacion de acceso a plataforma." },
   { kind: "internal-coach", name: "Sofia Rivera", email: "sofia@empleateya.mx", organization: "Coaching 1o1", role: "Coach ejecutivo", phone: "+52 55 1000 0005", status: "invitado", credits: 0, owner: "Leo Galvez", lastChange: "10/06/2026 13:02", notes: "Asignable a sesiones 1o1, NPS, notas y testimonios." },
@@ -732,8 +740,9 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
   }, [selectedUser?.status, t.statuses]);
 
   useEffect(() => {
-    setDraftOwner(selectedUser?.owner ? ownerOptionFor(selectedUser.owner) : internalOwners[0]);
-  }, [selectedUser?.owner, userKind]);
+    const organizationOwner = userKind === "outplacement-rh" ? outplacementLicenseForOrganization(activeOrganization).internalOwner : "";
+    setDraftOwner(selectedUser?.owner ? ownerOptionFor(selectedUser.owner) : ownerOptionFor(organizationOwner || internalOwners[0]));
+  }, [activeOrganization, selectedUser?.owner, userKind]);
 
   useEffect(() => {
     if (fixedEmpleateYaOrg) {
@@ -794,28 +803,35 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
       setNotice(t.onlineSupportPaidTypeMessage);
       return;
     }
+    const nextOrganization = fixedEmpleateYaOrg ? empleateYaOrganization : String(formData.get("organization") || "").trim();
     if (userKind === "online" && users.some((user) => user.kind === "online" && user.email !== selectedUser?.email && user.name.trim().toLowerCase() === nextName.toLowerCase())) {
       setNotice(t.duplicateOnlineNameMessage);
       return;
     }
-    const nextOrganization = fixedEmpleateYaOrg ? empleateYaOrganization : String(formData.get("organization") || "").trim();
+    if (userKind === "outplacement-rh" && hasDuplicateOutplacementUser(users, selectedUser?.email, nextName, email, phone)) {
+      setNotice(t.duplicateOutplacementMessage);
+      return;
+    }
+    if (userKind === "outplacement-rh" && !isHrAdminRole(nextRole) && !hasActiveHrAdminForOrganization(users, nextOrganization, selectedUser?.email)) {
+      setNotice(t.missingHrAdminMessage);
+      return;
+    }
     const delegationStart = String(formData.get("extra-fecha_de_delegacion") || selectedUser?.extraData?.fecha_de_delegacion || "").trim();
     const delegationEnd = String(formData.get("extra-fecha_fin_delegacion") || selectedUser?.extraData?.fecha_fin_delegacion || "").trim();
     const delegationPassword = String(formData.get("delegationPassword") || "").trim();
     const approverStart = String(formData.get("extra-inicio_vigencia_aprobador") || formData.get("extra-approver_assignment_start") || selectedUser?.extraData?.inicio_vigencia_aprobador || selectedUser?.extraData?.approver_assignment_start || "").trim();
     const approverEnd = String(formData.get("extra-fin_vigencia_aprobador") || formData.get("extra-approver_assignment_end") || selectedUser?.extraData?.fin_vigencia_aprobador || selectedUser?.extraData?.approver_assignment_end || "").trim();
-    const campaignAssignment = String(formData.get("extra-campana_asignada") || formData.get("extra-assigned_campaign") || selectedUser?.extraData?.campana_asignada || selectedUser?.extraData?.assigned_campaign || "").trim();
     const assigningCampaignApprover = userKind === "outplacement-rh" && isCampaignApproverRole(nextRole);
     if (assigningCampaignApprover && !selectedUser) {
       setNotice(t.campaignApproverCreateMessage);
       return;
     }
-    if (assigningCampaignApprover && (!approverStart || !approverEnd)) {
-      setNotice(t.campaignApproverDateMessage);
+    if (assigningCampaignApprover && !canAssignCampaignApprover(currentOperator.role, operatorIsSuperAdmin)) {
+      setNotice(t.unauthorizedCampaignApproverMessage);
       return;
     }
-    if (userKind === "outplacement-rh" && campaignAssignment && !isOutplacementCoachRole(nextRole)) {
-      setNotice(t.campaignAssignmentRoleMessage);
+    if (assigningCampaignApprover && (!approverStart || !approverEnd)) {
+      setNotice(t.campaignApproverDateMessage);
       return;
     }
     const assigningDelegation = userKind === "super-admin-support" && isTemporarySupervisorRole(nextRole);
@@ -863,6 +879,9 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     if (userKind === "coach-partner") {
       nextCredits = selectedUser?.credits ?? calculateCoachPartnerPool(nextCoachPlan);
     }
+    if (userKind === "outplacement-rh") {
+      nextCredits = outplacementSharedCreditsForOrganization(users, nextOrganization, selectedUser?.email);
+    }
     if (userKind === "online" && !nextRoleIsPaidOnline && !isInvitedStatus(requestedStatus) && Number(formData.get("credits") || currentOnlineBalance || onlineBaselineCredits) !== (currentOnlineBalance ?? onlineBaselineCredits)) {
       setNotice(t.onlineProspectCreditMessage);
       return;
@@ -909,8 +928,11 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
     setUsers((currentUsers) => {
       const previousEmail = selectedUser?.email;
       const existingIndex = currentUsers.findIndex((user) => user.email === previousEmail || user.email === savedUser.email);
-      if (existingIndex === -1) return [savedUser, ...currentUsers];
-      return currentUsers.map((user, index) => (index === existingIndex ? savedUser : user));
+      const nextUsers = existingIndex === -1
+        ? [savedUser, ...currentUsers]
+        : currentUsers.map((user, index) => (index === existingIndex ? savedUser : user));
+      if (userKind !== "outplacement-rh") return nextUsers;
+      return nextUsers.map((user) => user.kind === "outplacement-rh" && user.organization === savedUser.organization ? { ...user, credits: nextCredits } : user);
     });
     if (userKind === "online") {
       const balanceBefore = currentOnlineBalance ?? onlineBaselineCredits;
@@ -1131,11 +1153,11 @@ export function AdminUsersClient({ userKind = "online" }: { userKind?: AdminUser
                 </div>
               ) : userKind === "outplacement-rh" ? (
                 <div className="rounded-2xl border border-purple-200 bg-purple-50 px-4 py-3 text-sm font-black text-purple-900">
-                  {formatPlanNumber(outplacementCurrentCredits(selectedUser, activeRole), language)}
+                  {formatPlanNumber(outplacementSharedCreditsForOrganization(users, activeOrganization, selectedUser?.email), language)}
                   <small className="mt-1 block font-semibold text-purple-700">
-                    {language === "es" ? "Saldo operativo vigente. Para usuarios nuevos se propone la bolsa mensual del rol; despues se conserva el balance actualizado por consumo." : "Current operating balance. New users get the role monthly pool; after that, the consumed balance is preserved."}
+                    {language === "es" ? "Bolsa mensual compartida por todos los roles de esta organizacion. Se reinicia cada inicio de mes al valor del contrato." : "Monthly pool shared by every role in this organization. It resets at the start of each month to the contract value."}
                   </small>
-                  <input type="hidden" name="credits" value={outplacementCurrentCredits(selectedUser, activeRole)} />
+                  <input type="hidden" name="credits" value={outplacementSharedCreditsForOrganization(users, activeOrganization, selectedUser?.email)} />
                 </div>
               ) : (
                 <Input name="credits" placeholder="0" type="number" defaultValue={selectedOnlineBalance ?? selectedUser?.credits ?? (userKind === "online" ? onlineBaselineCredits : 0)} readOnly={userKind !== "online" || !canEditOnlineCredits} />
@@ -1438,6 +1460,18 @@ function ExtraFields({
             </Field>
           );
         }
+        if (userKind === "outplacement-rh" && (key.includes("campaas_asignadas") || key.includes("assigned_campaigns"))) {
+          const value = outplacementAssignedCampaignsForUser(selectedUser, organization, language);
+          return (
+            <Field key={field} label={field}>
+              <Input value={value} readOnly />
+              <input type="hidden" name={`extra-${key}`} value={value} />
+              <p className="mt-1 text-xs font-semibold text-slate-500">
+                {language === "es" ? "La asignacion real se administra desde Campañas; aqui solo se consulta." : "Real assignment is managed from Campaigns; this is read-only here."}
+              </p>
+            </Field>
+          );
+        }
         if (userKind === "outplacement-rh" && (key.includes("campana_asignada") || key.includes("assigned_campaign")) && !isOutplacementCoachRole(userRole)) {
           return (
             <Field key={field} label={field}>
@@ -1475,9 +1509,13 @@ function ExtraFields({
           );
         }
 
+        const approverDateReadonly = userKind === "outplacement-rh"
+          && (key.includes("inicio_vigencia_aprobador") || key.includes("fin_vigencia_aprobador") || key.includes("approver_assignment"))
+          && !canAssignCampaignApprover(currentOperator.role, operatorIsSuperAdmin);
         return (
           <Field key={field} label={field}>
-            <Input name={`extra-${key}`} placeholder={field} type={isDateLikeField(field) ? "date" : "text"} defaultValue={typeof savedValue === "string" ? savedValue : ""} />
+            <Input name={`extra-${key}`} placeholder={field} type={isDateLikeField(field) ? "date" : "text"} defaultValue={typeof savedValue === "string" ? savedValue : ""} readOnly={approverDateReadonly} />
+            {approverDateReadonly ? <p className="mt-1 text-xs font-semibold text-slate-500">{language === "es" ? "Solo Super Admin o Administrador RH pueden modificar estas fechas." : "Only Super Admin or HR Administrator can edit these dates."}</p> : null}
           </Field>
         );
       })}
@@ -1696,6 +1734,47 @@ function outplacementCurrentCredits(selectedUser: DemoUser | undefined, userRole
   return calculateOutplacementRoleCredits(userRole);
 }
 
+function hasDuplicateOutplacementUser(users: DemoUser[], currentEmail: string | undefined, name: string, email: string, phone: string) {
+  const normalizedName = name.trim().toLowerCase();
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedPhone = phone.replace(/\D/g, "");
+  return users.some((user) => {
+    if (user.kind !== "outplacement-rh" || user.email === currentEmail) return false;
+    const sameName = normalizedName && user.name.trim().toLowerCase() === normalizedName;
+    const sameEmail = normalizedEmail && user.email.trim().toLowerCase() === normalizedEmail;
+    const samePhone = normalizedPhone && user.phone.replace(/\D/g, "") === normalizedPhone;
+    return Boolean(sameName || sameEmail || samePhone);
+  });
+}
+
+function hasActiveHrAdminForOrganization(users: DemoUser[], organization: string, currentEmail?: string) {
+  return users.some((user) => (
+    user.kind === "outplacement-rh"
+    && user.organization === organization
+    && user.email !== currentEmail
+    && isHrAdminRole(user.role)
+    && isActiveStatus(user.status)
+  ));
+}
+
+function outplacementSharedCreditsForOrganization(users: DemoUser[], organization: string, currentEmail?: string) {
+  const activeHrAdmin = users.find((user) => (
+    user.kind === "outplacement-rh"
+    && user.organization === organization
+    && user.email !== currentEmail
+    && isHrAdminRole(user.role)
+    && isActiveStatus(user.status)
+  ));
+  return activeHrAdmin?.credits ?? outplacementLicenseForOrganization(organization).monthlyCredits;
+}
+
+function outplacementAssignedCampaignsForUser(user: DemoUser | undefined, organization: string, language: "es" | "en") {
+  if (!user) return language === "es" ? "Se asigna desde Campañas despues de guardar" : "Assigned from Campaigns after saving";
+  if (isHrAdminRole(user.role) || isCampaignApproverRole(user.role)) return language === "es" ? `Aprobacion general: ${organization}` : `General approval: ${organization}`;
+  if (isOutplacementCoachRole(user.role)) return language === "es" ? "Outplacement ejecutivo Q3, Recolocacion profesional 90" : "Executive Outplacement Q3, Professional Relocation 90";
+  return language === "es" ? "Sin campañas operativas asignadas" : "No operational campaigns assigned";
+}
+
 function outplacementLicenseForOrganization(organization?: string) {
   return outplacementOrganizationLicenses[organization || ""] ?? outplacementOrganizationLicenses["Empresa Demo Outplacement"];
 }
@@ -1818,6 +1897,10 @@ function isCampaignApproverRole(userRole: string) {
 function isOutplacementCoachRole(userRole: string) {
   const role = normalizeRole(userRole);
   return role.includes("coach de outplacement") || role.includes("outplacement coach");
+}
+
+function canAssignCampaignApprover(operatorRole: string, hasSuperAdminAuthority: boolean) {
+  return hasSuperAdminAuthority || isHrAdminRole(operatorRole);
 }
 
 function baseOutplacementRoleForApprover(selectedUser: DemoUser | undefined, nextRole: string) {

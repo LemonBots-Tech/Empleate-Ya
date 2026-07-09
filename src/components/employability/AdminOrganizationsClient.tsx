@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState, type ReactNode } from "react";
 import { Building2, Edit3, Save, Search, Trash2, UserPlus } from "lucide-react";
@@ -85,7 +85,7 @@ const copy = {
     renewalBlocked: "No se puede renovar: la licencia seleccionada sigue vigente o dentro del periodo de gracia.",
     renewalDeleted: "Renovacion marcada como cancelada por Super Admin y registrada en bitacora.",
     graceExtended: "Periodo de gracia extendido por Super Admin y registrado en bitacora.",
-    deleted: "La organizacion paso a estado borrado lógico. No fue eliminada definitivamente.",
+    deleted: "La organizacion paso a estado borrado lÃ³gico. No fue eliminada definitivamente.",
     identity: "Identidad",
     commercialName: "Nombre comercial",
     legalName: "Razon social",
@@ -118,7 +118,7 @@ const copy = {
     licenseVersion: "Version licencia",
     groups: "Grupos mensuales",
     students: "Alumnos por grupo",
-    campaigns: "Campañas de outplacement",
+    campaigns: "CampaÃ±as de outplacement",
     credits: "Creditos del contrato",
     creditsHelp: "Coach Partner: se calculan automaticamente por plan. Outplacement: variable dependiendo de la campana que se cree.",
     capacity: "Capacidad",
@@ -385,7 +385,7 @@ const initialOrganizations: OrganizationRecord[] = [
     gracePeriodDays: 15,
     graceUntil: "2026-06-15",
     licenseVersion: 1,
-    credits: 0,
+    credits: 42000,
     monthlyGroups: 0,
     studentsPerGroup: 0,
     outplacementCampaigns: 3,
@@ -416,7 +416,7 @@ const initialOrganizations: OrganizationRecord[] = [
     gracePeriodDays: 7,
     graceUntil: "2026-07-15",
     licenseVersion: 1,
-    credits: 0,
+    credits: 18000,
     monthlyGroups: 0,
     studentsPerGroup: 0,
     outplacementCampaigns: 1,
@@ -447,7 +447,7 @@ const initialOrganizations: OrganizationRecord[] = [
     gracePeriodDays: 10,
     graceUntil: "2026-07-29",
     licenseVersion: 1,
-    credits: 0,
+    credits: 28000,
     monthlyGroups: 0,
     studentsPerGroup: 0,
     outplacementCampaigns: 2,
@@ -478,7 +478,7 @@ const initialOrganizations: OrganizationRecord[] = [
     gracePeriodDays: 0,
     graceUntil: "",
     licenseVersion: 1,
-    credits: 0,
+    credits: 55000,
     monthlyGroups: 0,
     studentsPerGroup: 0,
     outplacementCampaigns: 0,
@@ -509,7 +509,7 @@ const initialOrganizations: OrganizationRecord[] = [
     gracePeriodDays: 15,
     graceUntil: "2026-07-29",
     licenseVersion: 1,
-    credits: 0,
+    credits: 36000,
     monthlyGroups: 0,
     studentsPerGroup: 0,
     outplacementCampaigns: 2,
@@ -540,7 +540,7 @@ const initialOrganizations: OrganizationRecord[] = [
     gracePeriodDays: 0,
     graceUntil: "",
     licenseVersion: 1,
-    credits: 0,
+    credits: 30000,
     monthlyGroups: 0,
     studentsPerGroup: 0,
     outplacementCampaigns: 0,
@@ -874,7 +874,7 @@ export function AdminOrganizationsClient() {
                       <Td>{organization.plan}<span className="block text-xs text-slate-500">{organization.type === "outplacement_company" ? outplacementServiceDurationLabel(organization.plan, language) : contractMonthsLabel(organization.contractTermMonths, language)}</span></Td>
                       <Td>{formatCurrency(organization.contractValue, language)}</Td>
                       <Td>{contractCreditsLabel(organization, language)}</Td>
-                      <Td>{organization.type === "coach_partner" ? coachPartnerCapacityLabel(organization.plan, language) : `${organization.outplacementCampaigns} ${language === "es" ? "campañas" : "campaigns"}`}</Td>
+                      <Td>{organization.type === "coach_partner" ? coachPartnerCapacityLabel(organization.plan, language) : `${organization.outplacementCampaigns} ${language === "es" ? "campaÃ±as" : "campaigns"}`}</Td>
                       <Td>{organization.internalOwner}</Td>
                       <Td><Pill>{statusLabel(organization.status, language)}</Pill></Td>
                       <Td>{organization.lastChange}</Td>
@@ -1004,7 +1004,7 @@ export function AdminOrganizationsClient() {
                 <>
                   <Field label={t.campaigns}>
                     <Input name="outplacementCampaigns" type="number" min={0} defaultValue={selectedOrganization?.outplacementCampaigns ?? 0} readOnly />
-                    <small className="mt-1 block text-xs font-semibold text-slate-500">{language === "es" ? "Variable: se incrementa cuando se creen campañas asociadas al contrato." : "Variable: increases as campaigns are created under this contract."}</small>
+                    <small className="mt-1 block text-xs font-semibold text-slate-500">{language === "es" ? "Variable: se incrementa cuando se creen campaÃ±as asociadas al contrato." : "Variable: increases as campaigns are created under this contract."}</small>
                   </Field>
                   <input type="hidden" name="monthlyGroups" value={selectedOrganization?.monthlyGroups ?? 0} />
                   <input type="hidden" name="studentsPerGroup" value={selectedOrganization?.studentsPerGroup ?? 0} />
@@ -1155,7 +1155,7 @@ function formatCredits(value: number, language: keyof typeof copy) {
 }
 
 function contractCreditsLabel(organization: OrganizationRecord, language: keyof typeof copy) {
-  if (organization.type === "outplacement_company") return language === "es" ? "Variable por campana" : "Variable by campaign";
+  if (organization.type === "outplacement_company") return formatCredits(organization.credits, language);
   return formatCredits(organization.credits, language);
 }
 
@@ -1191,7 +1191,7 @@ function statusLabel(status: string, language: keyof typeof copy) {
       activo: "activo",
       pendiente: "pendiente",
       bloqueado: "bloqueado",
-      borrado_logico: "borrado lógico",
+      borrado_logico: "borrado lÃ³gico",
     },
     en: {
       activo: "active",
@@ -1230,3 +1230,4 @@ function getLicenseState(organization: OrganizationRecord) {
   if (organization.graceUntil && today <= organization.graceUntil) return "gracia";
   return "vencida";
 }
+
