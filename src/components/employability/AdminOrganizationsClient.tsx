@@ -50,6 +50,7 @@ type OrganizationAuditEvent = {
 };
 
 type OrganizationSearchMode = "capture" | "edit" | "delete";
+type DemoAdminRole = "Super Admin" | "Apoyo administrativo" | "Operativo outplacement" | "Supervisor delegado temporal";
 
 const copy = {
   es: {
@@ -69,12 +70,12 @@ const copy = {
     selected: "Seleccionada",
     noSelected: "Crea una nueva organizacion o selecciona una existente para editar.",
     create: "Crear",
-    edit: "Buscar para editar",
+    edit: "Busqueda de organizacion",
     save: "Guardar organizacion",
     renew: "Renovacion",
     deleteRenewal: "Borrar renovacion",
     extendGrace: "Extender gracia",
-    deleteLogical: "Buscar para borrar",
+    deleteLogical: "Borrar organizacion completa",
     confirmDelete: "Confirmar borrado logico",
     searchModeEditHelp: "Busca y selecciona una organizacion. Al elegirla regresaras a captura para editar y guardar cambios.",
     searchModeDeleteHelp: "Busca y selecciona una organizacion. Al elegirla regresaras a captura para confirmar el borrado logico.",
@@ -85,7 +86,13 @@ const copy = {
     renewalBlocked: "No se puede renovar: la licencia seleccionada sigue vigente o dentro del periodo de gracia.",
     renewalDeleted: "Renovacion marcada como cancelada por Super Admin y registrada en bitacora.",
     graceExtended: "Periodo de gracia extendido por Super Admin y registrado en bitacora.",
-    deleted: "La organizacion paso a estado borrado lÃ³gico. No fue eliminada definitivamente.",
+    deleted: "La organizacion paso a estado borrado lógico. No fue eliminada definitivamente.",
+    hardDeleteBlocked: "No se puede borrar completa: la organizacion tiene renovaciones, historial de licencia o licencia vigente/gracia. Usa borrado logico para conservar trazabilidad.",
+    hardDeleted: "Organizacion eliminada por completo porque no tenia historial ni licencia vigente.",
+    requiredFields: "Captura todos los campos obligatorios de identidad, contacto principal y ubicacion.",
+    duplicateCoachPartner: "Ya existe una organizacion Coach Partner con la misma identidad. No puede duplicarse.",
+    groupsRequired: "Los grupos mensuales de Coach Partner deben ser mayores que 0.",
+    unauthorizedCreate: "Tu rol no tiene permiso para crear organizaciones.",
     identity: "Identidad",
     commercialName: "Nombre comercial",
     legalName: "Razon social",
@@ -118,7 +125,7 @@ const copy = {
     licenseVersion: "Version licencia",
     groups: "Grupos mensuales",
     students: "Alumnos por grupo",
-    campaigns: "CampaÃ±as de outplacement",
+    campaigns: "Campañas de outplacement",
     credits: "Creditos del contrato",
     creditsHelp: "Coach Partner: se calculan automaticamente por plan. Outplacement: variable dependiendo de la campana que se cree.",
     capacity: "Capacidad",
@@ -152,12 +159,12 @@ const copy = {
     selected: "Selected",
     noSelected: "Create a new organization or select an existing one to edit.",
     create: "Create",
-    edit: "Find to edit",
+    edit: "Organization search",
     save: "Save organization",
     renew: "Renewal",
     deleteRenewal: "Delete renewal",
     extendGrace: "Extend grace",
-    deleteLogical: "Find to delete",
+    deleteLogical: "Delete full organization",
     confirmDelete: "Confirm logical delete",
     searchModeEditHelp: "Search and select an organization. After selecting, you will return to capture to edit and save changes.",
     searchModeDeleteHelp: "Search and select an organization. After selecting, you will return to capture to confirm logical deletion.",
@@ -169,6 +176,12 @@ const copy = {
     renewalDeleted: "Renewal marked as cancelled by Super Admin and recorded in the audit log.",
     graceExtended: "Grace period extended by Super Admin and recorded in the audit log.",
     deleted: "The organization was moved to logical_delete. It was not permanently deleted.",
+    hardDeleteBlocked: "Full delete is not allowed: the organization has renewals, license history, or an active/grace license. Use logical delete to keep traceability.",
+    hardDeleted: "Organization fully deleted because it had no history and no active license.",
+    requiredFields: "Capture every required identity, main contact, and location field.",
+    duplicateCoachPartner: "A Coach Partner organization with the same identity already exists. It cannot be duplicated.",
+    groupsRequired: "Monthly Coach Partner groups must be greater than 0.",
+    unauthorizedCreate: "Your role is not allowed to create organizations.",
     identity: "Identity",
     commercialName: "Commercial name",
     legalName: "Legal name",
@@ -656,6 +669,7 @@ export function AdminOrganizationsClient() {
   const [draftPlan, setDraftPlan] = useState<string>("Coach Starter");
   const [auditEvents, setAuditEvents] = useState<OrganizationAuditEvent[]>([]);
   const [searchMode, setSearchMode] = useState<OrganizationSearchMode>("capture");
+  const currentAdminRole: DemoAdminRole = "Super Admin";
 
   const filteredOrganizations = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -694,21 +708,49 @@ export function AdminOrganizationsClient() {
     const calculatedCredits = type === "coach_partner" ? calculateCoachPartnerOrganizationCredits(plan) : 0;
     const calculatedCapacity = type === "coach_partner" ? capacityForCoachPartnerPlan(plan) : null;
     const contractTermMonths = type === "coach_partner" ? Number(formData.get("contractTermMonths") || 6) : outplacementServiceMonths(plan);
+    const name = String(formData.get("name") || "").trim();
+    const legalName = String(formData.get("legalName") || "").trim();
+    const taxId = String(formData.get("taxId") || "").trim();
+    const legalRepresentative = String(formData.get("legalRepresentative") || "").trim();
+    const contactName = String(formData.get("contactName") || "").trim();
+    const contactEmail = String(formData.get("contactEmail") || "").trim();
+    const contactPhone = String(formData.get("contactPhone") || "").trim();
+    const country = String(formData.get("country") || "").trim();
+    const state = String(formData.get("state") || "").trim();
+    const city = String(formData.get("city") || "").trim();
+    const address = String(formData.get("address") || "").trim();
+    const monthlyGroups = calculatedCapacity ? calculatedCapacity.groups : Number(formData.get("monthlyGroups") || 0);
+    if (!selectedOrganization && !canCreateOrganization(currentAdminRole)) {
+      setNotice(t.unauthorizedCreate);
+      return;
+    }
+    if (!name || !legalName || !taxId || !legalRepresentative || !contactName || !contactEmail || !contactPhone || !country || !state || !city || !address) {
+      setNotice(t.requiredFields);
+      return;
+    }
+    if (type === "coach_partner" && organizations.some((organization) => organization.id !== id && organization.type === "coach_partner" && sameCoachPartnerIdentity(organization, name, legalName, taxId))) {
+      setNotice(t.duplicateCoachPartner);
+      return;
+    }
+    if (type === "coach_partner" && (!Number.isFinite(monthlyGroups) || monthlyGroups <= 0)) {
+      setNotice(t.groupsRequired);
+      return;
+    }
     const saved: OrganizationRecord = {
       id,
       type,
-      name: String(formData.get("name") || "").trim() || "Organizacion sin nombre",
-      legalName: String(formData.get("legalName") || "").trim(),
-      taxId: String(formData.get("taxId") || "").trim(),
+      name,
+      legalName,
+      taxId,
       status: String(formData.get("status") || "activo"),
-      legalRepresentative: String(formData.get("legalRepresentative") || "").trim(),
-      contactName: String(formData.get("contactName") || "").trim(),
-      contactEmail: String(formData.get("contactEmail") || "").trim(),
-      contactPhone: String(formData.get("contactPhone") || "").trim(),
-      country: String(formData.get("country") || "").trim(),
-      state: String(formData.get("state") || "").trim(),
-      city: String(formData.get("city") || "").trim(),
-      address: String(formData.get("address") || "").trim(),
+      legalRepresentative,
+      contactName,
+      contactEmail,
+      contactPhone,
+      country,
+      state,
+      city,
+      address,
       plan,
       licenseStart: String(formData.get("licenseStart") || ""),
       licenseEnd: String(formData.get("licenseEnd") || ""),
@@ -718,7 +760,7 @@ export function AdminOrganizationsClient() {
       graceUntil: String(formData.get("graceUntil") || ""),
       licenseVersion: Number(formData.get("licenseVersion") || selectedOrganization?.licenseVersion || 1),
       credits: calculatedCredits,
-      monthlyGroups: calculatedCapacity ? calculatedCapacity.groups : Number(formData.get("monthlyGroups") || 0),
+      monthlyGroups,
       studentsPerGroup: calculatedCapacity ? calculatedCapacity.studentsPerGroup : Number(formData.get("studentsPerGroup") || 0),
       outplacementCampaigns: Number(formData.get("outplacementCampaigns") || selectedOrganization?.outplacementCampaigns || 0),
       internalOwner: String(formData.get("internalOwner") || internalOwners[0]),
@@ -812,6 +854,17 @@ export function AdminOrganizationsClient() {
     setNotice(t.deleted);
   }
 
+  function hardDeleteOrganization() {
+    if (!selectedOrganization) return;
+    if (!canHardDeleteOrganization(selectedOrganization, organizations, auditEvents)) {
+      setNotice(t.hardDeleteBlocked);
+      return;
+    }
+    setOrganizations((current) => current.filter((organization) => organization.id !== selectedOrganization.id));
+    setSelectedId("");
+    setNotice(t.hardDeleted);
+  }
+
   return (
     <div className="space-y-7">
       <header>
@@ -824,8 +877,8 @@ export function AdminOrganizationsClient() {
       {searchMode !== "capture" ? (
         <>
           <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="mb-2 text-xl font-black text-slate-950">{searchMode === "edit" ? t.edit : t.deleteLogical}</h2>
-            <p className="mb-4 text-sm font-semibold text-slate-500">{searchMode === "edit" ? t.searchModeEditHelp : t.searchModeDeleteHelp}</p>
+            <h2 className="mb-2 text-xl font-black text-slate-950">{t.edit}</h2>
+            <p className="mb-4 text-sm font-semibold text-slate-500">{t.searchModeEditHelp}</p>
             <div className="grid gap-3 lg:grid-cols-[1fr_240px_220px]">
               <div>
                 <Label>{t.search}</Label>
@@ -874,7 +927,7 @@ export function AdminOrganizationsClient() {
                       <Td>{organization.plan}<span className="block text-xs text-slate-500">{organization.type === "outplacement_company" ? outplacementServiceDurationLabel(organization.plan, language) : contractMonthsLabel(organization.contractTermMonths, language)}</span></Td>
                       <Td>{formatCurrency(organization.contractValue, language)}</Td>
                       <Td>{contractCreditsLabel(organization, language)}</Td>
-                      <Td>{organization.type === "coach_partner" ? coachPartnerCapacityLabel(organization.plan, language) : `${organization.outplacementCampaigns} ${language === "es" ? "campaÃ±as" : "campaigns"}`}</Td>
+                      <Td>{organization.type === "coach_partner" ? coachPartnerCapacityLabel(organization.plan, language) : `${organization.outplacementCampaigns} ${language === "es" ? "campañas" : "campaigns"}`}</Td>
                       <Td>{organization.internalOwner}</Td>
                       <Td><Pill>{statusLabel(organization.status, language)}</Pill></Td>
                       <Td>{organization.lastChange}</Td>
@@ -898,12 +951,11 @@ export function AdminOrganizationsClient() {
           <div className="flex flex-wrap gap-2">
             <Button type="button" className="gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]" onClick={createNew}><UserPlus size={17} />{t.create}</Button>
             <Button type="button" className="gap-2 bg-slate-950 text-white hover:bg-slate-800" onClick={() => { setSearchMode("edit"); setNotice(""); }}><Edit3 size={17} />{t.edit}</Button>
-            <Button type="button" className="gap-2 bg-amber-500 text-white hover:bg-amber-600" onClick={() => { setSearchMode("delete"); setNotice(""); }}><Trash2 size={17} />{t.deleteLogical}</Button>
             <Button type="submit" className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"><Save size={17} />{t.save}</Button>
             <Button type="button" disabled={!selectedOrganization} className="gap-2 bg-blue-600 text-white hover:bg-blue-700" onClick={renewLicense}>{t.renew}</Button>
             <Button type="button" disabled={!selectedOrganization || selectedOrganization.licenseVersion <= 1} className="gap-2 bg-orange-600 text-white hover:bg-orange-700" onClick={deleteRenewal}>{t.deleteRenewal}</Button>
             <Button type="button" disabled={!selectedOrganization} className="gap-2 bg-amber-500 text-white hover:bg-amber-600" onClick={extendGracePeriod}>{t.extendGrace}</Button>
-            {selectedOrganization ? <Button type="button" className="gap-2 bg-red-600 text-white hover:bg-red-700" onClick={logicalDelete}><Trash2 size={17} />{t.confirmDelete}</Button> : null}
+            {selectedOrganization ? <Button type="button" className="gap-2 bg-red-600 text-white hover:bg-red-700" onClick={hardDeleteOrganization}><Trash2 size={17} />{t.deleteLogical}</Button> : null}
           </div>
         </div>
 
@@ -1004,7 +1056,7 @@ export function AdminOrganizationsClient() {
                 <>
                   <Field label={t.campaigns}>
                     <Input name="outplacementCampaigns" type="number" min={0} defaultValue={selectedOrganization?.outplacementCampaigns ?? 0} readOnly />
-                    <small className="mt-1 block text-xs font-semibold text-slate-500">{language === "es" ? "Variable: se incrementa cuando se creen campaÃ±as asociadas al contrato." : "Variable: increases as campaigns are created under this contract."}</small>
+                    <small className="mt-1 block text-xs font-semibold text-slate-500">{language === "es" ? "Variable: se incrementa cuando se creen campañas asociadas al contrato." : "Variable: increases as campaigns are created under this contract."}</small>
                   </Field>
                   <input type="hidden" name="monthlyGroups" value={selectedOrganization?.monthlyGroups ?? 0} />
                   <input type="hidden" name="studentsPerGroup" value={selectedOrganization?.studentsPerGroup ?? 0} />
@@ -1139,7 +1191,7 @@ function calculateCoachPartnerStudentCredits(plan: string) {
 
 function capacityForCoachPartnerPlan(plan: string) {
   const rule = coachPlanRuleFor(plan);
-  if (rule.unlimited) return { groups: 0, studentsPerGroup: 0 };
+  if (rule.unlimited) return { groups: 999, studentsPerGroup: 999 };
   return { groups: rule.groups, studentsPerGroup: rule.studentsPerGroup };
 }
 
@@ -1157,6 +1209,27 @@ function formatCredits(value: number, language: keyof typeof copy) {
 function contractCreditsLabel(organization: OrganizationRecord, language: keyof typeof copy) {
   if (organization.type === "outplacement_company") return formatCredits(organization.credits, language);
   return formatCredits(organization.credits, language);
+}
+
+function canCreateOrganization(role: DemoAdminRole) {
+  return ["Super Admin", "Apoyo administrativo", "Operativo outplacement", "Supervisor delegado temporal"].includes(role);
+}
+
+function sameCoachPartnerIdentity(organization: OrganizationRecord, name: string, legalName: string, taxId: string) {
+  const normalizedName = name.trim().toLowerCase();
+  const normalizedLegalName = legalName.trim().toLowerCase();
+  const normalizedTaxId = taxId.trim().toLowerCase();
+  return organization.name.trim().toLowerCase() === normalizedName
+    || organization.legalName.trim().toLowerCase() === normalizedLegalName
+    || organization.taxId.trim().toLowerCase() === normalizedTaxId;
+}
+
+function canHardDeleteOrganization(organization: OrganizationRecord, organizations: OrganizationRecord[], auditEvents: OrganizationAuditEvent[]) {
+  const hasRenewals = organizations.some((candidate) => candidate.id !== organization.id && candidate.name === organization.name);
+  const hasAuditHistory = auditEvents.some((event) => event.organizationName === organization.name);
+  const hasLicenseHistory = organization.licenseVersion > 1 || Boolean(organization.licenseStart || organization.licenseEnd);
+  const hasActiveLicense = getLicenseState(organization) === "vigente" || getLicenseState(organization) === "gracia";
+  return !hasRenewals && !hasAuditHistory && !hasLicenseHistory && !hasActiveLicense;
 }
 
 function outplacementServiceRuleFor(plan: string) {
@@ -1191,7 +1264,7 @@ function statusLabel(status: string, language: keyof typeof copy) {
       activo: "activo",
       pendiente: "pendiente",
       bloqueado: "bloqueado",
-      borrado_logico: "borrado lÃ³gico",
+      borrado_logico: "borrado lógico",
     },
     en: {
       activo: "active",
