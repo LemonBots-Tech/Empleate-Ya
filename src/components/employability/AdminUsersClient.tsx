@@ -2155,9 +2155,20 @@ function readStoredJson<T>(key: string): T | null {
 }
 
 function mergeMissingDemoUsers(storedUsers: DemoUser[]) {
-  const storedEmails = new Set(storedUsers.map((user) => user.email));
+  const normalizedStoredUsers = normalizeOutplacementCreditsFromOrganizations(storedUsers);
+  const storedEmails = new Set(normalizedStoredUsers.map((user) => user.email));
   const missingUsers = demoUsers.filter((user) => !storedEmails.has(user.email));
-  return missingUsers.length ? [...storedUsers, ...missingUsers] : storedUsers;
+  return missingUsers.length ? [...normalizedStoredUsers, ...missingUsers] : normalizedStoredUsers;
+}
+
+function normalizeOutplacementCreditsFromOrganizations(users: DemoUser[]) {
+  return users.map((user) => {
+    if (user.kind !== "outplacement-rh") return user;
+    return {
+      ...user,
+      credits: outplacementLicenseForOrganization(user.organization).monthlyCredits,
+    };
+  });
 }
 
 function ownerOptionFor(owner: string) {
