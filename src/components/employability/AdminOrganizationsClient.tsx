@@ -670,6 +670,7 @@ export function AdminOrganizationsClient() {
   const [auditEvents, setAuditEvents] = useState<OrganizationAuditEvent[]>([]);
   const [searchMode, setSearchMode] = useState<OrganizationSearchMode>("capture");
   const [draftLicenseStart, setDraftLicenseStart] = useState("");
+  const [draftLicenseEnd, setDraftLicenseEnd] = useState("");
   const [draftGracePeriodDays, setDraftGracePeriodDays] = useState(0);
   const currentAdminRole: DemoAdminRole = "Super Admin";
 
@@ -685,18 +686,20 @@ export function AdminOrganizationsClient() {
 
   const selectedOrganization = organizations.find((organization) => organization.id === selectedId);
   const selectedLicenseState = selectedOrganization ? getLicenseState(selectedOrganization) : null;
-  const calculatedGraceUntil = calculateGraceUntil(draftLicenseStart, draftGracePeriodDays);
+  const calculatedGraceUntil = calculateGraceUntil(draftLicenseEnd, draftGracePeriodDays);
 
   useEffect(() => {
     setDraftLicenseStart(selectedOrganization?.licenseStart ?? "");
+    setDraftLicenseEnd(selectedOrganization?.licenseEnd ?? "");
     setDraftGracePeriodDays(selectedOrganization?.gracePeriodDays ?? 0);
-  }, [selectedOrganization?.gracePeriodDays, selectedOrganization?.licenseStart]);
+  }, [selectedOrganization?.gracePeriodDays, selectedOrganization?.licenseEnd, selectedOrganization?.licenseStart]);
 
   function createNew() {
     setSelectedId("");
     setDraftType("coach_partner");
     setDraftPlan("Coach Starter");
     setDraftLicenseStart("");
+    setDraftLicenseEnd("");
     setDraftGracePeriodDays(0);
     setSearchMode("capture");
     setNotice("");
@@ -730,6 +733,7 @@ export function AdminOrganizationsClient() {
     const city = String(formData.get("city") || "").trim();
     const address = String(formData.get("address") || "").trim();
     const licenseStart = String(formData.get("licenseStart") || "").trim();
+    const licenseEnd = String(formData.get("licenseEnd") || "").trim();
     const gracePeriodDays = Number(formData.get("gracePeriodDays") || 0);
     const monthlyGroups = calculatedCapacity ? calculatedCapacity.groups : Number(formData.get("monthlyGroups") || 0);
     if (!selectedOrganization && !canCreateOrganization(currentAdminRole)) {
@@ -765,11 +769,11 @@ export function AdminOrganizationsClient() {
       address,
       plan,
       licenseStart,
-      licenseEnd: String(formData.get("licenseEnd") || ""),
+      licenseEnd,
       contractTermMonths,
       contractValue: Number(formData.get("contractValue") || 0),
       gracePeriodDays,
-      graceUntil: calculateGraceUntil(licenseStart, gracePeriodDays),
+      graceUntil: calculateGraceUntil(licenseEnd, gracePeriodDays),
       licenseVersion: Number(formData.get("licenseVersion") || selectedOrganization?.licenseVersion || 1),
       credits: calculatedCredits,
       monthlyGroups,
@@ -1054,11 +1058,11 @@ export function AdminOrganizationsClient() {
                 <small className="mt-1 block text-xs font-semibold text-slate-500">{t.contractValueHelp}</small>
               </Field>
               <Field label={t.licenseStart}><Input name="licenseStart" type="date" value={draftLicenseStart} onChange={(event) => setDraftLicenseStart(event.target.value)} /></Field>
-              <Field label={t.licenseEnd}><Input name="licenseEnd" type="date" defaultValue={selectedOrganization?.licenseEnd ?? ""} /></Field>
+              <Field label={t.licenseEnd}><Input name="licenseEnd" type="date" value={draftLicenseEnd} onChange={(event) => setDraftLicenseEnd(event.target.value)} /></Field>
               <Field label={t.gracePeriod}><Input name="gracePeriodDays" type="number" min={0} value={draftGracePeriodDays} onChange={(event) => setDraftGracePeriodDays(Number(event.target.value || 0))} /></Field>
               <Field label={t.graceUntil}>
                 <Input name="graceUntil" type="date" value={calculatedGraceUntil} readOnly />
-                <small className="mt-1 block text-xs font-semibold text-slate-500">{language === "es" ? "Se calcula con inicio de licencia + dias naturales de gracia." : "Calculated from license start + calendar grace days."}</small>
+                <small className="mt-1 block text-xs font-semibold text-slate-500">{language === "es" ? "Se calcula con fin de licencia + dias naturales de gracia. Si dias es 0, queda igual al fin de licencia." : "Calculated from license end + calendar grace days. If days is 0, it equals the license end."}</small>
               </Field>
               <Field label={t.licenseVersion}><Input name="licenseVersion" type="number" min={1} defaultValue={selectedOrganization?.licenseVersion ?? 1} readOnly /></Field>
               {draftType === "coach_partner" ? (
@@ -1299,9 +1303,10 @@ function todayInputValue() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function calculateGraceUntil(licenseStart: string, gracePeriodDays: number) {
-  if (!licenseStart || !Number.isFinite(gracePeriodDays) || gracePeriodDays <= 0) return "";
-  return addDays(licenseStart, gracePeriodDays);
+function calculateGraceUntil(licenseEnd: string, gracePeriodDays: number) {
+  if (!licenseEnd) return "";
+  if (!Number.isFinite(gracePeriodDays) || gracePeriodDays <= 0) return licenseEnd;
+  return addDays(licenseEnd, gracePeriodDays);
 }
 
 function addMonths(dateValue: string, months: number) {
